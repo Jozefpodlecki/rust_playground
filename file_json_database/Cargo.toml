@@ -1,0 +1,10 @@
+[package]
+name = "file-json-database"
+version = "0.1.0"
+authors = ["Jozef Podlecki <jozef.witold.podlecki@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+chrono = "0.4.19"
