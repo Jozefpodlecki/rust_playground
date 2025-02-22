@@ -1,5 +1,5 @@
 [package]
-name = "dll-connsume"
+name = "box_fnmut_static"
 version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2018"
