@@ -1,0 +1,19 @@
+[tasks.build]
+command = "cargo"
+args = ["build"]
+
+[tasks.copy_dll1]
+command = "cargo"
+args = ["build"]
+
+[tasks.copy_dll]
+script_runner = "powershell"
+script = '''
+Copy-Item dll_lib\\target\\debug\\dll_lib.dll -Destination wrapper\\dll_lib.dll
+'''
+
+[tasks.build_and_copy]
+dependencies = [
+    "build",
+    "copy_dll"
+]

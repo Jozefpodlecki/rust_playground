@@ -1,0 +1,11 @@
+[package]
+name = "wrapper"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85.0"
+
+[dependencies]
+anyhow = "1.0.96"
+log = "0.4"
+libloading = "0.8.6"
+shared = { path = "../shared" }
