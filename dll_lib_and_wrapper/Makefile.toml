@@ -11,6 +11,7 @@ script_runner = "powershell"
 script_extension = "ps1"
 script = '''
 Copy-Item dll_lib\\target\\debug\\dll_lib.dll wrapper\\dll_lib.dll
+Copy-Item wrapper\\dll_lib.dll wrapper\\target\\debug\\dll_lib.dll
 '''
 
 [tasks.build_and_copy]
@@ -18,3 +19,7 @@ dependencies = [
     "build",
     "copy_dll"
 ]
+
+[tasks.run_wrapper]
+command = "cargo"
+args = ["run", "-p", "wrapper"]

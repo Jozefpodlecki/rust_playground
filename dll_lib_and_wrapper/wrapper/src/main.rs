@@ -5,11 +5,17 @@ use wrapper::Wrapper;
 fn main() -> Result<()> {
     let mut wrapper = Wrapper::new("dll_lib.dll");
 
-    wrapper.set_test_mpsc_with_enum();
+    let message = wrapper.get_message().unwrap();
+    println!("{:?}", message);
 
-    while let Some(value) = wrapper.recv() {
-        println!("{:?}", value);
-    }
+    // let users = wrapper.get_users();
+    // println!("{:?}", users);
+
+    // wrapper.set_test_mpsc_with_enum();
+
+    // while let Some(value) = wrapper.recv() {
+    //     println!("{:?}", value);
+    // }
 
     Ok(())
 }
