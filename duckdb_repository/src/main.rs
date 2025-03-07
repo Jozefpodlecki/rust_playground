@@ -9,24 +9,37 @@ fn main() {
         .build(manager)
         .unwrap();
 
-    let sql = r"
-    CREATE TABLE Config(
-        version TEXT PRIMARY KEY
-    )
-    ";
-
     let connection = pool.get().unwrap();
-    connection.execute_batch(sql).unwrap();
 
     let sql = r"
-    CREATE TABLE Player(
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        created_on TIMESTAMP NOT NULL
-    )
+    SELECT
+        EXISTS (SELECT 1 FROM duckdb_tables WHERE table_name = ?)
     ";
 
-    connection.execute_batch(sql).unwrap();
+    let table_name = "Config";
+    let mut statement = connection.prepare(sql).unwrap();
+    let exists: bool = statement.query_row([table_name], |row| row.get(0)).unwrap();
+
+    if !exists {
+        let sql = r"
+        CREATE TABLE Config(
+            version TEXT PRIMARY KEY
+        )
+        ";
+        
+        connection.execute_batch(sql).unwrap();
+
+        
+        let sql = r"
+        CREATE TABLE Player(
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_on TIMESTAMP NOT NULL
+        )
+        ";
+
+        connection.execute_batch(sql).unwrap();
+    }
 
     let new_id = Uuid::now_v7().to_string();
     let player_name = "Alice";
