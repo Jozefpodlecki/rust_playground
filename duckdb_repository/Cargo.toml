@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"
 rust-version = "1.85"
+include = ["migrations/**"]
 
 [dependencies]
 r2d2 = "0.8.10"
@@ -12,3 +13,4 @@ uuid = { version = "1", features = ["v7"] }
 chrono = "=0.4.38"
 datafusion = "43.0.0"
 arrow = "=53.2.0"
+anyhow = "1.0.96"
