@@ -18,21 +18,34 @@ impl MigrationRunner {
         let connection = self.pool.get()?;
 
         if Self::table_exists(&connection, "Config")? {
-            // execute here 0.0.1.sql maybe?
-
-            let executable_path = env::current_exe()?;
-            let executable_directory = executable_path.parent().unwrap();
-            let migrations_directory = executable_directory.join("migrations");
-            
-            let mut files: Vec<_> = fs::read_dir(migrations_directory)
-                .unwrap()
-                .map(|e| e.unwrap().path())
-                .filter(|p| p.extension().map_or(false, |ext| ext == "sql"))
-                .collect();
-            
-            files.sort();
+          
+            self.apply_migrations(version)?;
 
             return Ok(())
+        }
+
+        Ok(())
+    }
+
+    fn apply_migrations(&self, version: &str) -> Result<()> {
+
+        let connection = self.pool.get()?;
+
+        let executable_path = env::current_exe()?;
+        let executable_directory = executable_path.parent().unwrap();
+        let migrations_directory = executable_directory.join("migrations");
+        
+        let mut files: Vec<_> = fs::read_dir(migrations_directory)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().map_or(false, |ext| ext == "sql"))
+            .collect();
+        
+        files.sort();
+
+        for file_path in files {
+            let content = fs::read_to_string(&file_path)?;
+            connection.execute_batch(&content)?;
         }
 
         Ok(())

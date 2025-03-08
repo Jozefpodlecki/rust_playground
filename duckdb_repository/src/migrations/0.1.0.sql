@@ -1,5 +1,6 @@
 CREATE TABLE Config(
-    version TEXT PRIMARY KEY
+    version VARCHAR PRIMARY KEY,
+    last_migration VARCHAR NOT NULL
 )
 
 CREATE TABLE Player(
