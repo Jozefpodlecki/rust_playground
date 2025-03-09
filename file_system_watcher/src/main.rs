@@ -1,7 +1,8 @@
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use serde::{Deserialize, Serialize};
 use simple_logger::SimpleLogger;
-use std::{env, fs::File, io::Write, path::{Path, PathBuf}};
+use std::{env, fs::File, path::{Path, PathBuf}, sync::{Arc, RwLock}, time::Duration};
 use anyhow::{Ok, Result};
 use log::*;
 
@@ -14,29 +15,57 @@ struct Context {
     pub settings_path: PathBuf
 }
 
-fn create_settings_if_not_exists(settings_file_name: &Path) -> Result<()> {
-    let settings = Settings {
-        version: "0.1.0".into(),
-    };
+fn read_settings(settings_file_name: &Path) -> Result<Settings> {
+    let file = File::open(settings_file_name)?;
+    let settings = serde_json::from_reader(file)?;
 
-    let json_data = serde_json::to_string(&settings)?;
-    let mut file = File::create(settings_file_name)?;
-    file.write_all(json_data.as_bytes())?;
-
-    Ok(())
+    Ok(settings)
 }
 
-fn watch<P: AsRef<Path>>(path: P) -> Result<()> {
+fn create_settings_if_not_exists(settings_file_name: &Path) -> Result<Arc<RwLock<Settings>>> {
+    let settings: Settings;
+
+    if settings_file_name.exists() {
+       settings = read_settings(settings_file_name)?;
+    }
+    else {
+        settings = Settings {
+            version: "0.1.0".into(),
+        };
+    
+        let file = File::create(settings_file_name)?;
+        serde_json::to_writer(file, &settings)?;
+    }
+
+    Ok(Arc::new(RwLock::new(settings)))
+}
+
+fn watch<P: AsRef<Path>>(path: P, settings: Arc<RwLock<Settings>>) -> Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
+    let mut debouncer = new_debouncer(Duration::from_secs(1), tx).unwrap();
 
-    info!("Watching: {:?}", path.as_ref());
-    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
+    let path_ref = path.as_ref();
+    info!("Watching: {:?}", path_ref);
+    debouncer
+        .watcher()
+        .watch(path_ref, RecursiveMode::Recursive)?;
 
     for res in rx {
         match res {
-            std::result::Result::Ok(event) => info!("Change: {event:?}"),
+            std::result::Result::Ok(events) => {
+                let event = events.first().unwrap();
+                info!("Event: {:?}", event);
+
+                match event.kind {
+                    DebouncedEventKind::Any => {
+                        let mut settings = settings.write().unwrap();
+                        *settings = read_settings(path_ref)?;
+                        info!("Updated settings: {:?}", settings);
+                    },
+                    _ => {}
+                }
+            },
             Err(error) => error!("Error: {error:?}"),
         }
     }
@@ -46,8 +75,8 @@ fn watch<P: AsRef<Path>>(path: P) -> Result<()> {
 
 fn run(context: Context) -> Result<()> {
   
-    create_settings_if_not_exists(&context.settings_path)?;
-    watch(context.settings_path)?;
+    let settings = create_settings_if_not_exists(&context.settings_path)?;
+    watch(context.settings_path, settings)?;
 
     Ok(())
 }
