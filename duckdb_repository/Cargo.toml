@@ -4,7 +4,6 @@ version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"
 rust-version = "1.85"
-include = ["migrations/**"]
 
 [dependencies]
 r2d2 = "0.8.10"

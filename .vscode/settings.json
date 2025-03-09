@@ -1,7 +1,8 @@
 {
 	"svelte.enable-ts-plugin": true,
 	"rust-analyzer.linkedProjects": [
-		"duckdb_repository/Cargo.toml"
+		"duckdb_repository/Cargo.toml",
+		"file_system_watcher/Cargo.toml"
 	],
 	"sqltools.connections": [],
 	"sqltools.useNodeRuntime": true

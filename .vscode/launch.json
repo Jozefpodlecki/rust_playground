@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug DuckDb Repository",
+            "program": "${workspaceFolder}/duckdb_repository/target/debug/duckdb_repository",
+            "args": [],
+            "cwd": "${workspaceRoot}/duckdb_repository",
+            "sourceLanguages": [
+                "rust"
+            ]
+        },
+    ]
+}
