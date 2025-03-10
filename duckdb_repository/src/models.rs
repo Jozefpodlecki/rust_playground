@@ -1,6 +1,11 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+pub struct Zone {
+    pub id: u32,
+    pub name: String,
+}
+
 pub struct Player {
     pub id: Uuid,
     pub class_id: u32,
@@ -9,6 +14,15 @@ pub struct Player {
     pub name: String,
     pub created_on: DateTime<Utc>,
     pub updated_on: DateTime<Utc>,
+}
+
+pub struct Raid {
+    pub id: Uuid,
+    pub created_on: DateTime<Utc>,
+    pub name: String,
+    pub sub_name: Option<String>,
+    pub gate: u8,
+    pub zone_ids: Vec<u32>,
 }
 
 pub struct Npc {
@@ -37,7 +51,7 @@ pub struct HpLog {
 pub struct Confrontation {
     pub id: Uuid,
     pub created_on: DateTime<Utc>,
-    pub raid_id: i64,
+    pub raid_id: Uuid,
     pub is_cleared: bool,
     pub total_damage_taken: i64,
     pub total_damage_dealt: i64,

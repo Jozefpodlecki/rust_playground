@@ -16,15 +16,24 @@ CREATE TABLE Player (
     character_id TINYINT NOT NULL,
     last_gear_score FLOAT NOT NULL,
     CONSTRAINT PK_Player PRIMARY KEY (id),
-    CONSTRAINT UQ_Player_name UNIQUE(name)
+    CONSTRAINT UQ_Player_Name UNIQUE(name)
 );
+
+CREATE TABLE Zone (
+    id INTEGER NOT NULL,
+    created_on TIMESTAMP NOT NULL,
+    name VARCHAR(40) NOT NULL,
+    CONSTRAINT PK_Zone PRIMARY KEY (id),
+    CONSTRAINT UQ_Zone_Id_Name UNIQUE(id, name)
+)
 
 CREATE TABLE Raid (
     id UUID NOT NULL,
+    created_on TIMESTAMP NOT NULL,
     name VARCHAR(30) NOT NULL,
     sub_name VARCHAR(30) NULL,
     gate TINYINT NULL,
-    created_on TIMESTAMP NOT NULL,
+    zone_ids INTEGER[] INTEGER NOT NULL,
     CONSTRAINT PK_Raid PRIMARY KEY (id),
     CONSTRAINT UQ_Raid_name UNIQUE(name, sub_name)
 );

@@ -5,7 +5,7 @@ use duckdb::DuckdbConnectionManager;
 use uuid::Uuid;
 use anyhow::{Ok, Result};
 
-use crate::{db::{confrontation_repository::ConfrontationRepository, migration::MigrationRunner, player_repository::PlayerRepository}, models::Player};
+use crate::{db::{confrontation_repository::ConfrontationRepository, migration::MigrationRunner, npc_repository::NpcRepository, player_repository::PlayerRepository, raid_repository::RaidRepository}, models::{Npc, Player, Raid, Zone}};
 
 pub struct Orchestrator {
 
@@ -33,6 +33,8 @@ fn create_database_and_insert_record() -> Result<()> {
     
     let confrontation_repository = ConfrontationRepository::new(pool.clone());
     let player_repository = PlayerRepository::new(pool.clone());
+    let raid_repository = RaidRepository::new(pool.clone());
+    let npc_repository = NpcRepository::new(pool.clone());
 
     migration_runner.run(version)?;
    
@@ -51,6 +53,31 @@ fn create_database_and_insert_record() -> Result<()> {
 
         player_repository.insert(player)?;
     }
+
+    let zone = Zone {
+        id: 1,
+        name: "test".into()
+    };
+
+    let raid = Raid {
+        id: Uuid::now_v7(),
+        name: "".into(),
+        sub_name: None,
+        created_on: Utc::now(),
+        gate: 2,
+        zone_ids: vec![]
+    };
+
+    let npc = Npc {
+        id: Uuid::now_v7(),
+        created_on: Utc::now(),
+        name: "Test".into(),
+        npc_type_id: 1,
+        raid_id: Uuid::now_v7(),
+    };
+
+    npc_repository.insert(npc);
+
 
     Ok(())
 }

@@ -101,7 +101,12 @@ impl MigrationRunner {
     }
 
     fn get_migration_files(&self) -> Result<Vec<PathBuf>> {
-        let executable_path = env::current_exe()?;
+        let executable_path = if cfg!(test) {
+            env::current_exe()?.parent().unwrap().to_path_buf()
+        } else {
+            env::current_exe()?
+        };
+
         let executable_directory = executable_path.parent().unwrap();
         let migrations_directory = executable_directory.join("migrations");
 

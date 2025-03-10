@@ -5,3 +5,5 @@ pub mod hp_session_repository;
 pub mod confrontation_repository;
 pub mod player_stats_repository;
 pub mod npc_repository;
+pub mod raid_repository;
+pub mod zone_repository;
