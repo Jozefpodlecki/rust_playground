@@ -51,7 +51,7 @@ fn create_database_and_insert_record() -> Result<()> {
             updated_on: Utc::now(),
         };
 
-        player_repository.insert(player)?;
+        player_repository.insert(&player)?;
     }
 
     let zone = Zone {

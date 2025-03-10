@@ -25,7 +25,7 @@ CREATE TABLE Zone (
     name VARCHAR(40) NOT NULL,
     CONSTRAINT PK_Zone PRIMARY KEY (id),
     CONSTRAINT UQ_Zone_Id_Name UNIQUE(id, name)
-)
+);
 
 CREATE TABLE Raid (
     id UUID NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE Raid (
     name VARCHAR(30) NOT NULL,
     sub_name VARCHAR(30) NULL,
     gate TINYINT NULL,
-    zone_ids INTEGER[] INTEGER NOT NULL,
+    zone_ids INTEGER[] NOT NULL,
     CONSTRAINT PK_Raid PRIMARY KEY (id),
     CONSTRAINT UQ_Raid_name UNIQUE(name, sub_name)
 );
@@ -47,7 +47,7 @@ CREATE TABLE Confrontation (
     total_damage_taken INTEGER NOT NULL,
     duration VARCHAR(5) NOT NULL,
     CONSTRAINT PK_Confrontation PRIMARY KEY (id)
-)
+);
 
 CREATE TABLE PlayerStats (
     confrontation_id UUID NOT NULL,
@@ -56,21 +56,22 @@ CREATE TABLE PlayerStats (
     total_damage_taken INTEGER NOT NULL,
     total_damage_dealt INTEGER NOT NULL,
     CONSTRAINT PK_PlayerStats PRIMARY KEY (confrontation_id, player_id)
-)
+);
 
 CREATE TABLE Npc (
     id UUID NOT NULL,
     created_on TIMESTAMP NOT NULL,
     name VARCHAR(30) NOT NULL,
-    npc_type_id INTEGER NOT NULL,
+    npc_id INTEGER NOT NULL,
+    npc_type SMALLINT NOT NULL,
     raid_id UUID NOT NULL,
     CONSTRAINT PK_Npc PRIMARY KEY (id),
     CONSTRAINT UQ_Npc_Name UNIQUE(name),
-    CONSTRAINT FK_Npc_Raid FOREIGN KEY (session_id) REFERENCES Raid(id)
+    CONSTRAINT FK_Npc_Raid FOREIGN KEY (raid_id) REFERENCES Raid(id)
 );
 
 CREATE TABLE HpSession (
-    id UUID PRIMARY KEY,
+    id UUID NOT NULL,
     npc_id UUID NOT NULL,
     raid_id UUID NOT NULL,
     started_on TIMESTAMP NOT NULL,
