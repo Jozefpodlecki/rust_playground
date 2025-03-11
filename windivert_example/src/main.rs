@@ -1,11 +1,6 @@
-#![allow(warnings)]
 
-use std::{error::Error, net::Ipv4Addr, sync::{atomic::{AtomicBool, Ordering}, Arc, Mutex}, vec};
-
-use anyhow::{Result};
+use anyhow::Result;
 use simple_logger::SimpleLogger;
-use windivert::{layer::NetworkLayer, packet::WinDivertPacket, prelude::WinDivertFlags, WinDivert};
-use tokio::{select, signal::windows::{self, ctrl_c}, task};
 use wrapper::WindivertWrapper;
 
 mod wrapper;
@@ -15,7 +10,10 @@ async fn main() -> Result<()> {
     
     SimpleLogger::new().env().init().unwrap();
 
-    let mut windivert = WindivertWrapper::new()?;
+    let ip = "127.0.0.1"; 
+    // let port = 6041;
+    let port = 80;
+    let mut windivert = WindivertWrapper::new(ip, port)?;
 
     windivert.start();
 

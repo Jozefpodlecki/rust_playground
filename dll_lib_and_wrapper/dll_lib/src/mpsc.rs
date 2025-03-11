@@ -1,4 +1,4 @@
-use std::{sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Receiver}}, thread, time::Duration};
+use std::{sync::mpsc::{self, Receiver}, thread, time::Duration};
 use shared::Payload;
 
 
