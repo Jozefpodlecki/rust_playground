@@ -34,15 +34,15 @@ impl HpSessionRepository {
         Ok(())
     }
 
-    pub fn insert(&self, entity: HpSession) -> Result<()> {
+    pub fn insert(&self, entity: &HpSession) -> Result<()> {
 
         let connection = self.pool.get()?;
         let sql = r"
         INSERT INTO HpSession
         (
             id,
-            entity_id,
-            raid_id,
+            npc_id,
+            confrontation_id,
             started_on
         )
         VALUES
@@ -51,12 +51,30 @@ impl HpSessionRepository {
 
         let params = params![
             entity.id.to_string(),
-            entity.entity_id.to_string(),
-            entity.raid_id.to_string(),
+            entity.npc_id.to_string(),
+            entity.confrontation_id.to_string(),
             entity.started_on.to_string(),
         ];
         statement.execute(params)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::db::repositories::utils::TestDb;
+
+    #[test]
+    fn test_hp_session() {
+
+        let mut test_db = TestDb::new();
+        test_db.setup().unwrap();
+
+        let raid = test_db.create_raid().unwrap();
+        let boss = test_db.create_npc(raid.id).unwrap();
+        let confrontation = test_db.create_confrontation(raid.id).unwrap();
+        let hp_session = test_db.create_hp_session(confrontation.id, boss.id);
+
     }
 }

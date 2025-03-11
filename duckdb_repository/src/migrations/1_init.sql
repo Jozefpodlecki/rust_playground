@@ -12,8 +12,8 @@ CREATE TABLE Player (
     created_on TIMESTAMP NOT NULL,
     updated_on TIMESTAMP NOT NULL,
     name VARCHAR(30) NOT NULL,
-    class_id TINYINT NOT NULL,
-    character_id TINYINT NOT NULL,
+    class_id USMALLINT NOT NULL,
+    character_id UINTEGER NOT NULL,
     last_gear_score FLOAT NOT NULL,
     CONSTRAINT PK_Player PRIMARY KEY (id),
     CONSTRAINT UQ_Player_Name UNIQUE(name)
@@ -29,13 +29,13 @@ CREATE TABLE Zone (
 
 CREATE TABLE Raid (
     id UUID NOT NULL,
-    created_on TIMESTAMP NOT NULL,
+    created_on TIMESTAMP(6) NOT NULL,
     name VARCHAR(30) NOT NULL,
     sub_name VARCHAR(30) NULL,
     gate TINYINT NULL,
-    zone_ids INTEGER[] NOT NULL,
+    zone_ids UINTEGER[] NOT NULL,
     CONSTRAINT PK_Raid PRIMARY KEY (id),
-    CONSTRAINT UQ_Raid_name UNIQUE(name, sub_name)
+    CONSTRAINT UQ_Raid_Name_Gate UNIQUE(name, sub_name, gate)
 );
 
 CREATE TABLE Confrontation (
@@ -45,7 +45,7 @@ CREATE TABLE Confrontation (
     is_cleared BOOLEAN NOT NULL,
     total_damage_dealt INTEGER NOT NULL,
     total_damage_taken INTEGER NOT NULL,
-    duration VARCHAR(5) NOT NULL,
+    duration INTERVAL NOT NULL,
     CONSTRAINT PK_Confrontation PRIMARY KEY (id)
 );
 
@@ -63,21 +63,21 @@ CREATE TABLE Npc (
     created_on TIMESTAMP NOT NULL,
     name VARCHAR(30) NOT NULL,
     npc_id INTEGER NOT NULL,
-    npc_type SMALLINT NOT NULL,
+    npc_type TINYINT NOT NULL,
     raid_id UUID NOT NULL,
     CONSTRAINT PK_Npc PRIMARY KEY (id),
-    CONSTRAINT UQ_Npc_Name UNIQUE(name),
+    CONSTRAINT UQ_Npc_Name UNIQUE(name, npc_id, raid_id),
     CONSTRAINT FK_Npc_Raid FOREIGN KEY (raid_id) REFERENCES Raid(id)
 );
 
 CREATE TABLE HpSession (
     id UUID NOT NULL,
     npc_id UUID NOT NULL,
-    raid_id UUID NOT NULL,
+    confrontation_id UUID NOT NULL,
     started_on TIMESTAMP NOT NULL,
     ended_on TIMESTAMP,
     CONSTRAINT PK_HpSession PRIMARY KEY (id),
-    CONSTRAINT UQ_HpSession_Npc_Raid UNIQUE (npc_id, raid_id)
+    CONSTRAINT UQ_HpSession_Npc_Raid UNIQUE (npc_id, confrontation_id)
 );
 
 CREATE TABLE HpLog (

@@ -33,7 +33,7 @@ impl ZoneRepository {
 
         let connection = self.pool.get()?;
         let sql = "
-        INSERT INTO Raid
+        INSERT INTO Zone
         (
             id,
             created_on,
@@ -45,6 +45,7 @@ impl ZoneRepository {
 
         let params = params![
             entity.id,
+            entity.created_on.to_string(),
             entity.name,
         ];
         statement.execute(params)?;

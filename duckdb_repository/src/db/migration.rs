@@ -5,13 +5,27 @@ use duckdb::{params, Connection, DuckdbConnectionManager};
 use r2d2::Pool;
 use anyhow::{Ok, Result};
 
+use crate::abstractions::FileSystem;
+
+use super::repositories::ConfigRepository;
+
 pub struct MigrationRunner {
-    pool: Pool<DuckdbConnectionManager>
+    pool: Pool<DuckdbConnectionManager>,
+    config_repository: ConfigRepository,
+    file_system: FileSystem
 }
 
 impl MigrationRunner {
-    pub fn new(pool: Pool<DuckdbConnectionManager>) -> Self {
-        Self { pool }
+    pub fn new(
+        pool: Pool<DuckdbConnectionManager>,
+        config_repository: ConfigRepository,
+        file_system: FileSystem
+    ) -> Self {
+        Self { 
+            pool,
+            config_repository,
+            file_system
+        }
     }
 
     pub fn run(&self, version: &str) -> Result<()> {
@@ -55,8 +69,9 @@ impl MigrationRunner {
         let mut last_migration = None;
 
         for file_path in migrations {
+            let content = fs::read_to_string(&file_path)?;
+            connection.execute_batch(&content)?;
             let migration_name = file_path.file_name().unwrap().to_string_lossy().to_string();
-
             last_migration = Some(migration_name);
         }
 
@@ -82,7 +97,7 @@ impl MigrationRunner {
         let current_timestamp = Utc::now().to_string();
         let mut statement = connection.prepare(sql)?;
         let params = params![version, migration, current_timestamp];
-        statement.execute(params)?;
+        let _ = statement.execute(params)?;
 
         Ok(())
     }

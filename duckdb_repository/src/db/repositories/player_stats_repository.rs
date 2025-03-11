@@ -57,3 +57,36 @@ impl PlayerStatsRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+
+    use crate::{db::repositories::utils::setup_test_database, models::PlayerStats};
+    use crate::db::repositories::utils::TestDb;
+    use super::PlayerStatsRepository;
+
+    #[test]
+    fn test_player_stats() {
+
+        let mut test_db = TestDb::new();
+        test_db.setup().unwrap();
+
+        let pool = test_db.pool.clone();
+        let raid = test_db.create_raid().unwrap();
+        let confrontation = test_db.create_confrontation(raid.id).unwrap();
+        let player = test_db.create_player().unwrap();
+
+        let repository = PlayerStatsRepository::new(pool.clone());
+
+        let player_stats = PlayerStats {
+            confrontation_id: confrontation.id,
+            created_on: Utc::now(),
+            player_id: player.id,
+            total_damage_dealt: 0,
+            total_damage_taken: 0
+        };
+
+        repository.insert(player_stats).unwrap()
+    }
+}
