@@ -1,0 +1,12 @@
+[package]
+name = "packet_processor"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "signal", "time", "sync", "macros"] }
+anyhow = "1.0.96"
+log = "0.4"
+simple_logger = "5.0.0"

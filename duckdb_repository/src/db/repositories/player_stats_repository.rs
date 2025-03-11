@@ -1,6 +1,8 @@
+use chrono::{TimeZone, Utc};
 use duckdb::{params, DuckdbConnectionManager};
 use r2d2::Pool;
 use anyhow::{Ok, Result};
+use uuid::Uuid;
 
 use crate::models::PlayerStats;
 
@@ -13,23 +15,33 @@ impl PlayerStatsRepository {
         Self { pool }
     }
 
-    pub fn exists(&self, name: &str) -> Result<bool> {
+    pub fn get_by_player_id(&self, player_id: Uuid) -> Result<Vec<PlayerStats>> {
 
         let connection = self.pool.get()?;
 
         let sql = r"
         SELECT
-            EXISTS (SELECT 1 FROM Player WHERE name = ?)
+            id,
+            name,
+            class_id,
+            character_id,
+            last_gear_score,
+            created_on,
+            updated_on
+        FROM PlayerStats
+        WHERE player_id = ?
         ";
     
         let mut statement = connection.prepare(sql)?;
-        let params = [name];
-        let result = statement.query_row(params, |row| row.get(0))?;
+        let params = params![player_id.to_string()];
+        let result = statement.query_map(params, Self::map_row)?
+            .filter_map(Result::ok)
+            .collect();
         
         Ok(result)
     }
 
-    pub fn insert(&self, entity: PlayerStats) -> Result<()> {
+    pub fn insert(&self, entity: &PlayerStats) -> Result<()> {
 
         let connection = self.pool.get()?;
         let sql = "
@@ -56,13 +68,32 @@ impl PlayerStatsRepository {
 
         Ok(())
     }
+
+    fn map_row(row: &duckdb::Row) -> std::result::Result<PlayerStats, duckdb::Error> {
+        let confrontation_id: String = row.get("confrontation_id")?;
+        let confrontation_id: Uuid = Uuid::parse_str(&confrontation_id).expect("Invalid id");
+
+        let player_id: String = row.get("id")?;
+        let player_id = Uuid::parse_str(&player_id).expect("Invalid id");
+
+        let created_on: i64 = row.get("created_on")?;
+        let created_on = Utc.timestamp_micros(created_on).unwrap();
+
+        std::result::Result::Ok(PlayerStats {
+            created_on,
+            player_id,
+            confrontation_id,
+            total_damage_dealt: row.get("total_damage_dealt")?,
+            total_damage_taken: row.get("total_damage_taken")?,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use chrono::Utc;
+    use chrono::{SecondsFormat, Utc};
 
-    use crate::{db::repositories::utils::setup_test_database, models::PlayerStats};
+    use crate::models::PlayerStats;
     use crate::db::repositories::utils::TestDb;
     use super::PlayerStatsRepository;
 
@@ -79,7 +110,7 @@ mod tests {
 
         let repository = PlayerStatsRepository::new(pool.clone());
 
-        let player_stats = PlayerStats {
+        let expected = PlayerStats {
             confrontation_id: confrontation.id,
             created_on: Utc::now(),
             player_id: player.id,
@@ -87,6 +118,15 @@ mod tests {
             total_damage_taken: 0
         };
 
-        repository.insert(player_stats).unwrap()
+        repository.insert(&expected).unwrap();
+
+        let player_stats = repository.get_by_player_id(player.id).unwrap();
+        let actual = player_stats.first().unwrap();
+
+        assert_eq!(actual.player_id, expected.player_id);
+        assert_eq!(actual.confrontation_id, expected.confrontation_id);
+        assert_eq!(actual.created_on.to_rfc3339_opts(SecondsFormat::Secs, false), expected.created_on.to_rfc3339_opts(SecondsFormat::Secs, false));
+        assert_eq!(actual.total_damage_dealt, expected.total_damage_dealt);
+        assert_eq!(actual.total_damage_taken, expected.total_damage_taken);
     }
 }
