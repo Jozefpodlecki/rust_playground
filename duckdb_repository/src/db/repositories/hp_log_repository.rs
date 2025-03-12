@@ -1,3 +1,4 @@
+use chrono::{TimeZone, Utc};
 use duckdb::{params, DuckdbConnectionManager};
 use r2d2::Pool;
 use anyhow::{Ok, Result};
@@ -15,7 +16,25 @@ impl HpLogRepository {
     }
 
     pub fn get_by_session_id(&self, session_id: Uuid) -> Result<Vec<HpLog>> {
-        Ok(vec![])
+
+        let connection = self.pool.get()?;
+
+        let sql = r"
+        SELECT
+            session_id,
+            recorded_on,
+            value
+        FROM HpLog
+        WHERE session_id = ?
+        ";
+    
+        let mut statement = connection.prepare(sql)?;
+        let params = params![session_id.to_string()];
+        let result = statement.query_map(params, Self::map_row)?
+            .filter_map(Result::ok)
+            .collect();
+
+        Ok(result)
     }
 
     pub fn insert(&self, entity: HpLog) -> Result<()> {
@@ -29,7 +48,7 @@ impl HpLogRepository {
             value
         )
         VALUES
-        (?, ?, ?, ?)";
+        (?, ?, ?)";
         let mut statement = connection.prepare(sql).unwrap();
 
         let params = params![
@@ -41,13 +60,29 @@ impl HpLogRepository {
 
         Ok(())
     }
+
+    fn map_row(row: &duckdb::Row) -> std::result::Result<HpLog, duckdb::Error> {
+        let recorded_on: i64 = row.get("recorded_on")?;
+        let recorded_on = Utc.timestamp_micros(recorded_on).unwrap();
+
+        let session_id: String = row.get("session_id")?;
+        let session_id = Uuid::parse_str(&session_id).expect("Invalid id");
+
+        let value: i64 = row.get("value")?;
+
+        std::result::Result::Ok(HpLog {
+            session_id,
+            recorded_on,
+            value
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use chrono::{Duration, SubsecRound, Utc};
 
-    use crate::{db::repositories::utils::{setup_test_database, TestDb}, models::{Confrontation, HpLog}};
+    use crate::{db::repositories::utils::TestDb, models::HpLog};
 
     use super::HpLogRepository;
 

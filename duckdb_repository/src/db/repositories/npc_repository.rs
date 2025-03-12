@@ -4,7 +4,7 @@ use r2d2::Pool;
 use anyhow::{Ok, Result};
 use uuid::Uuid;
 
-use crate::models::Npc;
+use crate::{models::Npc, npc_type::NpcType};
 
 pub struct NpcRepository {
     pool: Pool<DuckdbConnectionManager>
@@ -74,19 +74,23 @@ impl NpcRepository {
     fn map_row_to_npc(row: &duckdb::Row) -> std::result::Result<Npc, duckdb::Error> {
         let id: String = row.get("id")?;
         let id = Uuid::parse_str(&id).expect("Invalid id");
-
+        println!("11");
         let created_on: i64 = row.get("created_on")?;
         let created_on = Utc.timestamp_micros(created_on).unwrap();
-
+        println!("22");
         let raid_id: String = row.get("raid_id")?;
         let raid_id = Uuid::parse_str(&raid_id).expect("Invalid id");
+
+        let name = row.get("name")?;
+        let npc_id = row.get("npc_id")?;
+        let npc_type = row.get("npc_type")?;
 
         std::result::Result::Ok(Npc {
             id,
             created_on,
-            name: row.get("name")?,
-            npc_id: row.get("npc_id")?,
-            npc_type: row.get("npc_type")?,
+            name,
+            npc_id,
+            npc_type,
             raid_id
         })
     }

@@ -63,7 +63,7 @@ CREATE TABLE Npc (
     created_on TIMESTAMP NOT NULL,
     name VARCHAR(30) NOT NULL,
     npc_id INTEGER NOT NULL,
-    npc_type TINYINT NOT NULL,
+    npc_type UTINYINT NOT NULL,
     raid_id UUID NOT NULL,
     CONSTRAINT PK_Npc PRIMARY KEY (id),
     CONSTRAINT UQ_Npc_Name UNIQUE(name, npc_id, raid_id),

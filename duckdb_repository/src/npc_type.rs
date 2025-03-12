@@ -18,6 +18,7 @@ impl ToSql for NpcType {
 
 impl FromSql for NpcType {
     fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+
         if let ValueRef::UTinyInt(value) = value {
             let value: NpcType = unsafe { transmute(value) };
             return Ok(value);
