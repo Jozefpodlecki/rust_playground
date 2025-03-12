@@ -21,13 +21,11 @@ impl PlayerStatsRepository {
 
         let sql = r"
         SELECT
-            id,
-            name,
-            class_id,
-            character_id,
-            last_gear_score,
+            confrontation_id,
+            player_id,
             created_on,
-            updated_on
+            total_damage_taken,
+            total_damage_dealt
         FROM PlayerStats
         WHERE player_id = ?
         ";
@@ -73,7 +71,7 @@ impl PlayerStatsRepository {
         let confrontation_id: String = row.get("confrontation_id")?;
         let confrontation_id: Uuid = Uuid::parse_str(&confrontation_id).expect("Invalid id");
 
-        let player_id: String = row.get("id")?;
+        let player_id: String = row.get("player_id")?;
         let player_id = Uuid::parse_str(&player_id).expect("Invalid id");
 
         let created_on: i64 = row.get("created_on")?;

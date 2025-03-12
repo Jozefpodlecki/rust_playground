@@ -8,6 +8,7 @@
 		"windivert_example/Cargo.toml",
 		"npcap_example/Cargo.toml",
 		"packet_processor/Cargo.toml",
+		"redirect_stdout/Cargo.toml",
 	],
 	"sqltools.connections": [],
 	"sqltools.useNodeRuntime": true
