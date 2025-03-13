@@ -9,6 +9,7 @@
 		"npcap_example/Cargo.toml",
 		"packet_processor/Cargo.toml",
 		"redirect_stdout/Cargo.toml",
+		"tokio_async_tests/Cargo.toml",
 	],
 	"sqltools.connections": [],
 	"sqltools.useNodeRuntime": true

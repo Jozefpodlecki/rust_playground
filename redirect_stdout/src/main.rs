@@ -1,4 +1,4 @@
-use std::{fs::File, os::windows::io::{FromRawHandle, RawHandle}, ptr};
+use std::{fs::File, io::Write, os::windows::io::{AsHandle, AsRawHandle, FromRawHandle, RawHandle}, ptr};
 
 use anyhow::Result;
 use simple_logger::SimpleLogger;
@@ -9,25 +9,9 @@ async fn main() -> Result<()> {
     
     SimpleLogger::new().env().init().unwrap();
 
-    let filename = b"log.txt\0"; // Null-terminated byte string
-    let pcstr = PCSTR::from_raw(filename.as_ptr());
-
-    let file = unsafe { CreateFileA(
-        pcstr,
-        FILE_GENERIC_WRITE.0,
-        FILE_SHARE_MODE(0),
-        None,
-        OPEN_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
-        Some(HANDLE(std::ptr::null_mut())),
-    ) };
-
-
-    let handle = file.unwrap();
-
-    if handle.is_invalid() {
-        panic!("Failed to open log file.");
-    }
+    let file =  File::create("log.txt").unwrap();
+    let raw_handle = file.as_raw_handle();
+    let handle: HANDLE = HANDLE(raw_handle as *mut _);
 
     let result = unsafe { SetStdHandle(STD_OUTPUT_HANDLE, handle) };
 
@@ -35,23 +19,15 @@ async fn main() -> Result<()> {
         panic!("Failed to redirect stdout.");
     }
 
-    // let file = unsafe { File::from_raw_handle(handle as RawHandle) };
+    let int_ptr: isize = handle.0 as isize;
+    let file_descriptor = unsafe { libc::open_osfhandle(int_ptr, libc::O_WRONLY | libc::O_TEXT) };
+    let stdout = 1;
+    let new_file_descriptor = unsafe { libc::dup2(file_descriptor, stdout) };
+    println!("{}", new_file_descriptor);
 
-    // let fd = file.as_raw_fd();
-    // unsafe {
-    //     libc::dup2(fd, libc::STDOUT_FILENO);
-    // }
+    unsafe { libc::close(new_file_descriptor) };
 
-    // // Write something to check if it works
-    // println!("This will be logged in log.txt");
-
-    /*
-    HANDLE new_stdout = CreateFileA("log.txt", ...);
-    SetStdHandle(STD_OUTPUT_HANDLE, new_stdout);
-    int fd = _open_osfhandle(new_stdout, O_WRONLY|O_TEXT);
-    dup2(fd, STDOUT_FILENO);
-    close(fd);
-    */
+    println!("test");
     
     Ok(())
 }
