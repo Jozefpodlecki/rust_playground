@@ -1,3 +1,6 @@
+use std::env;
+use dotenv::dotenv;
+
 use rest_countries_api::RestCountriesApi;
 use anyhow::*;
 
@@ -6,8 +9,10 @@ mod models;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    dotenv().ok();
 
-    let rest_countries_api = RestCountriesApi::new("https://restcountries.com/v3.1/alpha/");
+    let api_url = env::var("API_URL")?;
+    let rest_countries_api = RestCountriesApi::new(&api_url);
     let name = "pl";
 
     let country = rest_countries_api.get_country(name).await?;
