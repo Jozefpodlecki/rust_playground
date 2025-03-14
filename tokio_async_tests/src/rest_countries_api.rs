@@ -31,17 +31,23 @@ impl<'a> RestCountriesApi<'a> {
 
 #[cfg(test)]
 mod tests {
-    
+    use mockito::Server;    
     use super::*;
 
     #[tokio::test]
     async fn should_return_country() {
-        let rest_countries_api = RestCountriesApi::new("https://restcountries.com/v3.1/alpha/");
+        let mut server = Server::new_async().await;
+        server.mock("GET", "/pl")
+            .with_status(200)
+            .with_body_from_file("src/tests/pl.json").create();
+
+        let url = format!("{}/", server.url());
+        let rest_countries_api = RestCountriesApi::new(&url);
 
         let country = rest_countries_api.get_country("pl").await.unwrap();
         let country = country.unwrap();
 
-        assert_eq!(country.name.common, "poland");
+        assert_eq!(country.name.common, "Poland");
         assert_eq!(country.name.official, "Republic of Poland");
     }
 }

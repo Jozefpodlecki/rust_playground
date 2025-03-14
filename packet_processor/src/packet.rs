@@ -22,6 +22,10 @@ impl PacketHandler for PacketType {
     }
 } 
 
+trait Trait<T> {
+    fn do_something(&self, value: T);
+}
+
 
 #[derive(Debug, Encode, Decode, Serialize, Deserialize, Default, Clone)]
 pub struct NewPlayerPacket {
