@@ -1,4 +1,5 @@
 use bincode::{config::Configuration, Decode, Encode};
+use packet_processor_macro::connect_packet_to_structs;
 use serde::{Deserialize, Serialize};
 use anyhow::*;
 
@@ -45,3 +46,5 @@ pub struct AttackPacket {
     pub damage: i64,
     pub target_id: u64
 }
+
+connect_packet_to_structs!(PacketType);

@@ -8,6 +8,7 @@
 		"windivert_example/Cargo.toml",
 		"npcap_example/Cargo.toml",
 		"packet_processor/Cargo.toml",
+		"packet_processor_macro/Cargo.toml",
 		"redirect_stdout/Cargo.toml",
 		"tokio_async_tests/Cargo.toml",
 	],
