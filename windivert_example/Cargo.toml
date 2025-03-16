@@ -4,6 +4,15 @@ version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"
 rust-version = "1.85"
+build = "build.rs"
+
+[target.'cfg(target_os = "windows")'.build-dependencies]
+winres = "0.1.12"
+
+[package.metadata.winres]
+LegalCopyright = "Copyright © 2025"
+ProductName = "Windivert Example"
+FileDescription = "Executable"
 
 [dependencies]
 tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "signal", "time", "sync", "macros"] }

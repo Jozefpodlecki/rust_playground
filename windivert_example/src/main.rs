@@ -1,21 +1,47 @@
 
-use anyhow::Result;
+use std::time::Duration;
+
+use anyhow::{Ok, Result};
+use consumer::Consumer;
+use log::*;
 use simple_logger::SimpleLogger;
-use wrapper::WindivertWrapper;
+use tokio::time::sleep;
+use utils::pause;
 
 mod wrapper;
+mod utils;
+mod consumer;
+
+async fn run() -> Result<()> {
+  
+    let mut consumer = Consumer::new();
+
+    consumer.start().await?;
+
+    let duration = Duration::from_secs(3);
+    info!("Stopping after {:?}", duration);
+    sleep(duration).await;
+
+    consumer.stop().await?;
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     
     SimpleLogger::new().env().init().unwrap();
 
-    let ip = "127.0.0.1"; 
-    // let port = 6041;
-    let port = 80;
-    let mut windivert = WindivertWrapper::new(ip, port)?;
+    match run().await {
+        std::result::Result::Ok(_) => {
+            info!("main:run:Ok");
+        },
+        Err(err) => {
+            error!("{}", err);
+        },
+    };
 
-    windivert.start();
+    pause();
 
     Ok(())
 }

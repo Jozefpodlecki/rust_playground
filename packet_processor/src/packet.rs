@@ -47,4 +47,4 @@ pub struct AttackPacket {
     pub target_id: u64
 }
 
-connect_packet_to_structs!(PacketType);
+// connect_packet_to_structs!(PacketType);
