@@ -1,15 +1,36 @@
 use bincode::{config::Configuration, Decode, Encode};
-use packet_processor_macro::connect_packet_to_structs;
+use packet_processor_macro::GenerateTraits;
 use serde::{Deserialize, Serialize};
 use anyhow::*;
 
-#[derive(Debug, Clone)]
+#[derive(GenerateTraits, Debug, Clone)]
 pub enum PacketType {
+    #[no_data]
     Start = 0,
+    #[with_struct(NewPlayerPacket)]
     NewPlayer = 1,
+    // #[with_struct(NewNpcPacket)]
     NewNpc = 2,
+    // #[with_struct(AttackPacket)]
     Attack = 3,
+    #[no_data]
     End = 4,
+}
+
+pub struct Start;
+
+impl StartHandler for Start {
+    fn process(&self) {
+        todo!()
+    }
+}
+
+pub struct NewPlayer;
+
+impl NewPlayerHandler for NewPlayer {
+    fn process(&self,data:NewPlayerPacket) {
+        todo!()
+    }
 }
 
 pub trait PacketHandler {
@@ -46,5 +67,3 @@ pub struct AttackPacket {
     pub damage: i64,
     pub target_id: u64
 }
-
-// connect_packet_to_structs!(PacketType);

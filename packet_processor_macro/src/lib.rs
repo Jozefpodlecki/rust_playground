@@ -1,9 +1,9 @@
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Data, Fields, Ident, Variant, Field};
+use syn::{parse_macro_input, Data, DeriveInput, Field, Fields, Ident, Meta, Variant};
 
-#[proc_macro]
+#[proc_macro_derive(GenerateTraits, attributes(no_data, with_struct))]
 pub fn connect_packet_to_structs(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -18,13 +18,54 @@ pub fn connect_packet_to_structs(input: TokenStream) -> TokenStream {
 
     for variant in &data_enum.variants {
         let variant_name = &variant.ident;
+        let mut has_no_data = false;
+        let mut struct_name = None;
 
-        let struct_name = variant_name.clone();
-        let generated_struct = quote! {
-            struct #struct_name;
-        };
+        for attr in &variant.attrs {
+            let attr_path = attr.path();
+            let has_attribute = attr_path.is_ident("no_data");
 
-        structs.push(generated_struct);
+            if has_attribute {
+                has_no_data = true;
+            }
+
+            let has_struct = attr_path.is_ident("with_struct");
+
+            if has_struct {
+                let iden: Ident = attr.parse_args().unwrap();
+                struct_name = Some(iden);
+            }
+        }
+
+
+        let trait_name = syn::Ident::new(&format!("{}Handler", variant_name), variant_name.span());
+        let generated_trait: proc_macro2::TokenStream;
+
+        if has_no_data {
+            generated_trait = quote! {
+                pub trait #trait_name {
+                    fn process(&self);
+                }
+            };
+        }
+        else {
+            if let Some(struct_name) = struct_name {
+                generated_trait = quote! {
+                    pub trait #trait_name {
+                        fn process(&self, data: #struct_name);
+                    }
+                };
+            }
+            else {
+                generated_trait = quote! {
+                    pub trait #trait_name {
+                        fn process(&self, data: Vec<u8>);
+                    }
+                };
+            }
+        }
+
+        structs.push(generated_trait);
     }
 
     let generated = quote! {

@@ -11,6 +11,8 @@
 		"packet_processor_macro/Cargo.toml",
 		"redirect_stdout/Cargo.toml",
 		"tokio_async_tests/Cargo.toml",
+		"procedural_macros/Cargo.toml",
+		"procedural_macro_runner/Cargo.toml",
 	],
 	"sqltools.connections": [],
 	"sqltools.useNodeRuntime": true
