@@ -1,0 +1,12 @@
+[package]
+name = "rusqlite_example"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2018"
+rust-version = "1.84"
+
+[dependencies]
+anyhow = "1.0.96"
+rusqlite = { version = "0.34.0", features = ["bundled", "serde_json"] }
+r2d2_sqlite = "0.27.0"
+r2d2 = "0.8.10"

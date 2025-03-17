@@ -70,6 +70,12 @@ pub fn connect_packet_to_structs(input: TokenStream) -> TokenStream {
 
     let generated = quote! {
         #(#structs)*
+
+        impl #enum_name {
+            pub fn test() {
+                
+            }
+        }
     };
 
     TokenStream::from(generated)

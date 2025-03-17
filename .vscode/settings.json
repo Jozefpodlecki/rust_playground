@@ -2,6 +2,8 @@
 	"svelte.enable-ts-plugin": true,
 	"rust-analyzer.linkedProjects": [
 		"box_fnmut_static/Cargo.toml",
+		"borrow_mut/Cargo.toml",
+		"rusqlite_example/Cargo.toml",
 		"dll_lib_and_wrapper/Cargo.toml",
 		"duckdb_repository/Cargo.toml",
 		"file_system_watcher/Cargo.toml",

@@ -1,4 +1,4 @@
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::mpsc::{UnboundedReceiver};
 use libloading::{Library, Symbol};
 use shared::Payload;
 
@@ -35,7 +35,7 @@ impl<'a> TokioMpscWrapper<'a> {
                 return None;
             }
 
-            let mut rx = unsafe { &mut * rx_ptr };
+            let rx = unsafe { &mut * rx_ptr };
 
             return rx.recv().await;
         }
@@ -53,7 +53,7 @@ impl<'a> Drop for TokioMpscWrapper<'a> {
         }
 
         if let Some(lib) = self.lib.take() {
-            lib.close();
+            lib.close().unwrap();
         }
     }
 }
