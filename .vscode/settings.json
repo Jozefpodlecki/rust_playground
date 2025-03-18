@@ -3,7 +3,11 @@
 	"rust-analyzer.linkedProjects": [
 		"box_fnmut_static/Cargo.toml",
 		"borrow_mut/Cargo.toml",
+		"const_generic_example/Cargo.toml",
+		"gat_example/Cargo.toml",
+		"asm_example/Cargo.toml",
 		"rusqlite_example/Cargo.toml",
+		"sqlx_sqlite_example/Cargo.toml",
 		"dll_lib_and_wrapper/Cargo.toml",
 		"duckdb_repository/Cargo.toml",
 		"file_system_watcher/Cargo.toml",
