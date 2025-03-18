@@ -1,4 +1,4 @@
-#![feature(asm)] 
+use std::arch::asm; 
 
 fn main() {
     let tsc: u64;
