@@ -2,7 +2,7 @@
 name = "borrow_mut"
 version = "0.1.0"
 authors = ["Jozef Podlecki"]
-edition = "2018"
-rust-version = "1.84"
+edition = "2024"
+rust-version = "1.85"
 
 [dependencies]
