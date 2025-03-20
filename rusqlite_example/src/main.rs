@@ -50,7 +50,7 @@ impl SqliteRepository {
 }
 
 fn main() {
-    let path = PathBuf::from("test1.db");
+    let path = PathBuf::from("test.db");
     let pool = create_pool(&path);
     setup_db(pool.clone()).unwrap();
 

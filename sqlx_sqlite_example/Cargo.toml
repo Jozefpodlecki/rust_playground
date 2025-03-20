@@ -1,0 +1,9 @@
+[package]
+name = "sqlx_sqlite_example"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+sqlx = { version = "0.8.3", features = [ "runtime-tokio", "sqlite" ] }

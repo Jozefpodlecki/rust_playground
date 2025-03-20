@@ -1,4 +1,15 @@
 use rand::Rng;
+use anyhow::*;
+
+pub trait BackgroundService {
+    fn start(&mut self) -> Result<()>;
+    fn stop(&mut self) -> Result<()>;
+}
+
+pub struct BackgroundServiceWrapper {
+    pub version: i64,
+    pub service: Box<dyn BackgroundService>
+}
 
 #[repr(C)]
 #[derive(Debug)]
