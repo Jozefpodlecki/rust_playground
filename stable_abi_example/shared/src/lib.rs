@@ -1,8 +1,10 @@
-use abi_stable::{declare_root_module_statics, library::RootModule, package_version_strings, sabi_trait, sabi_types::VersionStrings, std_types::{RBox, RBoxError, RResult}, StableAbi};
+use abi_stable::{*, library::RootModule, sabi_types::VersionStrings, std_types::{RBox, RBoxError, RResult}, StableAbi};
+use abi_stable::external_types::crossbeam_channel::RReceiver;
 
 #[sabi_trait]
 pub trait Service {
-    fn start(&mut self);
+    fn start(&mut self) -> RResult<RReceiver<i64> , RBoxError>;
+    fn stop(&mut self) -> RResult<(), RBoxError>;
 }
 
 pub type ServiceType = Service_TO<'static, RBox<()>>;

@@ -1,9 +1,10 @@
 use std::{fs, path::{Path, PathBuf}};
-
-use abi_stable::{library::lib_header_from_path, reexports::SelfOps};
+use anyhow::*;
+use abi_stable::{library::lib_header_from_path, reexports::SelfOps, std_types::RResult::ROk};
 use shared::{ServiceRoot_Prefix, ServiceRoot_Ref};
 
-fn main() {
+#[tokio::main]
+async fn main() -> Result<()> {
    
     let library_path = "./target/debug/library.dll"
         .as_ref_::<Path>()
@@ -17,5 +18,24 @@ fn main() {
 
     let mut service = service_root.new()().unwrap();
 
-    service.start();
+    let rx = service.start().unwrap();
+
+    loop {
+        match rx.recv() {
+            std::result::Result::Ok(value) => {
+
+                if value > 5 {
+                    println!("stopping");
+                    service.stop();
+                    break;
+                }
+
+            },
+            Err(err) => {
+                println!("{}", err)
+            },
+        }
+    }
+
+    Ok(())
 }
