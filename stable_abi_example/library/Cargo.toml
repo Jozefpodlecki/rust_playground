@@ -1,0 +1,14 @@
+[package]
+name = "library"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[lib]
+crate-type = ["cdylib",'rlib']
+
+[dependencies]
+anyhow = "1.0.96"
+shared = { path = "../shared" }
+abi_stable = "0.11.3"

@@ -1,0 +1,10 @@
+[package]
+name = "shared"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+anyhow = "1.0.96"
+abi_stable = "0.11.3"

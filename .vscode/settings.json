@@ -9,6 +9,7 @@
 		"rusqlite_example/Cargo.toml",
 		"sqlx_sqlite_example/Cargo.toml",
 		"dll_lib_and_wrapper/Cargo.toml",
+		"stable_abi_example/Cargo.toml",
 		"duckdb_repository/Cargo.toml",
 		"file_system_watcher/Cargo.toml",
 		"windivert_example/Cargo.toml",
