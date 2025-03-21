@@ -1,7 +1,10 @@
 {
 	"svelte.enable-ts-plugin": true,
 	"rust-analyzer.linkedProjects": [
+		"rand_example/Cargo.toml",
 		"box_fnmut_static/Cargo.toml",
+		"tauri_unit_tests/Cargo.toml",
+		"builtin_traits/Cargo.toml",
 		"borrow_mut/Cargo.toml",
 		"const_generic_example/Cargo.toml",
 		"gat_example/Cargo.toml",
