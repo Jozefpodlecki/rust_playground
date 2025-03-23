@@ -1,0 +1,9 @@
+[package]
+name = "eq_partial_eq"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+chrono = "=0.4.38"
