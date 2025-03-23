@@ -4,6 +4,7 @@
 		"rand_example/Cargo.toml",
 		"box_fnmut_static/Cargo.toml",
 		"tauri_unit_tests/Cargo.toml",
+		"discord_bot/Cargo.toml",
 		"builtin_traits/Cargo.toml",
 		"borrow_mut/Cargo.toml",
 		"const_generic_example/Cargo.toml",
@@ -23,7 +24,21 @@
 		"tokio_async_tests/Cargo.toml",
 		"procedural_macros/Cargo.toml",
 		"procedural_macro_runner/Cargo.toml",
+		"thread_communication/Cargo.toml",
+		"mutex_poison/Cargo.toml",
+		"eq_partial_eq/Cargo.toml",
 	],
+	"search.excludeFolders": [
+
+	],
+	"files.exclude": {
+		"asm_example": true,
+		"gat_example": true,
+		"const_generic_example": true,
+		"discord_bot": true,
+		"dll_lib_and_wrapper": true,
+		"box_fnmut_static": true,
+	},
 	"sqltools.connections": [],
 	"sqltools.useNodeRuntime": true
 }
