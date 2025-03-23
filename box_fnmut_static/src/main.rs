@@ -1,4 +1,4 @@
-use std::{thread, time::Duration};
+use std::{error::Error, sync::Mutex, thread, time::Duration};
 
 use processor::Processor;
 
