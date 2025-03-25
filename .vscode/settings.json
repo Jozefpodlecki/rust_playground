@@ -4,7 +4,6 @@
 		"rand_example/Cargo.toml",
 		"box_fnmut_static/Cargo.toml",
 		"tauri_unit_tests/Cargo.toml",
-		"discord_bot/Cargo.toml",
 		"builtin_traits/Cargo.toml",
 		"borrow_mut/Cargo.toml",
 		"const_generic_example/Cargo.toml",
