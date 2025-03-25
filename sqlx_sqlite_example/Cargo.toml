@@ -7,3 +7,4 @@ rust-version = "1.85"
 
 [dependencies]
 sqlx = { version = "0.8.3", features = [ "runtime-tokio", "sqlite" ] }
+tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "signal", "time", "sync", "macros"] }
