@@ -1,4 +1,14 @@
-use std::{sync::{Arc, Mutex}, thread};
+use std::{error::Error, sync::{Arc, Mutex}, thread};
+
+use anyhow::Context;
+
+fn mutex_lock_thread_safety(locker: Mutex<i32>) -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    
+    let locker = locker.lock()
+        .map_err(|err| anyhow::anyhow!("{:?}", err))?;
+
+    Ok(())
+}
 
 
 fn main() {
