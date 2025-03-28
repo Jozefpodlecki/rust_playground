@@ -1,12 +1,15 @@
-use std::{fs::File, path::PathBuf};
+use std::{fs::{self, File}, io::Write, path::PathBuf};
 
+use log::info;
 use reqwest::Client;
 use anyhow::{Ok, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AwsIpRanges {
+    #[serde(rename = "syncToken")]
     pub sync_token: String,
+    #[serde(rename = "createDate")]
     pub create_date: String,
     pub prefixes: Vec<IpPrefix>,
 }
@@ -46,9 +49,38 @@ impl AwsIpRange {
         }
 
         let result = self.client.get(&self.url).send().await?;
-
-        let ranges: AwsIpRanges = result.json().await?;
+        let json_str = result.text_with_charset("utf-8").await?;
+    
+        fs::write(&self.cached_json, &json_str)?;
+        let ranges: AwsIpRanges = serde_json::from_str(&json_str)?;
 
         Ok(ranges)
+    }
+}
+
+pub struct FakeIpRanges {
+
+}
+
+impl FakeIpRanges {
+    pub fn new() -> Self {
+        Self { }
+    }
+
+    pub async fn get(&self) -> Result<AwsIpRanges> {
+        let data = AwsIpRanges {
+            sync_token: "".into(),
+            create_date: "".into(),
+            prefixes: vec![
+                IpPrefix {
+                    ip_prefix: "127.0.0.0/8".to_string(),
+                    network_border_group: "test".into(),
+                    region: "test".into(),
+                    service: "Test".into()
+                }
+            ]
+        };
+
+        Ok(data)
     }
 }

@@ -1,12 +1,13 @@
 use std::{ffi::OsString, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, mpsc::Sender, Arc}, thread::{sleep, JoinHandle}, time::Duration};
 
 use ipnetwork::IpNetwork;
-use sysinfo::{Pid, System};
+use log::*;
+use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System};
 use netstat::*;
-use tokio::runtime::Handle;
+use tokio::runtime::Runtime;
 use anyhow::*;
 
-use crate::{aws_iprange::{AwsIpRange, IpPrefix}, models::Message};
+use crate::{aws_iprange::{FakeIpRanges, IpPrefix}, models::Message};
 
 pub struct ProcessWatcher {
     handle: Option<JoinHandle<Result<()>>>,
@@ -21,10 +22,9 @@ impl ProcessWatcher {
         }
     }
 
-    pub fn start(&mut self, tx: Sender<Message>) {
+    pub fn start(&mut self, process_name: &str, port: u16, tx: Sender<Message>) {
 
-        let process_name = OsString::from("LOSTARK.exe");
-        let port = 6040;
+        let process_name = OsString::from(process_name);
         let close_flag = self.close_flag.clone();
         let handle = std::thread::spawn(move || Self::check_periodically(
             process_name,
@@ -34,104 +34,6 @@ impl ProcessWatcher {
         self.handle = Some(handle);
     }
 
-    // pub fn check_periodically_old(
-    //     process_name: OsString,
-    //     port: u16,
-    //     close_flag: Arc<AtomicBool>, tx: Sender<Message>) -> Result<()> {
-    //     let mut system = System::new_all();
-    //     let check_timeout = Duration::from_secs(15);
-    //     let mut process_ids = vec![];
-    //     let aws_ip_range = AwsIpRange::new();
-    //     let rt = Handle::current();
-    //     let mut last_message = Message::Unknown;
-
-    //     loop {
-            
-    //         if close_flag.load(Ordering::Relaxed) {
-    //             break;
-    //         }
-
-    //         system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&process_ids), true);
-        
-    //         let processes: Vec<_> = system.processes_by_name(&process_name).collect();
-    //         let process = processes.first();
-
-    //         if let Some(process) = process {
-
-    //             last_message = Message::ProcessRunning;
-    //             tx.send(last_message.clone())?;
-
-    //             let process_id = process.pid();
-
-    //             if !process_ids.is_empty() {
-    //                 process_ids.remove(0);
-    //             }
-
-    //             process_ids.push(process_id);
-    //             let process_id = process_id.as_u32();
-
-    //             let address_family_flags = AddressFamilyFlags::IPV4;
-    //             let proto = ProtocolFlags::TCP;
-    //             let ip_addrs = get_sockets_info(address_family_flags, proto)
-    //                 .ok()
-    //                 .and_then(|socket| socket.into_iter().find(|socket| socket.associated_pids.contains(&process_id)))
-    //                 .into_iter()
-    //                 .filter_map(|info| {
-    //                     if let ProtocolSocketInfo::Tcp(tcp) = info.protocol_socket_info {
-    //                         (tcp.remote_port == port).then(|| tcp.remote_addr)
-    //                     }
-    //                     else {
-    //                         None
-    //                     }
-    //                 });
-
-    //                 for ip_addr in ip_addrs {
-                        
-    //                     let aws_ip_ranges = rt.block_on(async {
-    //                         aws_ip_range.get().await
-    //                     })?;
-                        
-    //                     for prefix in aws_ip_ranges.prefixes {
-    //                         let ip: IpAddr = ip_addr.to_string().parse()?;
-    //                         let network: IpNetwork = prefix.ip_prefix.parse()?;
-
-    //                         if network.contains(ip) {
-    //                             last_message = Message::ProcessListening(prefix.region);
-    //                             tx.send(last_message.clone())?;
-    //                         }
-    //                     }
-                        
-    //                 }
-
-    //         }
-    //         else {
-
-    //             match &last_message {
-    //                 Message::Unknown => {
-    //                     last_message = Message::ProcessNotRunning;
-    //                     tx.send(last_message.clone())?;
-    //                 },
-    //                 Message::ProcessNotRunning => {},
-    //                 Message::ProcessRunning => {
-    //                     last_message = Message::ProcesStopped;
-    //                     tx.send(last_message.clone())?;
-    //                 },
-    //                 Message::ProcessListening(_) => {
-    //                     last_message = Message::ProcessNotRunning;
-    //                     tx.send(last_message.clone())?;
-    //                 },
-    //                 Message::ProcesStopped => {},
-    //             };
-
-    //             sleep(check_timeout);
-    //             continue;
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
-
-
     fn check_periodically(
         process_name: OsString,
         port: u16,
@@ -139,34 +41,64 @@ impl ProcessWatcher {
         tx: Sender<Message>,
     ) -> Result<()> {
         let mut system = System::new_all();
-        let check_timeout = Duration::from_secs(15);
-        let aws_ip_range = AwsIpRange::new();
-        let rt = Handle::current();
+        let check_timeout = Duration::from_secs(5);
+        // let ip_range = AwsIpRange::new();
+        let ip_range = FakeIpRanges::new();
+        let rt = Runtime::new()?;
+        let ip_ranges = rt.block_on(async { ip_range.get().await })?;
         let mut last_message = Message::Unknown;
-        let mut process_ids = Vec::<Pid>::new();
+        let mut process_id = None;
 
         while !close_flag.load(Ordering::Relaxed) {
-            system.refresh_processes(sysinfo::ProcessesToUpdate::Some(&process_ids), true);
-            let processes: Vec<_> = system.processes_by_name(&process_name).collect();
 
-            if let Some(process) = processes.first() {
-                let process_id = process.pid();
-                process_ids.retain(|&pid| pid != process_id);
-                process_ids.push(process_id);
-
-                Self::send_message(&tx, &mut last_message, Message::ProcessRunning)?;
-
-                let ip_addrs = Self::find_process_ips(process_id.as_u32(), port)?;
-                for ip_addr in ip_addrs {
-                    let aws_ip_ranges = rt.block_on(async { aws_ip_range.get().await })?;
-                    if let Some(region) = Self::match_aws_ip(&aws_ip_ranges.prefixes, ip_addr)? {
-                        Self::send_message(&tx, &mut last_message, Message::ProcessListening(region))?;
+            match process_id {
+                Some(id) => {
+                    let size = system.refresh_processes_specifics(
+                        sysinfo::ProcessesToUpdate::Some(&vec![id]),
+                        true,
+                        ProcessRefreshKind::nothing());
+                    if size == 0 {
+                        process_id = None;
                     }
-                }
-            } else {
-                Self::handle_process_stopped(&tx, &mut last_message)?;
-                sleep(check_timeout);
+                },
+                None => {
+                    system.refresh_processes_specifics(ProcessesToUpdate::All, false, ProcessRefreshKind::everything());
+                    let processes: Vec<_> = system.processes_by_name(&process_name).collect();
+                    process_id = processes.first().map(|p| p.pid());
+                },
             }
+
+            match process_id {
+                Some(process_id) => {
+                    Self::send_message(&tx, &mut last_message, Message::ProcessRunning)?;
+
+                    let ip_addrs = Self::find_process_ips(process_id.as_u32(), port)?;
+
+                    if ip_addrs.is_empty() {
+                        Self::send_message(&tx, &mut last_message, Message::ProcessNotListening)?;
+                        sleep(check_timeout);
+                        continue;
+                    }
+      
+                    for ip_addr in &ip_addrs {
+                        match Self::match_ip(&ip_ranges.prefixes, ip_addr)? {
+                            Some(region) => {
+                                Self::send_message(&tx, &mut last_message, Message::ProcessListening(region))?;
+                            },
+                            None => {
+                                debug!("ip_addr: {}", ip_addr);
+                                Self::send_message(&tx, &mut last_message, Message::ProcessNotListening)?;
+                            },
+                        }
+                    }
+                },
+                None => {
+                    Self::handle_process_stopped(&tx, &mut last_message)?;
+                    
+                },
+            }
+
+            sleep(check_timeout);
         }
 
         Ok(())
@@ -195,10 +127,10 @@ impl ProcessWatcher {
         Ok(ip_addrs)
     }
 
-    fn match_aws_ip(prefixes: &[IpPrefix], ip_addr: IpAddr) -> Result<Option<String>> {
+    fn match_ip(prefixes: &[IpPrefix], ip_addr: &IpAddr) -> Result<Option<String>> {
         for prefix in prefixes {
             let network: IpNetwork = prefix.ip_prefix.parse()?;
-            if network.contains(ip_addr) {
+            if network.contains(*ip_addr) {
                 return Ok(Some(prefix.region.clone()));
             }
         }
@@ -206,6 +138,14 @@ impl ProcessWatcher {
     }
 
     fn send_message(tx: &Sender<Message>, last_message: &mut Message, new_message: Message) -> Result<()> {
+
+        let should_skip = new_message == Message::ProcessRunning
+            && matches!(*last_message, Message::ProcessNotListening | Message::ProcessListening(_));
+
+        if should_skip {
+            return Ok(());
+        }
+
         if *last_message != new_message {
             tx.send(new_message.clone())?;
             *last_message = new_message;
@@ -218,7 +158,8 @@ impl ProcessWatcher {
             Message::Unknown => Message::ProcessNotRunning,
             Message::ProcessNotRunning => return Ok(()),
             Message::ProcessRunning => Message::ProcesStopped,
-            Message::ProcessListening(_) => Message::ProcessNotRunning,
+            Message::ProcessNotListening => Message::ProcesStopped,
+            Message::ProcessListening(_) => Message::ProcesStopped,
             Message::ProcesStopped => return Ok(()),
         };
 

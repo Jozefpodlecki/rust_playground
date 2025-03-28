@@ -4,6 +4,18 @@ pub enum Message {
     Unknown,
     ProcessNotRunning,
     ProcessRunning,
+    ProcessNotListening,
     ProcessListening(String),
     ProcesStopped
+}
+
+pub enum UpdateStatus {
+    Unknown,
+    NewVersion,
+    LatestVersion,
+    Error
+}
+
+pub enum Action {
+    Task
 }

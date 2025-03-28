@@ -6,11 +6,13 @@ edition = "2024"
 rust-version = "1.85"
 
 [dependencies]
+anyhow = "1.0.96"
+log = "0.4"
+simple_logger = "5.0.0"
 sysinfo = "0.33.1"
 netstat = "0.7.0"
 ipnetwork = "=0.20.0"
 reqwest = { version = "0.12.14", features = ["json"] }
-anyhow = "1.0.96"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "signal", "time", "sync", "macros"] }
