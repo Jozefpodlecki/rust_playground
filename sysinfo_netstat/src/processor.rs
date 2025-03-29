@@ -1,7 +1,7 @@
 use std::{sync::{atomic::{AtomicBool, Ordering}, mpsc::{Receiver, Sender}, Arc}, thread::{sleep, JoinHandle}, time::Duration};
 
 use anyhow::*;
-use crate::models::{Action, Message};
+use crate::models::{Action, AppState, Message};
 
 pub struct Processor {
     handle: Option<JoinHandle<Result<()>>>,
@@ -16,18 +16,18 @@ impl Processor {
         }
     }
 
-    pub fn start(&mut self) -> Receiver<Action> {
+    pub fn start(&mut self, state: AppState) -> Receiver<Action> {
         let (tx, rx) = std::sync::mpsc::channel::<Action>();
 
         let close_flag = self.close_flag.clone();
-        let handle = std::thread::spawn(move || Self::generate(close_flag, tx));
+        let handle = std::thread::spawn(move || Self::generate(close_flag, state, tx));
 
         self.handle = Some(handle);
         
         rx
     }
 
-    fn generate(close_flag: Arc<AtomicBool>,tx: Sender<Action>) -> Result<()> {
+    fn generate(close_flag: Arc<AtomicBool>, state: AppState, tx: Sender<Action>) -> Result<()> {
         let timeout = Duration::from_secs(15);
 
         while !close_flag.load(Ordering::Relaxed) {

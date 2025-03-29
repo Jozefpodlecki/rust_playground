@@ -1,5 +1,5 @@
 use log::{error, info};
-use models::{Message, UpdateStatus};
+use models::{AppState, Message, UpdateStatus};
 use process_watcher::ProcessWatcher;
 use processor::Processor;
 use simple_logger::SimpleLogger;
@@ -15,7 +15,6 @@ mod emitter_listener;
 mod hook;
 
 async fn runner() -> Result<()> {
-    let (tx, rx) = std::sync::mpsc::channel::<Message>();
     let mut update_checker = UpdateChecker::new();
     let mut processor = Processor::new();
     let mut process_watcher = ProcessWatcher::new();
@@ -28,7 +27,7 @@ async fn runner() -> Result<()> {
     
     let process_name = "client_server.exe";
     let port = 6041;
-    process_watcher.start(process_name, port, tx.clone());
+    let rx = process_watcher.start(process_name, port);
 
     loop {
         let message = rx.recv().unwrap();
@@ -36,8 +35,10 @@ async fn runner() -> Result<()> {
         info!("{:?}", message);
 
         match message {
-            Message::ProcessListening(_) => {
-                processor.start();
+            Message::ProcessListening(region) => {
+                let mut state = AppState { region: None };
+                state.region = Some(region);
+                processor.start(state);
             },
             Message::ProcesStopped => {
                 processor.stop()?;

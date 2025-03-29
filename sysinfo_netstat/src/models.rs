@@ -19,3 +19,7 @@ pub enum UpdateStatus {
 pub enum Action {
     Task
 }
+
+pub struct AppState {
+    pub region: Option<String>
+}

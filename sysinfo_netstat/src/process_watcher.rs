@@ -1,4 +1,4 @@
-use std::{ffi::OsString, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, mpsc::Sender, Arc}, thread::{sleep, JoinHandle}, time::Duration};
+use std::{ffi::OsString, net::IpAddr, sync::{atomic::{AtomicBool, Ordering}, mpsc::{Receiver, Sender}, Arc}, thread::{sleep, JoinHandle}, time::Duration};
 
 use ipnetwork::IpNetwork;
 use log::*;
@@ -22,8 +22,9 @@ impl ProcessWatcher {
         }
     }
 
-    pub fn start(&mut self, process_name: &str, port: u16, tx: Sender<Message>) {
+    pub fn start(&mut self, process_name: &str, port: u16) -> Receiver<Message> {
 
+        let (tx, rx) = std::sync::mpsc::channel::<Message>();
         let process_name = OsString::from(process_name);
         let close_flag = self.close_flag.clone();
         let handle = std::thread::spawn(move || Self::check_periodically(
@@ -32,6 +33,8 @@ impl ProcessWatcher {
             close_flag, tx));
 
         self.handle = Some(handle);
+
+        rx
     }
 
     fn check_periodically(
