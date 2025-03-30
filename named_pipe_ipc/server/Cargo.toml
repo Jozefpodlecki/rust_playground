@@ -1,0 +1,10 @@
+[package]
+name = "named_pipe_ipc_server"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+interprocess = { version = "2.2.3", features = ["tokio"] }
+tokio = { version = "1.41.0", features = ["rt", "rt-multi-thread", "time", "net", "io-util", "macros"] }
