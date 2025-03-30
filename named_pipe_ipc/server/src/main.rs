@@ -46,6 +46,13 @@ async fn handle_connection(connection: DuplexPipeStream<pipe_mode::Bytes>) -> io
 
     loop {
         let bytes_read = recver.read(&mut buffer).await?;
+
+        if bytes_read == 0 {
+            println!("apparently disconnected");
+            drop((recver, sender));
+            return Ok(())
+        }
+
         let message = String::from_utf8_lossy(&buffer[..bytes_read]);
         println!("Received: {}", message);
         sleep(duration).await;
