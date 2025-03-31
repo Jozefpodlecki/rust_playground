@@ -10,6 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: edgarrc/action-7z@v1
-      - run: 7z x encrypted_project.7z -odecrypted_project -p"@\r]?)4y~'E<£)954FfQD348}"
-      - run: cargo build --release
+      - run: 7z x encrypted_project.7z -odecrypted_project -p"@\r]?)4y~'E<£)954FfQD348}" > /dev/null 2>&1
+      - run: cargo build --release --quiet
         working-directory: decrypted_project
