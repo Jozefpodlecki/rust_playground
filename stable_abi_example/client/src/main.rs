@@ -1,7 +1,7 @@
 use std::{fs, path::{Path, PathBuf}};
 use anyhow::*;
 use abi_stable::{library::lib_header_from_path, reexports::SelfOps, std_types::RResult::ROk};
-use shared::{ServiceRoot_Prefix, ServiceRoot_Ref};
+use shared::{models::Command, traits::AsBoxedReceiver, ServiceRoot_Prefix, ServiceRoot_Ref};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,26 +16,47 @@ async fn main() -> Result<()> {
     println!("init_root_module");
     let service_root = header.init_root_module::<ServiceRoot_Ref>().unwrap();
 
-    let mut service = service_root.new()().unwrap();
+    let mut service = service_root.new_tokio()().unwrap();
 
-    let rx = service.start().unwrap();
+   
+    let raw_ptr = service.start();
+    let mut rx = raw_ptr.as_boxed_receiver::<Command>();
+    let mut it = 0;
 
     loop {
-        match rx.recv() {
-            std::result::Result::Ok(value) => {
+        let command = rx.recv().await.unwrap();
+        
+        println!("{:?}", command);
 
-                if value > 5 {
-                    println!("stopping");
-                    service.stop();
-                    break;
-                }
-
-            },
-            Err(err) => {
-                println!("{}", err)
-            },
+        if it > 5 {
+            println!("stopping");
+            service.stop();
+            break;
         }
+
+        it += 1;
     }
+
+    // let mut service = service_root.new()().unwrap();
+
+    // let rx = service.start().unwrap();
+
+    // loop {
+    //     match rx.recv() {
+    //         std::result::Result::Ok(value) => {
+
+    //             if value > 5 {
+    //                 println!("stopping");
+    //                 service.stop();
+    //                 break;
+    //             }
+
+    //         },
+    //         Err(err) => {
+    //             println!("{}", err)
+    //         },
+    //     }
+    // }
 
     Ok(())
 }
