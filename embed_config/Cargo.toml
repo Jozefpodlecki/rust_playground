@@ -1,0 +1,9 @@
+[package]
+name = "embed_config"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.85"
+
+[dependencies]
+dotenvy = "0.15.7"

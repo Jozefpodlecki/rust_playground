@@ -1,7 +1,0 @@
-version = "1"
-base_url = "http://localhost"
-auth_required = false
-
-[html]
-enabled = true
-suggested_registry_name = "rust-margo-registry"

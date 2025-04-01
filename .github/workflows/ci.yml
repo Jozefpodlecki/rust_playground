@@ -7,9 +7,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      API_KEY: "12345"
     steps:
       - uses: actions/checkout@v4
-      - uses: edgarrc/action-7z@v1
-      - run: 7z x encrypted_project.7z -odecrypted_project -p"@\r]?)4y~'E<£)954FfQD348}" > /dev/null 2>&1
-      - run: cargo build --release --quiet
-        working-directory: decrypted_project
+      - run: cargo build --release
+        working-directory: embed_config
+        env:
+          API_KEY: ${{ env.API_KEY }} 
+      - run: ./embed_config/target/release/embed_config
