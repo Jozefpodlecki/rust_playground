@@ -1,20 +1,39 @@
-use std::fs::File;
+use std::{env, fs, path::PathBuf};
 use std::io::Write;
+use dotenvy::dotenv;
 use webp::{Encoder, WebPMemory};
 
 fn main() {
-    let executable_path = std::env::current_exe().unwrap();
-    let executable_directory = executable_path.parent().unwrap().to_path_buf();
-    let mut path = executable_directory.clone();
-    path = path.join("image.png");
+    dotenv().unwrap();
+    let source_dir = env::var("SOURCE_PATH").expect("SOURCE_PATH is not set");
+    let destination_dir = env::var("DESTINATION_PATH").expect("DESTINATION_PATH is not set");
 
-    let image = image::open(path).unwrap();
-    let encoder: Encoder = Encoder::from_image(&image).unwrap();
+    fs::create_dir_all(&destination_dir).expect("Failed to create destination directory");
+
+    let entries = fs::read_dir(&source_dir).expect("Failed to read source directory");
+
+    for entry in entries {
+        if let Ok(entry) = entry {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("png") {
+                convert_to_webp(&path, &destination_dir);
+            }
+        }
+    }
+}
+
+fn convert_to_webp(input_path: &PathBuf, output_dir: &str) {
+    let image = image::open(input_path).expect("Failed to open image");
+
+    let encoder: Encoder = Encoder::from_image(&image).expect("Failed to encode image");
     let webp: WebPMemory = encoder.encode(90f32);
-    
-    let mut output_path = executable_directory.clone();
-    output_path = output_path.join("image.webp");
 
-    let mut output = File::create(output_path).unwrap();
-    output.write_all(&webp).unwrap();
+    let mut output_path = PathBuf::from(output_dir);
+    output_path.push(input_path.file_stem().unwrap());
+    output_path.set_extension("webp");
+
+    let mut output_file = std::fs::File::create(&output_path).expect("Failed to create output file");
+    output_file.write_all(&webp).expect("Failed to write output file");
+
+    println!("Converted: {} -> {}", input_path.display(), output_path.display());
 }
