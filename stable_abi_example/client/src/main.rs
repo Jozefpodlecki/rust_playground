@@ -1,6 +1,6 @@
 use std::{fs, path::{Path, PathBuf}};
 use anyhow::*;
-use abi_stable::{library::lib_header_from_path, reexports::SelfOps, std_types::RResult::ROk};
+use abi_stable::{library::lib_header_from_path, pointer_trait::TransmuteElement, reexports::SelfOps, std_types::RResult::ROk};
 use shared::{models::Command, traits::AsBoxedReceiver, ServiceRoot_Prefix, ServiceRoot_Ref};
 
 #[tokio::main]
@@ -18,9 +18,7 @@ async fn main() -> Result<()> {
 
     let mut service = service_root.new_tokio()().unwrap();
 
-   
-    let raw_ptr = service.start();
-    let mut rx = raw_ptr.as_boxed_receiver::<Command>();
+    let mut rx = service.start_v2();
     let mut it = 0;
 
     loop {
@@ -36,6 +34,24 @@ async fn main() -> Result<()> {
 
         it += 1;
     }
+   
+    // let raw_ptr = service.start();
+    // let mut rx = raw_ptr.as_boxed_receiver::<Command>();
+    // let mut it = 0;
+
+    // loop {
+    //     let command = rx.recv().await.unwrap();
+        
+    //     println!("{:?}", command);
+
+    //     if it > 5 {
+    //         println!("stopping");
+    //         service.stop();
+    //         break;
+    //     }
+
+    //     it += 1;
+    // }
 
     // let mut service = service_root.new()().unwrap();
 

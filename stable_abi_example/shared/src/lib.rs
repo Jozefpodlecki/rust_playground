@@ -1,5 +1,9 @@
+use std::ops::{Deref, DerefMut};
+
 use abi_stable::{*, library::RootModule, sabi_types::VersionStrings, std_types::{RBox, RBoxError, RResult}, StableAbi};
 use abi_stable::external_types::crossbeam_channel::RReceiver;
+use models::Command;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 pub mod models;
 pub mod traits;
@@ -12,9 +16,34 @@ pub trait Service {
 
 pub type ServiceType = Service_TO<'static, RBox<()>>;
 
+#[derive(StableAbi)]
+#[repr(C)]
+pub struct TokioMpscWrapper(*mut ());
+
+impl TokioMpscWrapper {
+    pub fn new(rx: UnboundedReceiver<Command>) -> Self {
+        Self(Box::into_raw(Box::new(rx)) as *mut ())
+    }
+}
+
+impl Deref for TokioMpscWrapper {
+    type Target = UnboundedReceiver<Command>;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*(self.0 as *const Self::Target) }
+    }
+}
+
+impl DerefMut for TokioMpscWrapper {
+
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { &mut *(self.0 as *mut Self::Target) }
+    }
+}
 
 #[sabi_trait]
 pub trait TokioService {
+    fn start_v2(&mut self) -> TokioMpscWrapper;
     fn start(&mut self) -> *mut ();
     fn stop(&mut self) -> RResult<(), RBoxError>;
 }
