@@ -30,12 +30,12 @@ impl Client {
                     loop {
                         match stream.read(&mut buffer).await {
                             Ok(0) => {
-                                info!("Server closed connection.");
+                                warn!("Server closed connection.");
                                 break;
                             }
                             Ok(size) => {
-                                let payload = &buffer[..size];
-                                info!("Received {} bytes: {:?}", size, payload);
+                                // let payload = &buffer[..size];
+                                // info!("Received {} bytes: {:?}", size, payload);
                             }
                             Err(err) => {
                                 error!("Failed to connect to {}: {}", address, err);

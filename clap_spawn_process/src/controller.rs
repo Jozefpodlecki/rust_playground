@@ -35,7 +35,7 @@ impl Controller {
                         }
                     }
                     _ = signal::ctrl_c() => {
-                        info!("Shutdown signal received. Cleaning up...");
+                        info!("Server: Shutdown signal received. Cleaning up...");
                     }
                 }
 
@@ -47,7 +47,17 @@ impl Controller {
                 let port = args.port;
                 debug!("Running in CHILD mode on port {}", port);
                 let client = Client::new();
-                client.run(port).await?;
+
+                tokio::select! {
+                    result = client.run(port) => {
+                        if let Err(e) = result {
+                            error!("Client error: {}", e);
+                        }
+                    }
+                    _ = signal::ctrl_c() => {
+                        info!("Client: Shutdown signal received. Cleaning up...");
+                    }
+                }
             }
         }
 

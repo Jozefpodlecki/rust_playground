@@ -1,7 +1,8 @@
-use std::time::Duration;
+use std::{path::Path, time::Duration};
 
+use interprocess::os::windows::named_pipe::{pipe_mode, tokio::{DuplexPipeStream, PipeListenerOptionsExt}, PipeListenerOptions};
 use log::*;
-use tokio::{io::AsyncWriteExt, net::TcpListener, time};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener, time::{self, sleep}};
 use anyhow::Result;
 
 pub struct Server {
@@ -26,7 +27,7 @@ impl Server {
                     info!("New client connected: {}", addr);
                     
                     tokio::spawn(async move {
-                        Self::send_to_client(&mut stream, addr).await;
+                        Self::setup_ipc_server_and_relay_to_client(&mut stream).await;
                     });
                 }
                 Err(err) => error!("Failed to accept connection: {}", err),
@@ -34,19 +35,53 @@ impl Server {
         }
     }
 
-    pub async fn send_to_client(stream: &mut tokio::net::TcpStream, addr: std::net::SocketAddr) {
-        let mut interval = time::interval(Duration::from_secs(2));
+    pub async fn setup_ipc_server_and_relay_to_client(stream: &mut tokio::net::TcpStream) {
+        static PIPE_NAME: &str = "Collector";
+
+        let pipe_path = format!("\\\\.\\pipe\\{}", PIPE_NAME);
+        let pipe_path = Path::new(pipe_path.as_str());
+    
+        let listener = PipeListenerOptions::new()
+            .path(pipe_path)
+            .create_tokio_duplex::<pipe_mode::Bytes>().unwrap();
+
+        info!("Accepting data at {}", pipe_path.display());
 
         loop {
-            interval.tick().await;
-            
-            let encoded = vec![1,2,3];
+            let connection = match listener.accept().await {
+                Ok(c) => c,
+                Err(e) => {
+                    error!("There was an error with an incoming connection: {e}");
+                    continue;
+                }
+            };
     
-            if let Err(e) = stream.write_all(&encoded).await {
-                error!("Failed to send message to {}: {}", addr, e);
-                break;
+            if let Err(e) = Self::relay_to_client(connection, stream).await {
+                error!("error while handling connection: {e}");
+            }
+        }
+
+    }
+
+    async fn relay_to_client(connection: DuplexPipeStream<pipe_mode::Bytes>, stream: &mut tokio::net::TcpStream) -> anyhow::Result<()> {
+        let (mut recver, mut sender) = connection.split();
+    
+        let mut buffer = [0u8; 128];
+        let duration = Duration::from_secs(1);
+    
+        loop {
+            let bytes_read = recver.read(&mut buffer).await?;
+    
+            if bytes_read == 0 {
+                error!("apparently disconnected");
+                drop((recver, sender));
+                return Ok(())
             }
     
+            stream.write_all(&buffer[..bytes_read]).await?;
+            sleep(duration).await;
         }
+    
+        Ok(())
     }
 }
