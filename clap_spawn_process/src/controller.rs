@@ -13,6 +13,10 @@ impl Controller {
     }
 
     pub async fn run(&self, args: &CommandArgs) -> Result<()> {
+        let ip_address = args.ip_address.clone();
+        debug!("IP Address: {}", ip_address);
+        debug!("Port: {}", args.port);
+        
         match args.r#type {
             ProcessType::Server => {
                 debug!("Running in SERVER mode");
@@ -26,10 +30,10 @@ impl Controller {
                     .expect("Failed to spawn child process");
     
                 let server = Server::new();
-                server.run(port).await?;
+                let pipe_name = args.pipe_name.clone();
 
                 tokio::select! {
-                    result = server.run(port) => {
+                    result = server.run(ip_address, port, pipe_name) => {
                         if let Err(e) = result {
                             error!("Server error: {}", e);
                         }
@@ -49,9 +53,9 @@ impl Controller {
                 let client = Client::new();
 
                 tokio::select! {
-                    result = client.run(port) => {
-                        if let Err(e) = result {
-                            error!("Client error: {}", e);
+                    result = client.run(ip_address, port) => {
+                        if let Err(err) = result {
+                            error!("Client error: {}", err);
                         }
                     }
                     _ = signal::ctrl_c() => {

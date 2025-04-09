@@ -12,9 +12,9 @@ impl Client {
         Self {}
     }
 
-    pub async fn run(&self, port: u16) -> Result<()> {
+    pub async fn run(&self, ip_address: String, port: u16) -> Result<()> {
         
-        let address = format!("127.0.0.1:{}", port);
+        let address = format!("{}:{}", ip_address, port);
         let retry_delay = Duration::from_secs(3); 
         
         let duration = Duration::from_secs(15);

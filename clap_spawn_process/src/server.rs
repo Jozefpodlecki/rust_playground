@@ -1,8 +1,8 @@
-use std::{path::Path, time::Duration};
+use std::path::Path;
 
 use interprocess::os::windows::named_pipe::{pipe_mode, tokio::{DuplexPipeStream, PipeListenerOptionsExt}, PipeListenerOptions};
 use log::*;
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener, time::{self, sleep}};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener};
 use anyhow::Result;
 
 pub struct Server {
@@ -14,9 +14,9 @@ impl Server {
         Self {}
     }
 
-    pub async fn run(&self, port: u16) -> Result<()> {
+    pub async fn run(&self, ip_address: String, port: u16, pipe_name: String) -> Result<()> {
         
-        let address = format!("127.0.0.1:{}", port);
+        let address = format!("{}:{}", ip_address, port);
     
         let listener = TcpListener::bind(&address).await?;
         info!("Server running on {}", address);
@@ -25,9 +25,10 @@ impl Server {
             match listener.accept().await {
                 Ok((mut stream, addr)) => {
                     info!("New client connected: {}", addr);
-                    
+                    let pipe_name = pipe_name.clone();
+
                     tokio::spawn(async move {
-                        Self::setup_ipc_server_and_relay_to_client(&mut stream).await;
+                        Self::setup_ipc_server_and_relay_to_client(&pipe_name, &mut stream).await;
                     });
                 }
                 Err(err) => error!("Failed to accept connection: {}", err),
@@ -35,10 +36,9 @@ impl Server {
         }
     }
 
-    pub async fn setup_ipc_server_and_relay_to_client(stream: &mut tokio::net::TcpStream) {
-        static PIPE_NAME: &str = "Collector";
+    pub async fn setup_ipc_server_and_relay_to_client(pipe_name: &str, stream: &mut tokio::net::TcpStream) {
 
-        let pipe_path = format!("\\\\.\\pipe\\{}", PIPE_NAME);
+        let pipe_path = format!("\\\\.\\pipe\\{}", pipe_name);
         let pipe_path = Path::new(pipe_path.as_str());
     
         let listener = PipeListenerOptions::new()
@@ -49,25 +49,24 @@ impl Server {
 
         loop {
             let connection = match listener.accept().await {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("There was an error with an incoming connection: {e}");
+                Ok(connection) => connection,
+                Err(err) => {
+                    error!("There was an error with an incoming connection: {err}");
                     continue;
                 }
             };
     
-            if let Err(e) = Self::relay_to_client(connection, stream).await {
-                error!("error while handling connection: {e}");
+            if let Err(err) = Self::relay_to_client(connection, stream).await {
+                error!("error while handling connection: {err}");
             }
         }
 
     }
 
     async fn relay_to_client(connection: DuplexPipeStream<pipe_mode::Bytes>, stream: &mut tokio::net::TcpStream) -> anyhow::Result<()> {
-        let (mut recver, mut sender) = connection.split();
+        let (mut recver, sender) = connection.split();
     
         let mut buffer = [0u8; 128];
-        let duration = Duration::from_secs(1);
     
         loop {
             let bytes_read = recver.read(&mut buffer).await?;
@@ -79,9 +78,6 @@ impl Server {
             }
     
             stream.write_all(&buffer[..bytes_read]).await?;
-            sleep(duration).await;
         }
-    
-        Ok(())
     }
 }
