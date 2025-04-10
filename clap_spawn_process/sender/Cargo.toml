@@ -1,5 +1,5 @@
 [package]
-name = "clap_spawn_process"
+name = "sender"
 version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"
