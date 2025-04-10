@@ -1,3 +1,4 @@
+use bincode::{Decode, Encode};
 use clap::{arg, command, Parser, ValueEnum};
 
 
@@ -24,4 +25,19 @@ pub struct CommandArgs {
 pub enum ProcessType {
     Server,
     Child,
+}
+
+#[derive(Debug, Encode, Decode, Clone)]
+pub enum Payload {
+    New {
+        id: u32,
+        name: String,
+    },
+    Update {
+        id: u32,
+        name: String,
+    },
+    Delete {
+        id: u32,
+    },
 }

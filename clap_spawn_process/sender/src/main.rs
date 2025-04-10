@@ -5,7 +5,7 @@ use bincode::{Decode, Encode};
 use interprocess::os::windows::named_pipe::{pipe_mode, tokio::DuplexPipeStream};
 use log::*;
 use simple_logger::SimpleLogger;
-use tokio::{io::AsyncWriteExt, time::sleep};
+use tokio::io::AsyncWriteExt;
 
 
 #[derive(Debug, Encode, Decode, Clone)]
@@ -27,7 +27,9 @@ pub enum Payload {
 async fn main() -> Result<()> {
     SimpleLogger::new().env().init().unwrap();
 
-    let connection = match DuplexPipeStream::<pipe_mode::Bytes>::connect_by_path(r"\\.\pipe\Collector").await {
+    let pipe_name = "Collector";
+    let pipe_path = format!("\\\\.\\pipe\\{}", pipe_name);
+    let connection = match DuplexPipeStream::<pipe_mode::Bytes>::connect_by_path(pipe_path).await {
         std::result::Result::Ok(connection) => {
             info!("Connected to server.");
             connection
@@ -38,26 +40,22 @@ async fn main() -> Result<()> {
         }
     };
 
-    let (mut recver, mut sender) = connection.split();
-    let duration = Duration::from_secs(1);
+    let (recver, mut sender) = connection.split();
     let config = bincode::config::standard();
+    
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
-    loop {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+    let payload = Payload::New {
+        id: 1,
+        name: format!("test-{}", now),
+    };
+    debug!("Sending payload: {:?}", payload);
+    let data = bincode::encode_to_vec(payload, config)?;
 
-        let payload = Payload::New {
-            id: 1,
-            name: format!("test-{}", now),
-        };
-        let data = bincode::encode_to_vec(payload, config)?;
-
-        sender.write_all(&data).await?;
-  
-        sleep(duration).await;
-    }
+    sender.write_all(&data).await?;
 
     sender.shutdown().await?;
    

@@ -5,6 +5,8 @@ use log::*;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpListener};
 use anyhow::Result;
 
+use crate::models::Payload;
+
 pub struct Server {
 
 }
@@ -72,10 +74,13 @@ impl Server {
             let bytes_read = recver.read(&mut buffer).await?;
     
             if bytes_read == 0 {
-                error!("apparently disconnected");
+                debug!("Client disconnected, shutting down.");
                 drop((recver, sender));
                 return Ok(())
             }
+
+            let (data, _): (_, usize) = bincode::decode_from_slice::<Payload, _>(&buffer[..bytes_read], bincode::config::standard())?;
+            println!("{:?}", data);
     
             stream.write_all(&buffer[..bytes_read]).await?;
         }
