@@ -32,18 +32,19 @@ pub enum SkillType {
     Normal,
     Brand,
     AttackPowerBuff,
-    IdentityBuff,
-    HyperAwakeningTechniqueBuff,
+    Identity,
+    HyperAwakeningTechnique,
     Awakening,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct SkillTemplate {
     pub id: u32,
+    pub name: &'static str,
     pub kind: SkillType,
+    pub priority: u8,
     pub cast_duration: Duration,
     pub buff_duration: Option<Duration>,
-    pub brand_duration: Option<Duration>,
     pub cooldown: Duration,
 }
 

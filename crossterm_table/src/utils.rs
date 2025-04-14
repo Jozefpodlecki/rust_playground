@@ -13,7 +13,7 @@ pub fn format_duration(duration_seconds: i64) -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, remaining_secs)
 }
 
-pub fn format_hp(value: u64) -> String {
+pub fn format_unit(value: u64) -> String {
     match value {
         0..=999 => format!("{}", value),
         1_000..=999_999 => format!("{:.1}k", value as f64 / 1_000.0),

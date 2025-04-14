@@ -2,6 +2,12 @@ use chrono::{DateTime, Utc};
 
 use super::Boss;
 
+pub struct BossTemplate {
+    pub name: &'static str,
+    pub enrage_timer: &'static str,
+    pub max_hp: u64,
+    pub hp_bars: u64
+}
 
 pub struct EncounterTemplate {
     pub name: &'static str,
@@ -15,9 +21,9 @@ impl EncounterTemplate {
         name: "Echidna G1",
         boss: Boss {
             id: 0,
-            name: "Echidna",
-            max_hp: 100_000_000,
-            current_hp: 100_000_000,
+            name: "Narkiel",
+            max_hp: 100_000_000_000,
+            current_hp: 100_000_000_000,
             hp_percentage: 100.0,
             hp_bars: 300
         },
@@ -30,8 +36,8 @@ impl EncounterTemplate {
         boss: Boss {
             id: 0,
             name: "Echidna",
-            max_hp: 100_000_000,
-            current_hp: 100_000_000,
+            max_hp: 100_000_000_000,
+            current_hp: 100_000_000_000,
             hp_percentage: 100.0,
             hp_bars: 300
         },
