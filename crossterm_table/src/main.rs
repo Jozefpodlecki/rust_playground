@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     std_out.queue(Clear(ClearType::All))?;
 
-    let separator =  generate_separator(83);
+    let separator =  generate_separator(78);
     let mut output = String::with_capacity(1000);
 
     loop {
@@ -64,14 +64,14 @@ fn main() -> Result<()> {
         output += &format!("| Encounter started: {:<56}|\n", start_time_formatted);
         output += &format!("| Duration: {:<65}|\n", encounter.duration.mmss);
         output += separator.as_str();
-        output += &format!("| Boss: {:<74}|\n", encounter.boss.name);
-        output += &format!("| HP: {:<76}|\n", formatted_hp);
+        output += &format!("| Boss: {:<69}|\n", encounter.boss.name);
+        output += &format!("| HP: {:<71}|\n", formatted_hp);
         output += separator.as_str();
         output += &format!("| {:<19}{:<14}{:<8}{:<9}{:<8}{:<8}{:<8} |\n", "Name", "Class", "Crit", "DPS", "Brand", "Atk" , "Identity");
 
         for (i, party) in encounter.parties.iter().enumerate() {
             output += separator.as_str();
-            output += &format!("| Party {:<73} |\n", i + 1);
+            output += &format!("| Party {:<68} |\n", i + 1);
             output += separator.as_str();
 
             for player in party.players.iter() {

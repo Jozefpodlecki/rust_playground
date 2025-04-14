@@ -4,8 +4,8 @@ impl PlayerTemplate {
     pub fn paladin() -> PlayerTemplate {
         PlayerTemplate {
             class: Class::Paladin,
-            crit_rate: 0.75,
-            cooldown_reduction: 0.4,
+            crit_rate: 0.1,
+            cooldown_reduction: 0.45,
             attack_power: 5e6 as u64,
             skills: vec![
                 SkillTemplate {
