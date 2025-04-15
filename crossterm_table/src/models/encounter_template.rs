@@ -11,37 +11,30 @@ pub struct BossTemplate {
 
 pub struct EncounterTemplate {
     pub name: &'static str,
-    pub boss: Boss,
-    pub enrage_timer: &'static str,
+    pub boss: BossTemplate,
     pub party_count: u64,
 }
 
 impl EncounterTemplate {
     pub const ECHIDNA_G1: EncounterTemplate = EncounterTemplate {
         name: "Echidna G1",
-        boss: Boss {
-            id: 0,
-            name: "Narkiel",
-            max_hp: 100_000_000_000,
-            current_hp: 100_000_000_000,
-            hp_percentage: 100.0,
-            hp_bars: 300
+        boss: BossTemplate {
+            name: "Red Doom Narkiel",
+            max_hp: 92.6e9 as u64,
+            hp_bars: 180,
+            enrage_timer: "15:00"
         },
-        enrage_timer: "10:00",
         party_count: 2,
     };
 
    pub const ECHIDNA_G2: EncounterTemplate = EncounterTemplate {
         name: "Echidna G2",
-        boss: Boss {
-            id: 0,
-            name: "Echidna",
-            max_hp: 100_000_000_000,
-            current_hp: 100_000_000_000,
-            hp_percentage: 100.0,
-            hp_bars: 300
+        boss: BossTemplate {
+            name: "Covetous Master Echidna",
+            max_hp: 10.8e10 as u64,
+            hp_bars: 285,
+            enrage_timer: "09:00",
         },
-        enrage_timer: "10:00",
         party_count: 2,
     };
 }

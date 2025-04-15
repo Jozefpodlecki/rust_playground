@@ -5,6 +5,10 @@ use rand::{distr::uniform::{SampleRange, SampleUniform}, rng, Rng};
 
 use crate::models::*;
 
+pub fn generate_separator(length: usize) -> String {
+    "-".repeat(length) + "\n"
+}
+
 pub fn format_duration(duration_seconds: i64) -> String {
     let hours = duration_seconds / 3600;
     let minutes = (duration_seconds % 3600) / 60;

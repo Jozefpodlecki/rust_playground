@@ -12,10 +12,12 @@ impl PlayerTemplate {
                     id: 1,
                     name: "Unknown",
                     priority: 2,
+                    ratio: 1.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 2,

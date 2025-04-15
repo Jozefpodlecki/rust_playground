@@ -49,14 +49,25 @@ impl Simulator {
             &mut player_templates);
 
         let encounter = Encounter {
-            boss: encounter_template.boss,
+            boss: Boss { 
+                id: random_number_in_range(1000..9999),
+                name: encounter_template.boss.name,
+                max_hp: encounter_template.boss.max_hp,
+                current_hp: encounter_template.boss.max_hp,
+                hp_percentage: 1.0,
+                hp_bars: encounter_template.boss.hp_bars
+            },
             duration: EncounterDuration {
                 elapsed_seconds: 0,
                 mmss: "00:00".to_string(),
             },
+            ttk: "INF".to_string(),
             started_on,
             parties,
-            stats: EncounterStats { total_damage: 0 }
+            stats: EncounterStats { 
+                total_damage: 0,
+                dps: 0
+            }
         };
 
         Self {
@@ -115,6 +126,16 @@ impl Simulator {
             player_state
                 .skill_cooldowns
                 .insert(skill_template.id, expires_on);
+
+            match skill_template.kind {
+                SkillType::Normal => todo!(),
+                SkillType::Synergy => todo!(),
+                SkillType::Brand => todo!(),
+                SkillType::AttackPowerBuff => todo!(),
+                SkillType::Identity => todo!(),
+                SkillType::HyperAwakeningTechnique => todo!(),
+                SkillType::Awakening => todo!(),
+            }
 
             if matches!(
                 skill_template.kind,
@@ -218,21 +239,44 @@ impl Simulator {
                         duration_seconds,
                         &attack_result);
 
+                    party.stats.total_damage += attack_result.damage;
+
+                    if duration_seconds == 0 {
+                        party.stats.dps = 0;
+                    }
+                    else {
+                        party.stats.dps = party.stats.total_damage / duration_seconds as u64;
+                    }
+
                     if attack_result.damage >= encounter.boss.current_hp {
                         encounter.boss.current_hp = 0;
                         let damage = attack_result.damage - encounter.boss.current_hp;
                         encounter.stats.total_damage += damage;
+                        encounter.ttk = "00:00".to_string();
                     }
                     else {
                         encounter.boss.current_hp = encounter.boss.current_hp - attack_result.damage;
                         encounter.boss.hp_percentage = encounter.boss.current_hp as f32 / encounter.boss.max_hp as f32;
                         encounter.stats.total_damage += attack_result.damage;
+                        
+                        if duration_seconds == 0 {
+                            encounter.stats.dps = 0;
+                            encounter.ttk = "INF".to_string();
+                        }
+                        else {
+                            encounter.stats.dps = encounter.stats.total_damage / duration_seconds as u64;   
+                            let ttk_seconds = encounter.boss.current_hp / encounter.stats.dps;
+                            encounter.ttk = format_duration(ttk_seconds as i64);
+                        }
+
                     }
                 }
             }
         }
 
-       
+        for party in &mut encounter.parties {
+            party.players.sort_by(|a, b| b.stats.dps.cmp(&a.stats.dps));
+        }
 
         &self.encounter
     }

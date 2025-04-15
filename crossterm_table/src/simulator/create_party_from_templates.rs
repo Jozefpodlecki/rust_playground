@@ -29,6 +29,7 @@ impl Simulator {
             let mut party= Party {
                 id: random_number_in_range(1000..9999),
                 players: members,
+                ..Default::default()
             };
 
             for template in chunk {

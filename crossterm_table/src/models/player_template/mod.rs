@@ -30,6 +30,7 @@ use super::Class;
 pub enum SkillType {
     #[default]
     Normal,
+    Synergy,
     Brand,
     AttackPowerBuff,
     Identity,
@@ -41,6 +42,7 @@ pub enum SkillType {
 pub struct SkillTemplate {
     pub id: u32,
     pub name: &'static str,
+    pub ratio: f32,
     pub kind: SkillType,
     pub priority: u8,
     pub cast_duration: Duration,
