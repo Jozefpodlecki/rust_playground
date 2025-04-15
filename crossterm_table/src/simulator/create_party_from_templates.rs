@@ -4,8 +4,6 @@ use crate::models::PlayerTemplate;
 
 use super::*;
 
-
-
 impl Simulator {
 
     fn apply_cooldown_reduction(cooldown: Duration, value: f32) -> Duration {
@@ -54,6 +52,7 @@ impl Simulator {
                             .map(|skill| (skill.id, Utc::now()))
                             .collect(),
                         active_buffs: HashMap::new(),
+                        identity: 0.0
                     },
                 );
 

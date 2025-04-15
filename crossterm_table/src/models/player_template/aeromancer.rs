@@ -5,6 +5,7 @@ impl PlayerTemplate {
         PlayerTemplate {
             class: Class::Aeromancer,
             crit_rate: 0.75,
+            crit_damage: 2.0,
             cooldown_reduction: 0.4,
             attack_power: 5e6 as u64,
             skills: vec![
@@ -12,7 +13,8 @@ impl PlayerTemplate {
                     id: 1,
                     name: "Unknown",
                     priority: 2,
-                    ratio: 1.0,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -27,6 +29,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 3,
@@ -36,6 +39,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 4,
@@ -45,6 +49,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 5,
@@ -54,6 +59,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 6,
@@ -63,6 +69,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 7,
@@ -72,6 +79,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 8,
@@ -81,6 +89,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 9,
@@ -90,6 +99,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 10,
@@ -99,6 +109,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(30),
+                    ..Default::default()
                 },
             ],
         }

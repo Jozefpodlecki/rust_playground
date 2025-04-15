@@ -1,14 +1,17 @@
 mod create_party_from_templates;
+mod apply_buffs;
 
 use std::collections::HashMap;
 
 use chrono::{DateTime, Duration, Utc};
 use rand::{Rng, rng};
 
-use crate::{models::{player_template::{SkillTemplate, SkillType}, *}, utils::*};
+use crate::{models::{player_template::*, *}, utils::*};
 
+#[derive(Clone)]
 pub struct Buff {
-    pub kind: SkillType,
+    pub target: BuffTarget,
+    pub kind: BuffType,
     pub expires_on: DateTime<Utc>,
     pub value: u64
 }
@@ -17,6 +20,12 @@ pub struct Buff {
 pub struct PlayerState {
     pub skill_cooldowns: HashMap<u32, DateTime<Utc>>,
     pub active_buffs: HashMap<u32, Buff>,
+    pub identity: f32
+}
+
+#[derive(Default)]
+pub struct BossState {
+    pub active_debuffs: HashMap<u32, Buff>,
 }
 
 pub struct PartyState {
@@ -29,6 +38,7 @@ pub struct Simulator {
     player_templates: HashMap<u64, PlayerTemplate>,
     player_states: HashMap<u64, PlayerState>,
     party_states: HashMap<u64, PartyState>,
+    boss_state: BossState,
 }
 
 impl Simulator {
@@ -41,6 +51,7 @@ impl Simulator {
         let mut player_templates_map: HashMap<u64, PlayerTemplate> = HashMap::new();
         let mut player_states: HashMap<u64, PlayerState> = HashMap::new();
         let mut party_states : HashMap<u64, PartyState> = HashMap::new();
+        let boss_state = BossState::default();
 
         let parties = Self::create_party_from_templates(
             &mut player_templates_map,
@@ -61,11 +72,11 @@ impl Simulator {
                 elapsed_seconds: 0,
                 mmss: "00:00".to_string(),
             },
-            ttk: "INF".to_string(),
             started_on,
             parties,
             stats: EncounterStats { 
                 total_damage: 0,
+                ttk: "INF".to_string(),
                 dps: 0
             }
         };
@@ -75,7 +86,8 @@ impl Simulator {
             started_on,
             player_templates: player_templates_map,
             player_states,
-            party_states
+            party_states,
+            boss_state
         }
     }
 
@@ -108,6 +120,7 @@ impl Simulator {
 
     pub fn perform_attack(
         now: DateTime<Utc>,
+        boss_state: &mut BossState,
         party_state: &mut PartyState,
         player_state: &mut PlayerState,
         duration_seconds: i64,
@@ -122,74 +135,71 @@ impl Simulator {
                 continue;
             }
 
+            if skill_template.requires_identity && player_state.identity < 1.0 {
+                continue;
+            }
+
             let expires_on = now + skill_template.cooldown;
             player_state
                 .skill_cooldowns
                 .insert(skill_template.id, expires_on);
 
-            match skill_template.kind {
-                SkillType::Normal => todo!(),
-                SkillType::Synergy => todo!(),
-                SkillType::Brand => todo!(),
-                SkillType::AttackPowerBuff => todo!(),
-                SkillType::Identity => todo!(),
-                SkillType::HyperAwakeningTechnique => todo!(),
-                SkillType::Awakening => todo!(),
-            }
+            player_state.identity += skill_template.identity_gain;
 
-            if matches!(
-                skill_template.kind,
-                SkillType::Brand | 
-                SkillType::AttackPowerBuff | 
-                SkillType::Identity | 
-                SkillType::HyperAwakeningTechnique
-            ) {
-                let expires_on = now + skill_template.buff_duration.expect(&format!("should have duration {}", player_template.class.as_ref()));
-                let buff = Buff {
-                    kind: skill_template.kind,
-                    expires_on,
-                    value: 0
-                };
-                party_state.active_buffs.insert(
-                    skill_template.id,
-                    buff
-                );
-            }
+            let mut result = AttackResult::default();
+            result.skill_id = skill_template.id;
+            let buff_attack_power = (player_template.attack_power as f32  * 0.15) as u64;
 
+            Self::apply_buffs(
+                buff_attack_power,
+                &skill_template.buffs,
+                now,
+                party_state,
+                boss_state,
+                player_state);
+          
             let mut attack_power = player_template.attack_power;
             let mut damage_multiplier = 1.0;
+
+            for (_, buff) in &boss_state.active_debuffs {
+                if buff.kind == BuffType::Brand {
+                    result.with_brand = true;
+                    damage_multiplier += 0.1;
+                }
+            }
 
             for (_, buff) in &party_state.active_buffs {
                 if buff.expires_on > now {
                     match buff.kind {
-                        SkillType::Brand => {
-                            damage_multiplier *= 1.1;
-                        }
-                        SkillType::AttackPowerBuff => {
-                            attack_power = attack_power + buff.value
-                        }
-                        SkillType::Identity => {
-                            damage_multiplier *= 1.1;
-                        }
-                        SkillType::HyperAwakeningTechnique => {
-                            damage_multiplier *= 1.1;
-                        }
+                        BuffType::AttackPowerBuff => {
+                            result.with_attack_power_buff = true;
+                            attack_power += buff.value;
+                        },
+                        BuffType::Identity => {
+                            result.with_identity_buff = true;
+                            damage_multiplier += 0.1;
+                        },
+                        BuffType::HyperAwakeningTechnique => {
+                            result.with_hat_buff = true;
+                            damage_multiplier += 0.1;
+                        },
                         _ => {}
                     }
                 }
             }
 
-            let min = attack_power as f32 * 0.8 * damage_multiplier;
-            let max = attack_power as f32 * 1.2 * damage_multiplier;
-            let damage = rng.random_range(min..max);
+            let mut damage = 0f32;
+
+            if skill_template.min_ratio != 0.0 {
+                let min = attack_power as f32 * skill_template.min_ratio * damage_multiplier;
+                let max = attack_power as f32 * skill_template.max_ratio * damage_multiplier;
+                damage = rng.random_range(min..max);
+            }
 
             let is_critical = rng.random_bool(player_template.crit_rate as f64);
 
-            let result = AttackResult {
-                skill_id: skill_template.id,
-                damage: if is_critical { (damage * 2.0) as u64 } else { damage as u64 },
-                is_critical,
-            };
+            result.damage = if is_critical { (damage * player_template.crit_damage) as u64 } else { damage as u64 };
+            result.is_critical;
 
             return Some(result);
         }
@@ -203,6 +213,9 @@ impl Simulator {
         let duration_seconds = elapsed_duration.num_seconds();
         let formatted_duration = format_duration(duration_seconds);
         let encounter = &mut self.encounter;
+        let parties = &mut encounter.parties;
+        let boss_state = &mut self.boss_state;
+        boss_state.active_debuffs.retain(|_, buff| buff.expires_on > now);
 
         encounter.duration = EncounterDuration {
             elapsed_seconds: duration_seconds as u64,
@@ -213,7 +226,7 @@ impl Simulator {
             return &self.encounter;
         }
 
-        for party in &mut encounter.parties {
+        for party in parties {
 
             let party_state = self.party_states.get_mut(&party.id).unwrap();
             party_state.active_buffs.retain(|_, buff| buff.expires_on > now);
@@ -228,48 +241,27 @@ impl Simulator {
                 if let Some(attack_result) =
                     Self::perform_attack(
                         now,
+                        boss_state,
                         party_state,
                         player_state,
                         duration_seconds,
                         player_template)
                 {
-                    Self::update_stats(
-                        party_state,
+                    Self::update_player_stats(
                         player,
                         duration_seconds,
                         &attack_result);
 
-                    party.stats.total_damage += attack_result.damage;
-
-                    if duration_seconds == 0 {
-                        party.stats.dps = 0;
-                    }
-                    else {
-                        party.stats.dps = party.stats.total_damage / duration_seconds as u64;
-                    }
-
-                    if attack_result.damage >= encounter.boss.current_hp {
-                        encounter.boss.current_hp = 0;
-                        let damage = attack_result.damage - encounter.boss.current_hp;
-                        encounter.stats.total_damage += damage;
-                        encounter.ttk = "00:00".to_string();
-                    }
-                    else {
-                        encounter.boss.current_hp = encounter.boss.current_hp - attack_result.damage;
-                        encounter.boss.hp_percentage = encounter.boss.current_hp as f32 / encounter.boss.max_hp as f32;
-                        encounter.stats.total_damage += attack_result.damage;
-                        
-                        if duration_seconds == 0 {
-                            encounter.stats.dps = 0;
-                            encounter.ttk = "INF".to_string();
-                        }
-                        else {
-                            encounter.stats.dps = encounter.stats.total_damage / duration_seconds as u64;   
-                            let ttk_seconds = encounter.boss.current_hp / encounter.stats.dps;
-                            encounter.ttk = format_duration(ttk_seconds as i64);
-                        }
-
-                    }
+                    Self::update_encounter_stats(
+                        duration_seconds,
+                        &mut encounter.boss,
+                        &mut encounter.stats,
+                        &attack_result);
+                    Self::update_party_stats(
+                        duration_seconds,
+                        &mut party.stats,
+                        &attack_result,
+                        encounter.stats.total_damage);
                 }
             }
         }
@@ -281,11 +273,69 @@ impl Simulator {
         &self.encounter
     }
 
-    fn update_stats(
-        party_state: &mut PartyState,
+    fn update_party_stats(
+        duration_seconds: i64,
+        party_stats: &mut PartyStats,
+        attack_result: &AttackResult,
+        total_damage: u64,
+    ) {
+        if attack_result.damage == 0 {
+            return;
+        }
+
+        party_stats.total_damage += attack_result.damage;
+
+        if duration_seconds == 0 {
+            party_stats.dps = 0;
+        }
+        else {
+            party_stats.dps = party_stats.total_damage / duration_seconds as u64;
+            party_stats.total_damage_percentage = party_stats.total_damage as f32 / total_damage as f32;
+        }
+    }
+
+    fn update_encounter_stats(
+        duration_seconds: i64,
+        boss: &mut Boss,
+        encounter_stats: &mut EncounterStats,
+        attack_result: &AttackResult) {
+
+        if attack_result.damage == 0 {
+            return;
+        }
+
+        if attack_result.damage >= boss.current_hp {
+            boss.current_hp = 0;
+            let damage = attack_result.damage - boss.current_hp;
+            encounter_stats.total_damage += damage;
+            encounter_stats.ttk = "00:00".to_string();
+        }
+        else {
+            boss.current_hp = boss.current_hp - attack_result.damage;
+            boss.hp_percentage = boss.current_hp as f32 / boss.max_hp as f32;
+            encounter_stats.total_damage += attack_result.damage;
+            
+            if duration_seconds == 0 {
+                encounter_stats.dps = 0;
+                encounter_stats.ttk = "INF".to_string();
+            }
+            else {
+                encounter_stats.dps = encounter_stats.total_damage / duration_seconds as u64;   
+                let ttk_seconds = boss.current_hp / encounter_stats.dps;
+                encounter_stats.ttk = format_duration(ttk_seconds as i64);
+            }
+        }
+    }
+
+    fn update_player_stats(
         player: &mut Player,
         duration_seconds: i64,
         attack_result: &AttackResult) {
+
+        if attack_result.damage == 0 {
+            return;
+        }
+
         player.stats.total_damage += attack_result.damage;
 
         if duration_seconds != 0 {
@@ -300,26 +350,22 @@ impl Simulator {
         
         player.stats.crit_rate = player.stats.crit_damage as f32 / player.stats.total_damage as f32;
 
-        if party_state.active_buffs.iter()
-            .any(|pr| pr.1.kind == SkillType::Brand) {
+        if attack_result.with_brand {
             player.stats.damage_with_brand += attack_result.damage;
             player.stats.brand_percentage = player.stats.damage_with_brand as f32 / player.stats.total_damage as f32;
         }
 
-        if party_state.active_buffs.iter()
-            .any(|pr| pr.1.kind == SkillType::AttackPowerBuff) {
+        if attack_result.with_attack_power_buff {
             player.stats.damage_with_attack_power_buff += attack_result.damage;
             player.stats.attack_power_buff_percentage = player.stats.damage_with_attack_power_buff as f32 / player.stats.total_damage as f32;
         }
 
-        if party_state.active_buffs.iter()
-            .any(|pr| pr.1.kind == SkillType::Identity) {
+        if attack_result.with_identity_buff {
             player.stats.damage_with_identity_buff += attack_result.damage;
             player.stats.identity_percentage = player.stats.damage_with_identity_buff as f32 / player.stats.total_damage as f32;
         }
 
-        if party_state.active_buffs.iter()
-            .any(|pr| pr.1.kind == SkillType::HyperAwakeningTechnique) {
+        if attack_result.with_hat_buff {
             player.stats.damage_with_hat_buff += attack_result.damage;
             player.stats.hat_percentage = player.stats.damage_with_hat_buff as f32 / player.stats.total_damage as f32;
         }

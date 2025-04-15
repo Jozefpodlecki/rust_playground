@@ -17,6 +17,7 @@ pub use player::*;
 pub struct PartyStats {
     pub dps: u64,
     pub total_damage: u64,
+    pub total_damage_percentage: f32
 }
 
 #[derive(Default, Debug, Clone)]
@@ -30,7 +31,6 @@ pub struct Party {
 pub struct Encounter {
     pub boss: Boss,
     pub duration: EncounterDuration,
-    pub ttk: String,
     pub started_on: DateTime<Utc>,
     pub parties: Vec<Party>,
     pub stats: EncounterStats
@@ -40,6 +40,7 @@ pub struct Encounter {
 pub struct EncounterStats {
     pub dps: u64,
     pub total_damage: u64,
+    pub ttk: String,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -64,9 +65,14 @@ pub struct Boss {
     pub hp_bars: u64
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct AttackResult {
     pub skill_id: u32,
     pub damage: u64,
     pub is_critical: bool,
+    pub with_brand: bool,
+    pub with_attack_power_buff: bool,
+    pub with_identity_buff: bool,
+    pub with_hat_buff: bool,
 }
 

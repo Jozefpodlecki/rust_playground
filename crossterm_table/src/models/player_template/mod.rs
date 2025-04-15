@@ -38,16 +38,50 @@ pub enum SkillType {
     Awakening,
 }
 
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+pub enum BuffCategory {
+    #[default]
+    Buff,
+    Debuff
+}
+
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+pub enum BuffTarget {
+    #[default]
+    TargetSelf,
+    Party
+}
+
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+pub enum BuffType {
+    #[default]
+    Brand,
+    AttackPowerBuff,
+    Identity,
+    HyperAwakeningTechnique,
+}
+#[derive(Default, Debug, Clone)]
+pub struct BuffTemplate {
+    pub category: BuffCategory,
+    pub target: BuffTarget,
+    pub kind: BuffType,
+    pub duration: Duration,
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct SkillTemplate {
     pub id: u32,
     pub name: &'static str,
-    pub ratio: f32,
+    pub min_ratio: f32,
+    pub max_ratio: f32,
+    pub identity_gain: f32,
+    pub requires_identity: bool,
     pub kind: SkillType,
     pub priority: u8,
     pub cast_duration: Duration,
     pub buff_duration: Option<Duration>,
     pub cooldown: Duration,
+    pub buffs: Vec<BuffTemplate>
 }
 
 #[derive(Default, Debug, Clone)]
@@ -56,5 +90,6 @@ pub struct PlayerTemplate {
     pub crit_rate: f32,
     pub cooldown_reduction: f32,
     pub attack_power: u64,
+    pub crit_damage: f32,
     pub skills: Vec<SkillTemplate>,
 }

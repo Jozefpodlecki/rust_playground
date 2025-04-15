@@ -3,7 +3,7 @@ mod utils;
 mod simulator;
 mod renderer;
 
-use std::{io::{stdout, Write}, thread::sleep, time::{Duration, SystemTime}};
+use std::{io::{stdout, Write}, panic, thread::sleep, time::{Duration, SystemTime}};
 use chrono::Utc;
 use crossterm::{
     cursor::MoveTo,
@@ -21,6 +21,10 @@ use utils::*;
 
 
 fn main() -> Result<()> {
+    panic::set_hook(Box::new(|panic_info| {
+        eprintln!("Panic occurred: {}", panic_info);
+    }));
+
     let mut std_out = stdout();
 
     let player_templates = vec![

@@ -5,6 +5,7 @@ impl PlayerTemplate {
         PlayerTemplate {
             class: Class::Deathblade,
             crit_rate: 0.75,
+            crit_damage: 2.0,
             cooldown_reduction: 0.4,
             attack_power: 5e6 as u64,
             skills: vec![
@@ -16,6 +17,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 2,
@@ -25,6 +27,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 3,
@@ -34,6 +37,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 4,
@@ -43,6 +47,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 5,
@@ -52,6 +57,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 6,
@@ -61,6 +67,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 7,
@@ -70,6 +77,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 8,
@@ -79,6 +87,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 9,
@@ -88,6 +97,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 10,
@@ -97,6 +107,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
                 SkillTemplate {
                     id: 11,
@@ -106,6 +117,7 @@ impl PlayerTemplate {
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
                     cooldown: Duration::seconds(15),
+                    ..Default::default()
                 },
             ],
         }

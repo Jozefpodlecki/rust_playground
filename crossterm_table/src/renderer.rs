@@ -28,7 +28,7 @@ impl Renderer {
         self.buffer += &format!("| HP: {:<71}|\n", formatted_hp);
         self.buffer += separator.as_str();
         self.buffer += &format!("| DPS: {:<70}|\n", format_unit(encounter.stats.dps));
-        self.buffer += &format!("| TTK: {:<70}|\n", encounter.ttk);
+        self.buffer += &format!("| TTK: {:<70}|\n", encounter.stats.ttk);
         self.buffer += separator.as_str();
         self.buffer += &format!("| {:<19}{:<14}{:<8}{:<9}{:<8}{:<8}{:<8} |\n", "Name", "Class", "Crit", "DPS", "Brand", "Atk" , "Identity");
 
