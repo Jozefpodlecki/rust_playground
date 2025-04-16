@@ -23,6 +23,7 @@ pub struct PlayerStats {
     pub crit_damage: u64,
     pub dps: u64,
     pub total_damage: u64,
+    pub total_damage_percentage: f32,
     pub hyper_awakening_damage: u64,
     pub damage_with_brand: u64,
     pub damage_with_attack_power_buff: u64,

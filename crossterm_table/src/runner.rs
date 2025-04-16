@@ -1,4 +1,4 @@
-use std::{io::{stdout, Write}, panic, thread::sleep, time::{Duration, SystemTime}};
+use std::{io::{self, stdout, Read, Write}, panic, thread::sleep, time::{Duration, SystemTime}};
 use chrono::Utc;
 use crossterm::{
     cursor::MoveTo,
@@ -13,6 +13,16 @@ use rand::Rng;
 use crate::renderer::Renderer;
 use crate::simulator::Simulator;
 use crate::utils::*;
+
+pub fn pause() {
+    let mut stdin = io::stdin();
+    let mut stdout = io::stdout();
+
+    write!(stdout, "Press any key to continue...").unwrap();
+    stdout.flush().unwrap();
+
+    let _ = stdin.read(&mut [0u8]).unwrap();
+}
 
 
 pub fn run_threaded() -> Result<()> {
@@ -53,6 +63,8 @@ pub fn run_threaded() -> Result<()> {
             return Ok(());
         }
     }
+
+    pause();
 }
 
 pub fn run() -> Result<()> {
@@ -96,4 +108,6 @@ pub fn run() -> Result<()> {
 
         sleep(Duration::from_secs(1));
     }
+
+    pause();
 }

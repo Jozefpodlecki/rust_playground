@@ -11,8 +11,7 @@ use crate::{models::{player_template::*, *}, utils::{format_duration, random_num
 pub fn update_party_stats(
     duration_seconds: i64,
     party_stats: &mut PartyStats,
-    attack_result: &AttackResult,
-    total_damage: u64,
+    attack_result: &AttackResult
 ) {
     if attack_result.damage == 0 {
         return;
@@ -25,7 +24,6 @@ pub fn update_party_stats(
     }
     else {
         party_stats.dps = party_stats.total_damage / duration_seconds as u64;
-        party_stats.total_damage_percentage = party_stats.total_damage as f32 / total_damage as f32;
     }
 }
 

@@ -51,13 +51,22 @@ pub fn on_attack_result(
                 update_party_stats(
                     duration_seconds,
                     &mut party.stats,
-                    &attack_result,
-                    encounter_stats.total_damage);
+                    &attack_result);
             }
-        }
+        }        
     }
 
-    for party in &mut encounter.parties {
+    let total_damage = encounter_stats.total_damage;
+
+    for party in parties {
+        let party_stats = &mut party.stats;
+
+        for player in party.players.iter_mut() {
+            let player_stats = &mut player.stats;
+            player_stats.total_damage_percentage = player_stats.total_damage as f32 / total_damage as f32;
+        }
+
+        party_stats.total_damage_percentage = party_stats.total_damage as f32 / total_damage as f32;
         party.players.sort_by(|a, b| b.stats.dps.cmp(&a.stats.dps));
     }
 }

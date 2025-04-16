@@ -16,31 +16,40 @@ impl Renderer {
 
         let hp_percentage = encounter.boss.hp_percentage * 100.0;
         let start_time_formatted = encounter.started_on.format("%Y-%m-%d %H:%M:%S").to_string();
-        let formatted_hp = format!("{}/{} ({:.1}%)", format_unit(encounter.boss.current_hp), format_unit(encounter.boss.max_hp), hp_percentage);
+        let formatted_hp_and_bars = format!("{}/{} {:.1}/{} ({:.1}%)",
+            format_unit(encounter.boss.current_hp),
+            format_unit(encounter.boss.max_hp),
+            encounter.boss.hp_bars,
+            encounter.boss.max_hp_bars,
+            hp_percentage);
 
-        let separator =  generate_separator(78);
+        let separator =  generate_separator(86);
 
         self.buffer += separator.as_str();
-        self.buffer += &format!("| Encounter started: {:<56}|\n", start_time_formatted);
-        self.buffer += &format!("| Duration: {:<65}|\n", encounter.duration.mmss);
+        self.buffer += &format!("| Encounter started: {:<64}|\n", start_time_formatted);
+        self.buffer += &format!("| Duration: {:<73}|\n", encounter.duration.mmss);
         self.buffer += separator.as_str();
-        self.buffer += &format!("| Boss: {:<69}|\n", encounter.boss.name);
-        self.buffer += &format!("| HP: {:<71}|\n", formatted_hp);
+        self.buffer += &format!("| Boss: {:<77}|\n", encounter.boss.name);
+        self.buffer += &format!("| HP: {:<79}|\n", formatted_hp_and_bars);
         self.buffer += separator.as_str();
-        self.buffer += &format!("| DPS: {:<70}|\n", format_unit(encounter.stats.dps));
-        self.buffer += &format!("| TTK: {:<70}|\n", encounter.stats.ttk);
+        self.buffer += &format!("| DPS: {:<78}|\n", format_unit(encounter.stats.dps));
+        self.buffer += &format!("| TTK: {:<78}|\n", encounter.stats.ttk);
         self.buffer += separator.as_str();
-        self.buffer += &format!("| {:<19}{:<14}{:<8}{:<9}{:<8}{:<8}{:<8} |\n", "Name", "Class", "Crit", "DPS", "Brand", "Atk" , "Identity");
+        self.buffer += &format!("| {:<19}{:<14}{:<8}{:<8}{:<9}{:<8}{:<8}{:<8} |\n", "Name", "Class", "%","Crit", "DPS", "Brand", "Atk" , "Identity");
 
         for (i, party) in encounter.parties.iter().enumerate() {
             self.buffer += separator.as_str();
-            self.buffer += &format!("| Party {} {:<66} |\n", i + 1, format_unit(party.stats.dps));
+            self.buffer += &format!("| Party {} {:<7} {:<8} {:<57} |\n", i + 1,
+                format_unit(party.stats.dps),
+                format!("({:.1}%)", party.stats.total_damage_percentage * 100.0),
+                "");
             self.buffer += separator.as_str();
 
             for player in party.players.iter() {
-                self.buffer += &format!("| {:<19}{:<14}{:<8}{:<9}{:<8}{:<8}{:<8} |\n",
+                self.buffer += &format!("| {:<19}{:<14}{:<8}{:<8}{:<9}{:<8}{:<8}{:<8} |\n",
                     player.name,
                     player.class.as_ref(),
+                    format!("{:.1}%", player.stats.total_damage_percentage * 100.0),
                     format!("{:.1}%", player.stats.crit_rate * 100.0),
                     format_unit(player.stats.dps),
                     format!("{:.1}%", player.stats.brand_percentage * 100.0),
