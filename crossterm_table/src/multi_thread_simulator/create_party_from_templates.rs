@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-use crate::models::PlayerTemplate;
+use chrono::Duration;
+
+use crate::{models::PlayerTemplate, utils::{random_alphabetic_string_capitalized, random_number_in_range}};
 
 use super::*;
 
-impl Simulator {
+impl MultiThreadSimulator {
 
     fn apply_cooldown_reduction(cooldown: Duration, value: f32) -> Duration {
         let reduction_factor = 1.0 - value;
@@ -14,9 +16,8 @@ impl Simulator {
     }
     
     pub fn create_party_from_templates(
+        id_generator: &mut IdGenerator,
         player_templates_map: &mut HashMap<u64, PlayerTemplate>,
-        player_states: &mut HashMap<u64, PlayerState>,
-        party_states : &mut HashMap<u64, PartyState>,
         player_templates: &mut [PlayerTemplate]
     ) -> Vec<Party> {
         
@@ -25,40 +26,24 @@ impl Simulator {
         for chunk in player_templates.chunks_mut(4) {
             let members = Vec::new();
             let mut party= Party {
-                id: random_number_in_range(1000..9999),
+                id: id_generator.next_party_id(),
                 players: members,
                 ..Default::default()
             };
 
             for template in chunk {
-                let mut id = random_number_in_range(1000..9999);
-
-                while player_templates_map.contains_key(&id) {
-                    id = random_number_in_range(1000..9999);
-                }
+                let id = id_generator.next_player_id();
 
                 for skill in template.skills.iter_mut() {
-                    skill.cooldown = Self::apply_cooldown_reduction(skill.cooldown, template.cooldown_reduction);
+                    let cooldown_reduction = template.cooldown_reduction + skill.cooldown_gem;
+                    skill.cooldown = Self::apply_cooldown_reduction(skill.cooldown, cooldown_reduction);
                 }
 
                 player_templates_map.insert(id, template.clone());
 
-                player_states.insert(
-                    id,
-                    PlayerState {
-                        skill_cooldowns: template
-                            .skills
-                            .iter()
-                            .map(|skill| (skill.id, Utc::now()))
-                            .collect(),
-                        active_buffs: HashMap::new(),
-                        identity: 0.0
-                    },
-                );
-
                 let player = Player {
                     id,
-                    name: random_alphabetic_string_capitalized(12),
+                    name: template.name.clone().unwrap_or_else(|| id_generator.next_player_name(12)),
                     class: template.class.clone(),
                     stats: PlayerStats {
                         skills: PlayerSkillsStats {
@@ -71,13 +56,6 @@ impl Simulator {
 
                 party.players.push(player);
             }
-
-            party_states.insert(
-                party.id,
-                PartyState {
-                    active_buffs: HashMap::new(),
-                },
-            );
 
             parties.push(party);
         }

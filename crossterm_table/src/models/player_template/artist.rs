@@ -13,6 +13,9 @@ impl PlayerTemplate {
                     id: 1,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -23,6 +26,9 @@ impl PlayerTemplate {
                     id: 2,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -33,6 +39,9 @@ impl PlayerTemplate {
                     id: 3,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -43,6 +52,9 @@ impl PlayerTemplate {
                     id: 4,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -53,6 +65,9 @@ impl PlayerTemplate {
                     id: 5,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -63,6 +78,8 @@ impl PlayerTemplate {
                     id: 6,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -73,9 +90,21 @@ impl PlayerTemplate {
                     id: 7,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::Brand,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(10)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::Brand,
+                            duration: Duration::seconds(10),
+                            value: 0.1
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -83,9 +112,20 @@ impl PlayerTemplate {
                     id: 8,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::AttackPowerBuff,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(7)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::AttackPowerBuff,
+                            duration: Duration::seconds(7),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -93,9 +133,21 @@ impl PlayerTemplate {
                     id: 9,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 0.1,
                     kind: SkillType::AttackPowerBuff,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(7)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::AttackPowerBuff,
+                            duration: Duration::seconds(7),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -103,9 +155,21 @@ impl PlayerTemplate {
                     id: 10,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Identity,
+                    identity_gain: -2.0,
+                    requires_identity: true,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: Some(Duration::seconds(7)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::Identity,
+                            duration: Duration::seconds(10),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -113,6 +177,9 @@ impl PlayerTemplate {
                     id: 11,
                     name: "Unknown",
                     priority: 2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    identity_gain: 2.0,
                     kind: SkillType::Awakening,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -120,6 +187,7 @@ impl PlayerTemplate {
                     ..Default::default()
                 },
             ],
+            ..Default::default()
         }
     }
 }

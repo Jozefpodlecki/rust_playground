@@ -19,7 +19,7 @@ impl Simulator {
                 target: buff_template.target,
                 kind: buff_template.kind,
                 expires_on,
-                value: attack_power
+                value: attack_power as f32
             };
 
             if buff_template.category == BuffCategory::Debuff {

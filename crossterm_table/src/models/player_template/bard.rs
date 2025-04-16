@@ -15,6 +15,8 @@ impl PlayerTemplate {
                     priority: 2,
                     kind: SkillType::Brand,
                     identity_gain: 0.2,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(3)),
                     buffs: vec![
@@ -22,7 +24,8 @@ impl PlayerTemplate {
                             category: BuffCategory::Debuff,
                             target: BuffTarget::Party,
                             kind: BuffType::Brand,
-                            duration: Duration::seconds(3)
+                            duration: Duration::seconds(3),
+                            value: 0.0
                         }
                     ],
                     cooldown: Duration::seconds(21),
@@ -33,6 +36,8 @@ impl PlayerTemplate {
                     name: "Sonic Vibration",
                     priority: 3,
                     identity_gain: 0.1,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::AttackPowerBuff,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(7)),
@@ -41,7 +46,8 @@ impl PlayerTemplate {
                             category: BuffCategory::Buff,
                             target: BuffTarget::Party,
                             kind: BuffType::AttackPowerBuff,
-                            duration: Duration::seconds(7)
+                            duration: Duration::seconds(7),
+                            value: 0.0
                         }
                     ],
                     cooldown: Duration::seconds(24),
@@ -52,9 +58,20 @@ impl PlayerTemplate {
                     name: "Heavenly Tune",
                     priority: 4,
                     identity_gain: 0.1,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::AttackPowerBuff,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(7)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::Identity,
+                            duration: Duration::seconds(7),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(30),
                     ..Default::default()
                 },
@@ -64,8 +81,19 @@ impl PlayerTemplate {
                     priority: 5,
                     kind: SkillType::Identity,
                     identity_gain: -1.0,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
+                    requires_identity: true,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: Some(Duration::seconds(5)),
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Buff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::Identity,
+                            duration: Duration::seconds(10),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -74,6 +102,8 @@ impl PlayerTemplate {
                     name: "Prelude of Storm",
                     priority: 6,
                     identity_gain: 0.3,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -94,6 +124,7 @@ impl PlayerTemplate {
                     id: 21180,
                     name: "Harp of Rhythm",
                     priority: 8,
+                    identity_gain: 0.1,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -105,6 +136,8 @@ impl PlayerTemplate {
                     name: "Wind of Music",
                     priority: 9,
                     identity_gain: 0.3,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: None,
@@ -126,6 +159,8 @@ impl PlayerTemplate {
                     name: "Aria",
                     priority: 11,
                     identity_gain: 0.1,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::HyperAwakeningTechnique,
                     cast_duration: Duration::milliseconds(250),
                     buff_duration: Some(Duration::seconds(20)),
@@ -135,7 +170,8 @@ impl PlayerTemplate {
                             category: BuffCategory::Buff,
                             target: BuffTarget::Party,
                             kind: BuffType::HyperAwakeningTechnique,
-                            duration: Duration::seconds(20)
+                            duration: Duration::seconds(20),
+                            value: 0.0
                         }
                     ],
                     ..Default::default()
@@ -145,6 +181,8 @@ impl PlayerTemplate {
                     name: "Symphonia",
                     priority: 1,
                     identity_gain: 1.0,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Awakening,
                     cast_duration: Duration::seconds(1),
                     buff_duration: None,
@@ -156,6 +194,8 @@ impl PlayerTemplate {
                     name: "Symphony Melody",
                     priority: 1,
                     identity_gain: 1.0,
+                    min_ratio: 1.0,
+                    max_ratio: 2.0,
                     kind: SkillType::Awakening,
                     cast_duration: Duration::seconds(3),
                     buff_duration: None,
@@ -163,6 +203,7 @@ impl PlayerTemplate {
                     ..Default::default()
                 },
             ],
+            ..Default::default()
         }
     }
 }

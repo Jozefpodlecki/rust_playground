@@ -1,0 +1,92 @@
+use std::{
+    collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Sender}, Arc, Mutex, RwLock}, thread::{self, sleep, JoinHandle}
+};
+
+use bard::BardWorker;
+use chrono::{DateTime, Utc};
+use generic::{GenericWorker, Worker};
+
+use crate::models::{class::Class, player_template::*, *};
+use crate::multi_thread_simulator::worker::on_attack_result::on_attack_result;
+
+use super::stats::*;
+
+mod generic;
+mod bard;
+mod on_attack_result;
+
+pub fn get_worker_from_class(
+    template: PlayerTemplate,
+    party_state: Arc<RwLock<PartyState>>,
+    boss_state: Arc<RwLock<BossState>>,
+    started_on: DateTime<Utc>,
+    player_id: u64,
+    tx: Sender<AttackResult>,
+    start_flag: Arc<AtomicBool>,
+) -> Box<dyn Worker> {
+    match template.class {
+        Class::Bard => Box::new(BardWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
+        _ => Box::new(GenericWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
+    }
+}
+
+pub fn spawn_player_threads(
+    player_templates: &HashMap<u64, PlayerTemplate>,
+    encounter: Arc<Mutex<Encounter>>,
+    boss_state: Arc<RwLock<BossState>>,
+    tx: Sender<AttackResult>,
+    start_flag: Arc<AtomicBool>,
+) -> Vec<JoinHandle<()>> {
+    let encounter = encounter.lock().unwrap();
+    let started_on = encounter.started_on;
+    let mut worker_threads: Vec<JoinHandle<()>> = Vec::new();
+
+    for party in &encounter.parties {
+        let party_state = Arc::new(RwLock::new(PartyState::default()));
+
+        for player in &party.players {
+            let template = player_templates.get(&player.id).unwrap().clone();
+            let tx = tx.clone();
+            let start_flag = start_flag.clone();
+            let boss_state = boss_state.clone();
+            let party_state = party_state.clone();
+            let player_id = player.id;
+
+            let handle = thread::spawn(move || {
+                let mut worker = get_worker_from_class(
+                    template,
+                    party_state,
+                    boss_state,
+                    started_on,
+                    player_id,
+                    tx.clone(),
+                    start_flag
+                );
+
+                worker.start_loop();
+            });
+
+            worker_threads.push(handle);
+        }
+    }
+
+    worker_threads
+}
+
+pub fn spawn_result_listener_thread(
+    rx: mpsc::Receiver<AttackResult>,
+    encounter: Arc<Mutex<Encounter>>,
+    boss_state: Arc<RwLock<BossState>>) {
+
+    let encounter = encounter.clone();
+    let started_on = encounter.lock().unwrap().started_on;
+    thread::spawn(move || {
+        while let Ok(attack_result) = rx.recv() {
+            on_attack_result(
+                started_on,
+                &encounter,
+                &boss_state,
+                attack_result);
+        }
+    });
+}

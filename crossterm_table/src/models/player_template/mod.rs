@@ -21,6 +21,9 @@ pub mod deathblade;
 pub mod souleater;
 pub mod striker;
 pub mod wildsoul;
+pub mod builder;
+
+pub use builder::PlayerTemplateBuilder;
 
 use chrono::Duration;
 
@@ -36,6 +39,7 @@ pub enum SkillType {
     Identity,
     HyperAwakeningTechnique,
     Awakening,
+    HyperAwakening,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq)]
@@ -58,6 +62,7 @@ pub enum BuffType {
     Brand,
     AttackPowerBuff,
     Identity,
+    DamageAmplification,
     HyperAwakeningTechnique,
 }
 #[derive(Default, Debug, Clone)]
@@ -66,6 +71,7 @@ pub struct BuffTemplate {
     pub target: BuffTarget,
     pub kind: BuffType,
     pub duration: Duration,
+    pub value: f32
 }
 
 #[derive(Default, Debug, Clone)]
@@ -81,11 +87,13 @@ pub struct SkillTemplate {
     pub cast_duration: Duration,
     pub buff_duration: Option<Duration>,
     pub cooldown: Duration,
+    pub cooldown_gem: f32,
     pub buffs: Vec<BuffTemplate>
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct PlayerTemplate {
+    pub name: Option<String>,
     pub class: Class,
     pub crit_rate: f32,
     pub cooldown_reduction: f32,

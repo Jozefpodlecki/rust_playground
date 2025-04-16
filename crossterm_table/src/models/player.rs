@@ -23,6 +23,7 @@ pub struct PlayerStats {
     pub crit_damage: u64,
     pub dps: u64,
     pub total_damage: u64,
+    pub hyper_awakening_damage: u64,
     pub damage_with_brand: u64,
     pub damage_with_attack_power_buff: u64,
     pub damage_with_identity_buff: u64,
@@ -31,10 +32,26 @@ pub struct PlayerStats {
     pub hat_percentage: f32,
     pub attack_power_buff_percentage: f32,
     pub identity_percentage: f32,
-    pub skills: PlayerSkillStats
+    pub skills: PlayerSkillsStats
+}
+
+#[derive(Default, Clone, Debug)]
+pub struct PositionalStats {
+    pub damage: u64,
+    pub count: u64,
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct PlayerSkillStats {
+    pub hit_count: u64,
+    pub crit_count: u64,
+    pub back_attack: PositionalStats,
+    pub front_attack: PositionalStats
+}
 
+#[derive(Default, Clone, Debug)]
+pub struct PlayerSkillsStats {
+    pub skill: HashMap<u32, PlayerSkillStats>,
+    pub hit_count: u64,
+    pub crit_count: u64
 }

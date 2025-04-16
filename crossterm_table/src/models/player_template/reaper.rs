@@ -120,6 +120,7 @@ impl PlayerTemplate {
                     ..Default::default()
                 },
             ],
+            ..Default::default()
         }
     }
 }

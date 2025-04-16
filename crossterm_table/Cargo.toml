@@ -12,3 +12,4 @@ rand = "0.9.0"
 chrono = "0.4.31"
 strum = "0.27"
 strum_macros = "0.27"
+uuid = { version = "1", features = ["v7"] }
