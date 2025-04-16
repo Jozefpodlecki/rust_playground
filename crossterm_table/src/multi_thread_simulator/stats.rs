@@ -48,6 +48,7 @@ pub fn update_encounter_stats(
     else {
         boss.current_hp = boss.current_hp - attack_result.damage;
         boss.hp_percentage = boss.current_hp as f32 / boss.max_hp as f32;
+        boss.hp_bars = boss.current_hp as f32 / boss.bar_per_hp;
         encounter_stats.total_damage += attack_result.damage;
         
         if duration_seconds == 0 {

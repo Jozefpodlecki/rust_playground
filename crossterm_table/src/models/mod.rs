@@ -39,10 +39,6 @@ pub struct Encounter {
     pub stats: EncounterStats
 }
 
-impl Encounter {
-
-}
-
 #[derive(Default, Debug, Clone)]
 pub struct EncounterStats {
     pub dps: u64,
@@ -52,7 +48,7 @@ pub struct EncounterStats {
 
 #[derive(Default, Debug, Clone)]
 pub struct EncounterDuration {
-    pub elapsed_seconds: u64,
+    pub elapsed_seconds: i64,
     pub mmss: String,
 }
 
@@ -69,7 +65,9 @@ pub struct Boss {
     pub max_hp: u64,
     pub current_hp: u64,
     pub hp_percentage: f32,
-    pub hp_bars: u64
+    pub max_hp_bars: u64,
+    pub hp_bars: f32,
+    pub bar_per_hp: f32
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]

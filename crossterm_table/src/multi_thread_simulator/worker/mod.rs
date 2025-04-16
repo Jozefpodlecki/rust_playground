@@ -1,10 +1,13 @@
 use std::{
-    collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Sender}, Arc, Mutex, RwLock}, thread::{self, sleep, JoinHandle}
+    collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Receiver, Sender}, Arc, Mutex, RwLock}, thread::{self, sleep, JoinHandle}
 };
 
+use artist::ArtistWorker;
 use bard::BardWorker;
 use chrono::{DateTime, Utc};
-use generic::{GenericWorker, Worker};
+use generic::{GenericWorker};
+use paladin::PaladinWorker;
+use slayer::SlayerWorker;
 
 use crate::models::{class::Class, player_template::*, *};
 use crate::multi_thread_simulator::worker::on_attack_result::on_attack_result;
@@ -13,7 +16,14 @@ use super::stats::*;
 
 mod generic;
 mod bard;
+mod slayer;
+mod paladin;
+mod artist;
 mod on_attack_result;
+
+pub trait Worker {
+    fn start_loop(&mut self);
+}
 
 pub fn get_worker_from_class(
     template: PlayerTemplate,
@@ -26,18 +36,20 @@ pub fn get_worker_from_class(
 ) -> Box<dyn Worker> {
     match template.class {
         Class::Bard => Box::new(BardWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
+        Class::Slayer => Box::new(SlayerWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
+        Class::Artist => Box::new(ArtistWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
+        Class::Paladin => Box::new(PaladinWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
         _ => Box::new(GenericWorker::new(template, party_state, boss_state, started_on, player_id, tx, start_flag)),
     }
 }
 
 pub fn spawn_player_threads(
     player_templates: &HashMap<u64, PlayerTemplate>,
-    encounter: Arc<Mutex<Encounter>>,
+    encounter: &Encounter,
     boss_state: Arc<RwLock<BossState>>,
     tx: Sender<AttackResult>,
     start_flag: Arc<AtomicBool>,
 ) -> Vec<JoinHandle<()>> {
-    let encounter = encounter.lock().unwrap();
     let started_on = encounter.started_on;
     let mut worker_threads: Vec<JoinHandle<()>> = Vec::new();
 
@@ -75,18 +87,24 @@ pub fn spawn_player_threads(
 
 pub fn spawn_result_listener_thread(
     rx: mpsc::Receiver<AttackResult>,
-    encounter: Arc<Mutex<Encounter>>,
-    boss_state: Arc<RwLock<BossState>>) {
+    encounter: Encounter,
+    boss_state: Arc<RwLock<BossState>>) -> Receiver<Encounter> {
+    
+    let (tx, rx_encounter) = mpsc::channel::<Encounter>();
+    let mut encounter = encounter.clone();
+    let started_on = encounter.started_on;
 
-    let encounter = encounter.clone();
-    let started_on = encounter.lock().unwrap().started_on;
     thread::spawn(move || {
         while let Ok(attack_result) = rx.recv() {
             on_attack_result(
                 started_on,
-                &encounter,
+                &mut encounter,
                 &boss_state,
                 attack_result);
+            
+            tx.send(encounter.clone());
         }
     });
+
+    rx_encounter
 }

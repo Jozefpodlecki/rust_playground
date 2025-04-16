@@ -28,11 +28,11 @@ pub fn apply_buffs(
         }
 
         if buff_template.category == BuffCategory::Debuff {
-            let mut instance_id = random_number_in_range(1000..9999);
+            let mut instance_id = id_generator.next_buff_instance_id();
             let mut boss_state = boss_state.write().unwrap();
 
             while boss_state.active_debuffs.contains_key(&instance_id) {
-                instance_id = random_number_in_range(1000..9999);
+                instance_id = id_generator.next_buff_instance_id();
             }
 
             boss_state.active_debuffs.insert(instance_id, buff.clone());

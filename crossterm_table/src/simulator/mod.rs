@@ -43,7 +43,9 @@ impl Simulator {
                 max_hp: encounter_template.boss.max_hp,
                 current_hp: encounter_template.boss.max_hp,
                 hp_percentage: 1.0,
-                hp_bars: encounter_template.boss.hp_bars
+                max_hp_bars: encounter_template.boss.hp_bars,
+                hp_bars: encounter_template.boss.hp_bars as f32,
+                bar_per_hp: encounter_template.boss.max_hp as f32 / encounter_template.boss.hp_bars as f32
             },
             duration: EncounterDuration {
                 elapsed_seconds: 0,
@@ -109,7 +111,7 @@ impl Simulator {
         boss_state.active_debuffs.retain(|_, buff| buff.expires_on > now);
 
         encounter.duration = EncounterDuration {
-            elapsed_seconds: duration_seconds as u64,
+            elapsed_seconds: duration_seconds,
             mmss: formatted_duration,
         };
 

@@ -1,8 +1,10 @@
+use crate::utils::format_duration;
+
 use super::*;
 
 pub fn on_attack_result(
     started_on: DateTime<Utc>,
-    encounter: &Arc<Mutex<Encounter>>,
+    encounter: &mut Encounter,
     boss_state: &Arc<RwLock<BossState>>,
     attack_result: AttackResult) {
         
@@ -21,13 +23,16 @@ pub fn on_attack_result(
         }
     }
 
-    let mut encounter = encounter.lock().unwrap();
     let Encounter {
         boss,
         parties,
         stats: encounter_stats,
+        duration,
         ..
-    } = &mut *encounter;
+    } = encounter;
+
+    duration.elapsed_seconds = duration_seconds;
+    duration.mmss = format_duration(duration_seconds);
 
     for party in parties.iter_mut() {
         for player in party.players.iter_mut() {

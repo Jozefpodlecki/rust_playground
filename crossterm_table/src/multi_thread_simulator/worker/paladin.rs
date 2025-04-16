@@ -1,13 +1,13 @@
-use std::{alloc::GlobalAlloc, collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, mpsc::Sender, Arc, RwLock}, thread::{self, sleep}};
+use std::{collections::HashMap, sync::{atomic::{AtomicBool, Ordering}, mpsc::Sender, Arc, RwLock}, thread::{self, sleep}};
 
 use chrono::{DateTime, Utc};
-use rand::rng;
+use rand::{rng, Rng};
 
-use crate::{models::{player_template::{BuffType, SkillType}, AttackResult, BossState, Buff, PartyState, PlayerTemplate}, multi_thread_simulator::{apply_buffs::apply_buffs, attack::{get_available_skills, perform_attack}, id_generator::IdGenerator}};
+use crate::{models::{player_template::{BuffType, SkillType}, AttackResult, BossState, Buff, PartyState, PlayerTemplate}, multi_thread_simulator::{apply_buffs::apply_buffs, attack::{get_available_skills, perform_attack}, id_generator::{self, IdGenerator}}};
 
 use super::Worker;
 
-pub struct GenericWorker {
+pub struct PaladinWorker {
     id_generator: IdGenerator,
     skill_cooldowns: HashMap<u32, DateTime<Utc>>,
     active_buffs: HashMap<u32, Buff>,
@@ -21,7 +21,7 @@ pub struct GenericWorker {
     control_flag: Arc<AtomicBool>,
 }
 
-impl GenericWorker {
+impl PaladinWorker {
     pub fn new(
         template: PlayerTemplate,
         party_state: Arc<RwLock<PartyState>>,
@@ -47,7 +47,7 @@ impl GenericWorker {
     }
 }
 
-impl Worker for GenericWorker {
+impl Worker for PaladinWorker {
     fn start_loop(&mut self) {
 
         while !self.control_flag.load(Ordering::Acquire) {
@@ -63,8 +63,6 @@ impl Worker for GenericWorker {
                 break;
             }
 
-            let now = Utc::now();
-
             if let Some(result) = self.perform_attack() {
                 self.tx.send(result).unwrap();
             }
@@ -79,7 +77,7 @@ impl Worker for GenericWorker {
     }
 }
 
-impl GenericWorker {
+impl PaladinWorker {
 
     pub fn perform_attack(&mut self) -> Option<AttackResult> {
         
@@ -92,15 +90,11 @@ impl GenericWorker {
             &self.skill_cooldowns);
 
         for skill_template in sorted_skills {
-            if skill_template.kind == SkillType::Awakening {
-                continue;
-            }
-
             if skill_template.kind == SkillType::HyperAwakening && duration_seconds < 180 {
                 continue;
             }
 
-            if skill_template.requires_identity && self.identity < 2.0 {
+            if skill_template.requires_identity && self.identity < 1.0 {
                 continue;
             }
 

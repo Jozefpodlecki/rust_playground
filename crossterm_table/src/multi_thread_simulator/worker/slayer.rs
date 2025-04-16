@@ -7,7 +7,7 @@ use crate::{models::{player_template::{BuffType, SkillType}, AttackResult, BossS
 
 use super::Worker;
 
-pub struct GenericWorker {
+pub struct SlayerWorker {
     id_generator: IdGenerator,
     skill_cooldowns: HashMap<u32, DateTime<Utc>>,
     active_buffs: HashMap<u32, Buff>,
@@ -21,7 +21,7 @@ pub struct GenericWorker {
     control_flag: Arc<AtomicBool>,
 }
 
-impl GenericWorker {
+impl SlayerWorker {
     pub fn new(
         template: PlayerTemplate,
         party_state: Arc<RwLock<PartyState>>,
@@ -47,7 +47,7 @@ impl GenericWorker {
     }
 }
 
-impl Worker for GenericWorker {
+impl Worker for SlayerWorker {
     fn start_loop(&mut self) {
 
         while !self.control_flag.load(Ordering::Acquire) {
@@ -63,8 +63,6 @@ impl Worker for GenericWorker {
                 break;
             }
 
-            let now = Utc::now();
-
             if let Some(result) = self.perform_attack() {
                 self.tx.send(result).unwrap();
             }
@@ -79,7 +77,7 @@ impl Worker for GenericWorker {
     }
 }
 
-impl GenericWorker {
+impl SlayerWorker {
 
     pub fn perform_attack(&mut self) -> Option<AttackResult> {
         
@@ -92,10 +90,6 @@ impl GenericWorker {
             &self.skill_cooldowns);
 
         for skill_template in sorted_skills {
-            if skill_template.kind == SkillType::Awakening {
-                continue;
-            }
-
             if skill_template.kind == SkillType::HyperAwakening && duration_seconds < 180 {
                 continue;
             }

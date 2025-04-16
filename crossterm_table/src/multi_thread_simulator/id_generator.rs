@@ -1,11 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
-use rand::{rng, Rng};
+use rand::{distr::uniform::SampleRange, rng, rngs::ThreadRng, Rng};
 
 const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 #[derive(Default)]
 pub struct IdGenerator {
+    rng: ThreadRng,
     buff_instance_ids: HashSet<u32>,
     npc_ids: HashSet<u64>,
     player_ids: HashSet<u64>,
@@ -15,7 +16,11 @@ pub struct IdGenerator {
 
 impl IdGenerator {
     pub fn new() -> Self {
-        Self::default()
+        let rng = rng();
+        Self {
+            rng,
+            ..Default::default()
+        }
     }
 
     pub fn next_buff_instance_id(&mut self) -> u32 {
@@ -83,5 +88,13 @@ impl IdGenerator {
         }
 
         id
+    }
+
+    pub fn next_bool(&mut self, ratio: f64) -> bool {
+        self.rng.random_bool(ratio)
+    }
+
+    pub fn next_f32(&mut self, range: impl SampleRange<f32>) -> f32 {
+        self.rng.random_range(range)
     }
 }

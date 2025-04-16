@@ -5,7 +5,7 @@ use rand::{rng, Rng};
 
 use crate::{models::{player_template::{BuffType, SkillType}, AttackResult, BossState, Buff, PartyState, PlayerTemplate}, multi_thread_simulator::{apply_buffs::apply_buffs, attack::{get_available_skills, perform_attack}, id_generator::{self, IdGenerator}}};
 
-use super::generic::Worker;
+use super::Worker;
 
 pub struct BardWorker {
     id_generator: IdGenerator,
@@ -55,19 +55,23 @@ impl Worker for BardWorker {
         }
 
         while self.boss_state.read().unwrap().current_hp > 0 {
+            let now = Utc::now();
+
+            self.skill_cooldowns.retain(|_, &mut time| time > now);
+
             if !self.control_flag.load(Ordering::Relaxed) {
                 break;
             }
-
-            let now = Utc::now();
 
             if let Some(result) = self.perform_attack() {
                 self.tx.send(result).unwrap();
             }
 
-            if let Some(next_cooldown) = self.skill_cooldowns.values().min() {
-                let duration = (*next_cooldown - now).to_std().unwrap();
-                sleep(duration);
+            if self.skill_cooldowns.len() >= 8 {
+                if let Some(next_cooldown) = self.skill_cooldowns.values().min() {
+                    let duration = (*next_cooldown - now).to_std().unwrap_or_default();
+                    sleep(duration);
+                }
             }
         }
     }
@@ -77,7 +81,6 @@ impl BardWorker {
 
     pub fn perform_attack(&mut self) -> Option<AttackResult> {
         
-        let mut rng = rng();
         let now = Utc::now();
         let duration_seconds = (now - self.started_on).num_seconds();
 
@@ -155,10 +158,10 @@ impl BardWorker {
             if skill_template.min_ratio != 0.0 {
                 let min = attack_power as f32 * skill_template.min_ratio * damage_multiplier;
                 let max = attack_power as f32 * skill_template.max_ratio * damage_multiplier;
-                damage = rng.random_range(min..max);
+                damage = self.id_generator.next_f32(min..max);
             }
 
-            let is_critical = rng.random_bool(self.template.crit_rate as f64);
+            let is_critical = self.id_generator.next_bool(self.template.crit_rate as f64);
 
             result.damage = if is_critical { (damage * self.template.crit_damage) as u64 } else { damage as u64 };
             result.is_critical = is_critical;

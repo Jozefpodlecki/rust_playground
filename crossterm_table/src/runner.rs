@@ -37,25 +37,21 @@ pub fn run_threaded() -> Result<()> {
     std_out.queue(Clear(ClearType::All))?;
 
     loop {
-        let encounter = simulator.get_encounter();
+        let encounter = simulator.get_encounter(Duration::from_millis(100));
 
-        println!("{:#?}", encounter.boss);
+        let output = renderer.render(&encounter);
 
-        // let output = renderer.render(&encounter);
+        std_out.queue(MoveTo(0, 0))?
+               .queue(SetForegroundColor(Color::White))?
+               .queue(SetBackgroundColor(Color::Black))?;
 
-        // std_out.queue(MoveTo(0, 0))?
-        //        .queue(SetForegroundColor(Color::White))?
-        //        .queue(SetBackgroundColor(Color::Black))?;
+        std_out.queue(Print(output.clone()))?
+               .queue(ResetColor)?
+               .flush()?;
 
-        // std_out.queue(Print(output.clone()))?
-        //        .queue(ResetColor)?
-        //        .flush()?;
-
-        // if encounter.boss.current_hp == 0 {
-        //     return Ok(());
-        // }
-
-        sleep(Duration::from_secs(1));
+        if encounter.boss.current_hp == 0 {
+            return Ok(());
+        }
     }
 }
 

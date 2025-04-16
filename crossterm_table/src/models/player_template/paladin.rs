@@ -15,7 +15,15 @@ impl PlayerTemplate {
                     priority: 2,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
+                    buffs: vec![
+                        BuffTemplate {
+                            category: BuffCategory::Debuff,
+                            target: BuffTarget::Party,
+                            kind: BuffType::Brand,
+                            duration: Duration::seconds(10),
+                            value: 0.0
+                        }
+                    ],
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
