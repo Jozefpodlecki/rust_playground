@@ -11,6 +11,7 @@ pub struct ArtistWorker {
     id_generator: IdGenerator,
     skill_cooldowns: HashMap<u32, DateTime<Utc>>,
     active_buffs: HashMap<u32, Buff>,
+    active_buff_types: HashMap<BuffType, DateTime<Utc>>,
     identity: f32,
     party_state: Arc<RwLock<PartyState>>,
     boss_state: Arc<RwLock<BossState>>,
@@ -35,6 +36,7 @@ impl ArtistWorker {
             id_generator: IdGenerator::new(),
             skill_cooldowns: HashMap::new(),
             active_buffs: HashMap::new(),
+            active_buff_types: HashMap::new(),
             identity: 0.0,
             party_state,
             boss_state,
@@ -98,6 +100,14 @@ impl ArtistWorker {
                 continue;
             }
 
+            if skill_template.buffs.iter().any(|buff| {
+                self.active_buff_types
+                    .get(&buff.kind)
+                    .map_or(false, |&expires_on| expires_on > now)
+            }) {
+                continue;
+            }
+
             let expires_on = now + skill_template.cooldown;
             self.skill_cooldowns
                 .insert(skill_template.id, expires_on);
@@ -117,7 +127,8 @@ impl ArtistWorker {
                 now,
                 self.party_state.clone(),
                 self.boss_state.clone(),
-                &mut self.active_buffs);
+                &mut self.active_buffs,
+                &mut self.active_buff_types);
 
             let mut attack_power = self.template.attack_power;
             let mut damage_multiplier = 1.0;

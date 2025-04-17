@@ -72,7 +72,8 @@ pub fn perform_attack(
             now,
             party_state.clone(),
             boss_state.clone(),
-            &mut player_state.active_buffs);
+            &mut player_state.active_buffs,
+            &mut HashMap::new());
 
         let mut attack_power = player_template.attack_power;
         let mut damage_multiplier = 1.0;

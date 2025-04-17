@@ -25,6 +25,27 @@ impl PlayerTemplateBuilder {
         self
     }
 
+    pub fn deadeye(mut self) -> Self {
+        self
+    }
+
+    pub fn slayer(mut self) -> Self {
+        self
+    }
+
+
+    pub fn bard(mut self) -> Self {
+        self
+    }
+
+    pub fn reflux_sorceress(mut self) -> Self {
+        self
+    }
+
+    pub fn aeromancer(mut self) -> Self {
+        self
+    }
+
     pub fn berserker(mut self) -> Self {
 
         self.class = Some(Class::Berserker);

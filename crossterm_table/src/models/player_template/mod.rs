@@ -56,7 +56,7 @@ pub enum BuffTarget {
     Party
 }
 
-#[derive(Default, Debug, Copy, Clone, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub enum BuffType {
     #[default]
     Brand,

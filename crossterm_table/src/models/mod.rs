@@ -94,7 +94,7 @@ pub struct AttackResult {
     pub with_hat_buff: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Buff {
     pub target: BuffTarget,
     pub kind: BuffType,

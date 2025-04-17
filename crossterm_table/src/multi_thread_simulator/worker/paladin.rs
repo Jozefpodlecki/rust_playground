@@ -117,7 +117,8 @@ impl PaladinWorker {
                 now,
                 self.party_state.clone(),
                 self.boss_state.clone(),
-                &mut self.active_buffs);
+                &mut self.active_buffs,
+                &mut HashMap::new());
 
             let mut attack_power = self.template.attack_power;
             let mut damage_multiplier = 1.0;

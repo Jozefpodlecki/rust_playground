@@ -11,7 +11,9 @@ pub fn apply_buffs(
     now: DateTime<Utc>,
     party_state: Arc<RwLock<PartyState>>,
     boss_state: Arc<RwLock<BossState>>,
-    active_buffs: &mut HashMap<u32, Buff>) {
+    active_buffs: &mut HashMap<u32, Buff>,
+    active_buff_types: &mut HashMap<BuffType, DateTime<Utc>>,
+) {
 
     for buff_template in buffs {
 
@@ -41,7 +43,11 @@ pub fn apply_buffs(
         if buff_template.category == BuffCategory::Buff {
 
             if buff_template.target == BuffTarget::TargetSelf {
-                apply_self_buff(now, buff_template, id_generator, active_buffs);
+                apply_self_buff(
+                    now,
+                    buff_template,
+                    id_generator,
+                    active_buffs);
             }
 
             if buff_template.target == BuffTarget::Party {
@@ -50,7 +56,8 @@ pub fn apply_buffs(
                     player_template,
                     buff_template,
                     id_generator,
-                    &party_state);
+                    &party_state,
+                    active_buff_types);
             }
         }
     }
@@ -81,7 +88,8 @@ pub fn apply_attack_power_buff(
     player_template: &PlayerTemplate,
     buff_template: &BuffTemplate,
     id_generator: &mut IdGenerator,
-    party_state: &Arc<RwLock<PartyState>>) {
+    party_state: &Arc<RwLock<PartyState>>,
+    active_buff_types: &mut HashMap<BuffType, DateTime<Utc>>) {
     let expires_on = now + buff_template.duration;
     let mut buff = Buff {
         target: buff_template.target,
@@ -97,6 +105,8 @@ pub fn apply_attack_power_buff(
 
     let instance_id = id_generator.next_buff_instance_id();
     let mut party_state = party_state.write().unwrap();
+
+    active_buff_types.insert(buff.kind, expires_on);
 
     party_state.active_buffs.insert(
         instance_id,
