@@ -5,7 +5,6 @@ use runner::*;
 
 mod models;
 mod utils;
-mod simulator;
 mod renderer;
 mod multi_thread_simulator;
 mod runner;
