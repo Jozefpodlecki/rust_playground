@@ -1,6 +1,6 @@
 use crate::models::class::Class;
 
-use super::{berserker::get_berserker_skills, PlayerTemplate, SkillTemplate};
+use super::{artist::get_artist_skills, bard::get_bard_skills, berserker::get_berserker_skills, paladin::get_paladin_skills, PlayerTemplate, SkillTemplate};
 
 #[derive(Default, Debug, Clone)]
 pub struct PlayerTemplateBuilder {
@@ -25,6 +25,13 @@ impl PlayerTemplateBuilder {
         self
     }
 
+    fn apply_support_stats(&mut self) {
+        self.crit_rate = 0.1;
+        self.crit_damage = 1.0;
+        self.cooldown_reduction = 0.45;
+        self.attack_power = 5e6 as u64;
+    }
+
     pub fn deadeye(mut self) -> Self {
         self
     }
@@ -35,6 +42,11 @@ impl PlayerTemplateBuilder {
 
 
     pub fn bard(mut self) -> Self {
+
+        self.apply_support_stats();
+        self.class = Some(Class::Bard);
+        self.skills = get_bard_skills();
+
         self
     }
 
@@ -46,6 +58,24 @@ impl PlayerTemplateBuilder {
         self
     }
 
+    pub fn artist(mut self) -> Self {
+
+        self.apply_support_stats();
+        self.class = Some(Class::Bard);
+        self.skills = get_artist_skills();
+
+        self
+    }
+
+    pub fn paladin(mut self) -> Self {
+
+        self.apply_support_stats();
+        self.class = Some(Class::Paladin);
+        self.skills = get_paladin_skills();
+
+        self
+    }
+
     pub fn berserker(mut self) -> Self {
 
         self.class = Some(Class::Berserker);
@@ -54,6 +84,13 @@ impl PlayerTemplateBuilder {
         self.crit_damage = 2.0;
         self.cooldown_reduction = 0.2;
         self.attack_power = 5e6 as u64;
+
+        self
+    }
+
+    pub fn gunslinger(mut self) -> Self {
+
+        self.class = Some(Class::Gunslinger);
 
         self
     }

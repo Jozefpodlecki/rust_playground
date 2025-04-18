@@ -31,11 +31,15 @@ pub fn run_threaded() -> Result<()> {
         PlayerTemplateBuilder::new().berserker().with_name("Clueless").build(),
         PlayerTemplate::deadeye(),
         PlayerTemplate::slayer(),
-        PlayerTemplate::bard(),
+        PlayerTemplateBuilder::new().bard().build(),
         PlayerTemplate::reflux_sorceress(),
         PlayerTemplate::arcanist(),
         PlayerTemplate::aeromancer(),
-        PlayerTemplate::artist(),
+        PlayerTemplateBuilder::new().artist().build(),
+        PlayerTemplate::reflux_sorceress(),
+        PlayerTemplate::arcanist(),
+        PlayerTemplate::aeromancer(),
+        PlayerTemplateBuilder::new().paladin().build(),
     ];
 
     let mut simulator = MultiThreadSimulator::new(EncounterTemplate::ECHIDNA_G2, player_templates);
@@ -48,13 +52,13 @@ pub fn run_threaded() -> Result<()> {
     loop {
         let encounter = simulator.get_encounter(Duration::from_millis(100));
 
-        let output = renderer.render(&encounter);
+        let output = renderer.render(&encounter)?;
 
         std_out.queue(MoveTo(0, 0))?
                .queue(SetForegroundColor(Color::White))?
                .queue(SetBackgroundColor(Color::Black))?;
 
-        std_out.queue(Print(output.clone()))?
+        std_out.queue(Print(output))?
                .queue(ResetColor)?
                .flush()?;
 

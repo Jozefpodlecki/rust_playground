@@ -64,6 +64,10 @@ pub enum BuffType {
     Identity,
     DamageAmplification,
     HyperAwakeningTechnique,
+    HyperAwakeningTechniqueOutgoingDamage,
+    Shield,
+    DamageReduction,
+    Other
 }
 #[derive(Default, Debug, Clone)]
 pub struct BuffTemplate {
@@ -88,6 +92,7 @@ pub struct SkillTemplate {
     pub buff_duration: Option<Duration>,
     pub cooldown: Duration,
     pub cooldown_gem: f32,
+    pub cooldown_reduction: f32,
     pub buffs: Vec<BuffTemplate>
 }
 

@@ -104,7 +104,8 @@ impl BardWorker {
                 self.active_buff_types
                     .get(&buff.kind)
                     .map_or(false, |&expires_on| expires_on > now)
-            }) {
+            }
+                && !skill_template.buffs.iter().any(|buff| buff.kind == BuffType::Brand)) {
                 continue;
             }
 

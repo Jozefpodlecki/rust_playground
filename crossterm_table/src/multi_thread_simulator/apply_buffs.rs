@@ -51,13 +51,35 @@ pub fn apply_buffs(
             }
 
             if buff_template.target == BuffTarget::Party {
-                apply_attack_power_buff(
-                    now,
-                    player_template,
-                    buff_template,
-                    id_generator,
-                    &party_state,
-                    active_buff_types);
+                if buff_template.kind == BuffType::AttackPowerBuff {
+                    apply_attack_power_buff(
+                        now,
+                        player_template,
+                        buff_template,
+                        id_generator,
+                        &party_state,
+                        active_buff_types);
+                }
+
+                if buff_template.kind == BuffType::Identity {
+                    apply_identity_buff(
+                        now,
+                        player_template,
+                        buff_template,
+                        id_generator,
+                        &party_state,
+                        active_buff_types);
+                }
+
+                if buff_template.kind == BuffType::Brand {
+                    apply_brand_buff(
+                        now,
+                        player_template,
+                        buff_template,
+                        id_generator,
+                        &party_state,
+                        active_buff_types);
+                }
             }
         }
     }
@@ -83,6 +105,67 @@ pub fn apply_self_buff(
     );   
 }
 
+pub fn apply_identity_buff(
+    now: DateTime<Utc>,
+    player_template: &PlayerTemplate,
+    buff_template: &BuffTemplate,
+    id_generator: &mut IdGenerator,
+    party_state: &Arc<RwLock<PartyState>>,
+    active_buff_types: &mut HashMap<BuffType, DateTime<Utc>>) {
+    let expires_on = now + buff_template.duration;
+    let mut buff = Buff {
+        target: buff_template.target,
+        kind: buff_template.kind,
+        expires_on,
+        value: 0.0,
+    };
+
+    let buff_attack_power = (player_template.attack_power as f32 * 0.15) as u64;
+    buff.value = buff_attack_power as f32;
+
+    let instance_id = id_generator.next_buff_instance_id();
+    let mut party_state = party_state.write().unwrap();
+
+    active_buff_types.insert(buff.kind, expires_on);
+
+    party_state.active_buffs.insert(
+        instance_id,
+        buff
+    );   
+}
+
+pub fn apply_brand_buff(
+    now: DateTime<Utc>,
+    player_template: &PlayerTemplate,
+    buff_template: &BuffTemplate,
+    id_generator: &mut IdGenerator,
+    party_state: &Arc<RwLock<PartyState>>,
+    active_buff_types: &mut HashMap<BuffType, DateTime<Utc>>) {
+    let expires_on = now + buff_template.duration;
+    let mut buff = Buff {
+        target: buff_template.target,
+        kind: buff_template.kind,
+        expires_on,
+        value: 0.0,
+    };
+
+    let instance_id = id_generator.next_buff_instance_id();
+    let mut party_state = party_state.write().unwrap();
+
+    if let Some((instance_id, existing_buff)) = party_state
+        .active_buffs
+        .iter_mut()
+        .find(|(_, buff)| buff.kind == buff_template.kind)
+    {
+        existing_buff.expires_on = expires_on;
+        existing_buff.value = 0.0;
+        active_buff_types.insert(buff.kind, expires_on);
+    } else {
+        active_buff_types.insert(buff.kind, expires_on);
+        party_state.active_buffs.insert(instance_id, buff);
+}
+}
+
 pub fn apply_attack_power_buff(
     now: DateTime<Utc>,
     player_template: &PlayerTemplate,
@@ -98,10 +181,8 @@ pub fn apply_attack_power_buff(
         value: 0.0,
     };
 
-    if buff_template.kind == BuffType::AttackPowerBuff {
-        let buff_attack_power = (player_template.attack_power as f32 * 0.15) as u64;
-        buff.value = buff_attack_power as f32;
-    }
+    let buff_attack_power = (player_template.attack_power as f32 * 0.15) as u64;
+    buff.value = buff_attack_power as f32;
 
     let instance_id = id_generator.next_buff_instance_id();
     let mut party_state = party_state.write().unwrap();
