@@ -1,3 +1,4 @@
+use crate::models::*;
 use super::*;
 
 pub fn get_generic_skills() -> Vec<SkillTemplate> {

@@ -6,7 +6,7 @@ use crate::{models::PlayerTemplate, utils::{random_alphabetic_string_capitalized
 
 use super::*;
 
-impl MultiThreadSimulator {
+impl Simulator {
 
     fn apply_cooldown_reduction(cooldown: Duration, value: f32) -> Duration {
         let reduction_factor = 1.0 - value;

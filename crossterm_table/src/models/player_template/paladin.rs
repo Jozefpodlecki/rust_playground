@@ -1,3 +1,5 @@
+use crate::models::*;
+
 use super::*;
 
     pub fn get_paladin_skills() -> Vec<SkillTemplate> {

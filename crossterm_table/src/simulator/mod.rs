@@ -1,10 +1,6 @@
 mod create_party_from_templates;
-mod apply_buffs;
 mod stats;
-mod attack;
-mod worker;
 mod id_generator;
-mod compute_damage;
 mod skills_manager;
 
 use std::{
@@ -14,20 +10,19 @@ use std::{
 use chrono::{DateTime, Utc};
 use id_generator::IdGenerator;
 use uuid::Uuid;
-use worker::*;
 use std::collections::HashMap;
 
-use crate::{models::{boss_state::BossState, player_template::*, *}, utils::random_number_in_range};
+use crate::{models::{player_template::*, *}, utils::random_number_in_range};
 
 #[derive(Default)]
-pub struct MultiThreadSimulator {
+pub struct Simulator {
     encounter: Encounter,
     player_templates: HashMap<u64, PlayerTemplate>,
-    start_flag: Arc<AtomicBool>,
+    control_flag: Arc<AtomicBool>,
     rx: Option<Receiver<Encounter>>
 }
 
-impl MultiThreadSimulator {
+impl Simulator {
     pub fn new(
         encounter_template: EncounterTemplate,
         mut player_templates: Vec<PlayerTemplate>,
@@ -65,12 +60,12 @@ impl MultiThreadSimulator {
             }
         };
 
-        let start_flag = Arc::new(AtomicBool::new(false));
+        let control_flag = Arc::new(AtomicBool::new(false));
         
         Self {
             encounter,
             player_templates: player_templates_map,
-            start_flag,
+            control_flag,
             ..Default::default()
         }
     }
@@ -80,33 +75,9 @@ impl MultiThreadSimulator {
         self.encounter.started_on = started_on;
         self.encounter.id = Uuid::now_v7();
         
-        let (tx, rx) = mpsc::channel::<AttackResult>();
-
-        let start_flag = self.start_flag.clone();
-        let boss_state: Arc<RwLock<BossState>> = {
-            let state = BossState {
-                id: self.encounter.boss.id,
-                current_hp: self.encounter.boss.current_hp,
-                active_debuffs: Vec::new()
-            };
-            Arc::new(RwLock::new(state))
-        };
-
-        spawn_player_threads(
-            &self.player_templates,
-            &self.encounter,
-            boss_state.clone(),
-            tx,
-            start_flag.clone());
-        let rx_encounter = spawn_result_listener_thread(
-            rx,
-            self.encounter.clone(),
-            boss_state.clone());
-
-        spawn_boss_thread();
-
-        self.rx = Some(rx_encounter);
-        self.start_flag.store(true, Ordering::Release);
+        let (tx, rx) = crossbeam::channel::unbounded::<Message>();
+        let control_flag = self.control_flag.clone();
+        self.control_flag.store(true, Ordering::Release);
     }
 
     pub fn get_encounter(&mut self, timeout: Duration) -> &Encounter {

@@ -1,6 +1,6 @@
-use crate::models::class::Class;
+use crate::models::*;
 
-use super::{aeromancer::get_aeromancer_skills, artist::get_artist_skills, bard::get_bard_skills, generic::get_generic_skills, paladin::get_paladin_skills, PlayerTemplate, SkillTemplate};
+use super::{aeromancer::get_aeromancer_skills, artist::get_artist_skills, bard::get_bard_skills, generic::get_generic_skills, paladin::get_paladin_skills};
 
 #[derive(Default, Debug, Clone)]
 pub struct PlayerTemplateBuilder {

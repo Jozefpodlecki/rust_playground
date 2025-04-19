@@ -8,7 +8,7 @@ use crossterm::{
     ExecutableCommand, QueueableCommand,
 };
 use anyhow::*;
-use crate::{models::{player_template::{PlayerTemplate, PlayerTemplateBuilder}, *}, multi_thread_simulator::MultiThreadSimulator};
+use crate::{models::{player_template::{PlayerTemplateBuilder}, *}, simulator::MultiThreadSimulator};
 use rand::Rng;
 use crate::renderer::Renderer;
 use crate::utils::*;
@@ -40,9 +40,13 @@ pub fn run_threaded() -> Result<()> {
         PlayerTemplateBuilder::new().arcanist().build(),
         PlayerTemplateBuilder::new().aeromancer().build(),
         PlayerTemplateBuilder::new().paladin().build(),
+        PlayerTemplateBuilder::new().sorceress().build(),
+        PlayerTemplateBuilder::new().arcanist().build(),
+        PlayerTemplateBuilder::new().aeromancer().build(),
+        PlayerTemplateBuilder::new().paladin().build(),
     ];
 
-    let mut simulator = MultiThreadSimulator::new(EncounterTemplate::ECHIDNA_G2, player_templates);
+    let mut simulator = MultiThreadSimulator::new(EncounterTemplate::BEHEMOTH_G1, player_templates);
     let mut renderer = Renderer::new();
 
     simulator.start();

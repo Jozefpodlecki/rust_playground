@@ -1,3 +1,5 @@
+use crate::models::*;
+
 use super::*;
 
 pub fn get_bard_skills() -> Vec<SkillTemplate> {
@@ -8,8 +10,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             priority: 2,
             kind: SkillType::Brand,
             identity_gain: 0.2,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             cast_duration: Duration::milliseconds(250),
             buffs: vec![
                 BuffTemplate {
@@ -28,8 +28,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Sonic Vibration",
             priority: 3,
             identity_gain: 0.1,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             kind: SkillType::AttackPowerBuff,
             cast_duration: Duration::milliseconds(250),
             buffs: vec![
@@ -49,8 +47,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Heavenly Tune",
             priority: 4,
             identity_gain: 0.1,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             kind: SkillType::AttackPowerBuff,
             cast_duration: Duration::milliseconds(250),
             buffs: vec![
@@ -71,8 +67,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             priority: 5,
             kind: SkillType::Identity,
             identity_gain: -1.0,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             requires_identity: true,
             cast_duration: Duration::milliseconds(250),
             buffs: vec![
@@ -99,8 +93,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Prelude of Storm",
             priority: 6,
             identity_gain: 0.3,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             kind: SkillType::Normal,
             cast_duration: Duration::milliseconds(250),
             cooldown: Duration::seconds(16),
@@ -155,8 +147,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Wind of Music",
             priority: 9,
             identity_gain: 0.3,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             kind: SkillType::Normal,
             cast_duration: Duration::milliseconds(250),
             cooldown: Duration::seconds(15),
@@ -167,8 +157,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Aria",
             priority: 11,
             identity_gain: 0.1,
-            min_ratio: 0.1,
-            max_ratio: 0.2,
             kind: SkillType::HyperAwakeningTechnique,
             cast_duration: Duration::milliseconds(250),
             cooldown: Duration::seconds(90),
@@ -188,8 +176,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Symphonia",
             priority: 1,
             identity_gain: 1.0,
-            min_ratio: 1.0,
-            max_ratio: 2.0,
             kind: SkillType::Awakening,
             cast_duration: Duration::seconds(1),
             cooldown: Duration::seconds(300),
@@ -200,8 +186,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             name: "Symphony Melody",
             priority: 1,
             identity_gain: 1.0,
-            min_ratio: 1.0,
-            max_ratio: 2.0,
             kind: SkillType::HyperAwakening,
             cast_duration: Duration::seconds(3),
             cooldown: Duration::seconds(300),

@@ -1,3 +1,5 @@
+use crate::models::*;
+
 use super::*;
 
 pub fn get_artist_skills() -> Vec<SkillTemplate> {

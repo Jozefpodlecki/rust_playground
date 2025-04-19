@@ -1,11 +1,16 @@
 use std::collections::HashMap;
 
-use super::class::Class;
+use super::{class::Class, Skill, SkillTemplate};
 
-#[derive(Default, Clone, Debug)]
-pub struct Skill {
-    pub id: u32,
-    pub name: String
+#[derive(Default, Debug, Clone)]
+pub struct PlayerTemplate {
+    pub name: Option<String>,
+    pub class: Class,
+    pub crit_rate: f32,
+    pub cooldown_reduction: f32,
+    pub attack_power: u64,
+    pub crit_damage: f32,
+    pub skills: Vec<SkillTemplate>,
 }
 
 #[derive(Default, Clone, Debug)]
