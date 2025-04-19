@@ -18,8 +18,7 @@ use crate::{models::{player_template::*, *}, utils::random_number_in_range};
 pub struct Simulator {
     encounter: Encounter,
     player_templates: HashMap<u64, PlayerTemplate>,
-    control_flag: Arc<AtomicBool>,
-    rx: Option<Receiver<Encounter>>
+    control_flag: Arc<AtomicBool>
 }
 
 impl Simulator {
@@ -37,6 +36,7 @@ impl Simulator {
 
         let encounter = Encounter {
             id: Uuid::nil(),
+            is_cleared: false,
             boss: Boss { 
                 id: id_generator.next_npc_id(),
                 name: encounter_template.boss.name,
@@ -80,15 +80,19 @@ impl Simulator {
         self.control_flag.store(true, Ordering::Release);
     }
 
-    pub fn get_encounter(&mut self, timeout: Duration) -> &Encounter {
-        match self.rx.as_ref().unwrap().recv_timeout(timeout) {
-            Ok(encounter) => {
-                self.encounter = encounter;
-                &self.encounter
-            },
-            Err(_) => &self.encounter,
-        }
+    pub fn has_ended(&mut self) -> bool {
+        true
     }
+
+    // pub fn get_encounter(&mut self, timeout: Duration) -> &Encounter {
+    //     match self.rx.as_ref().unwrap().recv_timeout(timeout) {
+    //         Ok(encounter) => {
+    //             self.encounter = encounter;
+    //             &self.encounter
+    //         },
+    //         Err(_) => &self.encounter,
+    //     }
+    // }
 
    
 

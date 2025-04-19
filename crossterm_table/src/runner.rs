@@ -8,7 +8,7 @@ use crossterm::{
     ExecutableCommand, QueueableCommand,
 };
 use anyhow::*;
-use crate::{models::{player_template::{PlayerTemplateBuilder}, *}, simulator::MultiThreadSimulator};
+use crate::{models::{player_template::{PlayerTemplateBuilder}, *}, simulator::Simulator};
 use rand::Rng;
 use crate::renderer::Renderer;
 use crate::utils::*;
@@ -46,7 +46,7 @@ pub fn run_threaded() -> Result<()> {
         PlayerTemplateBuilder::new().paladin().build(),
     ];
 
-    let mut simulator = MultiThreadSimulator::new(EncounterTemplate::BEHEMOTH_G1, player_templates);
+    let mut simulator = Simulator::new(EncounterTemplate::BEHEMOTH_G1, player_templates);
     let mut renderer = Renderer::new();
 
     simulator.start();
@@ -54,21 +54,21 @@ pub fn run_threaded() -> Result<()> {
     std_out.queue(Clear(ClearType::All))?;
 
     loop {
-        let encounter = simulator.get_encounter(Duration::from_millis(100));
+        // let encounter = simulator.get_encounter(Duration::from_millis(100));
 
-        let output = renderer.render(&encounter)?;
+        // let output = renderer.render(&encounter)?;
 
-        std_out.queue(MoveTo(0, 0))?
-               .queue(SetForegroundColor(Color::White))?
-               .queue(SetBackgroundColor(Color::Black))?;
+        // std_out.queue(MoveTo(0, 0))?
+        //        .queue(SetForegroundColor(Color::White))?
+        //        .queue(SetBackgroundColor(Color::Black))?;
 
-        std_out.queue(Print(output))?
-               .queue(ResetColor)?
-               .flush()?;
+        // std_out.queue(Print(output))?
+        //        .queue(ResetColor)?
+        //        .flush()?;
 
-        if encounter.boss.current_hp == 0 {
-            return Ok(());
-        }
+        // if simulator.has_ended() {
+        //     return Ok(());
+        // }
     }
 
     pause();

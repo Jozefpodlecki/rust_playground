@@ -33,6 +33,7 @@ pub struct Party {
 #[derive(Default, Debug, Clone)]
 pub struct Encounter {
     pub id: Uuid,
+    pub is_cleared: bool,
     pub boss: Boss,
     pub duration: EncounterDuration,
     pub started_on: DateTime<Utc>,
