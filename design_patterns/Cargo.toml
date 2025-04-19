@@ -1,5 +1,5 @@
 [package]
-name = "borrow_mut"
+name = "design_patterns"
 version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"

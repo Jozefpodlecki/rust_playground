@@ -37,7 +37,6 @@ impl PlayerTemplate {
                     max_ratio: 20.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -49,7 +48,6 @@ impl PlayerTemplate {
                     max_ratio: 20.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -61,7 +59,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -73,7 +70,6 @@ impl PlayerTemplate {
                     max_ratio: 20.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -85,7 +81,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -97,7 +92,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -109,7 +103,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -121,7 +114,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Normal,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },
@@ -133,7 +125,6 @@ impl PlayerTemplate {
                     max_ratio: 2.0,
                     kind: SkillType::Awakening,
                     cast_duration: Duration::milliseconds(250),
-                    buff_duration: None,
                     cooldown: Duration::seconds(15),
                     ..Default::default()
                 },

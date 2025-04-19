@@ -1,31 +1,15 @@
-pub mod berserker;
-pub mod reaper;
-pub mod destroyer;
-pub mod gunslinger;
 pub mod sorceress;
-pub mod wardancer;
 pub mod aeromancer;
 pub mod paladin;
-pub mod gunlancer;
-pub mod slayer;
-pub mod shadowhunter;
-pub mod deadeye;
-pub mod summoner;
 pub mod artist;
-pub mod arcanist;
 pub mod artillerist;
 pub mod bard;
-pub mod scrapper;
-pub mod machinist;
-pub mod deathblade;
-pub mod souleater;
-pub mod striker;
-pub mod wildsoul;
+pub mod generic;
 pub mod builder;
 
 pub use builder::PlayerTemplateBuilder;
 
-use chrono::Duration;
+use chrono::{DateTime, Duration, Utc};
 
 use super::Class;
 
@@ -89,10 +73,29 @@ pub struct SkillTemplate {
     pub kind: SkillType,
     pub priority: u8,
     pub cast_duration: Duration,
-    pub buff_duration: Option<Duration>,
     pub cooldown: Duration,
     pub cooldown_gem: f32,
     pub cooldown_reduction: f32,
+    pub initial_cooldown: Option<Duration>,
+    pub buffs: Vec<BuffTemplate>
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct Skill {
+    pub id: u32,
+    pub name: String,
+    pub ready_on: DateTime<Utc>,
+    pub min_ratio: f32,
+    pub max_ratio: f32,
+    pub identity_gain: f32,
+    pub requires_identity: bool,
+    pub kind: SkillType,
+    pub priority: u8,
+    pub cast_duration: Duration,
+    pub cooldown: Duration,
+    pub cooldown_gem: f32,
+    pub cooldown_reduction: f32,
+    pub initial_cooldown: Option<Duration>,
     pub buffs: Vec<BuffTemplate>
 }
 

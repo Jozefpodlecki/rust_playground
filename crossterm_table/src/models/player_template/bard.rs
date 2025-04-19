@@ -11,7 +11,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             min_ratio: 0.1,
             max_ratio: 0.2,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: Some(Duration::seconds(3)),
             buffs: vec![
                 BuffTemplate {
                     category: BuffCategory::Debuff,
@@ -33,7 +32,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 0.2,
             kind: SkillType::AttackPowerBuff,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: Some(Duration::seconds(7)),
             buffs: vec![
                 BuffTemplate {
                     category: BuffCategory::Buff,
@@ -55,7 +53,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 0.2,
             kind: SkillType::AttackPowerBuff,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: Some(Duration::seconds(7)),
             buffs: vec![
                 BuffTemplate {
                     category: BuffCategory::Buff,
@@ -106,7 +103,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 0.2,
             kind: SkillType::Normal,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: None,
             cooldown: Duration::seconds(16),
             ..Default::default()
         },
@@ -163,7 +159,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 0.2,
             kind: SkillType::Normal,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: None,
             cooldown: Duration::seconds(15),
             ..Default::default()
         },
@@ -176,7 +171,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 0.2,
             kind: SkillType::HyperAwakeningTechnique,
             cast_duration: Duration::milliseconds(250),
-            buff_duration: Some(Duration::seconds(20)),
             cooldown: Duration::seconds(90),
             buffs: vec![
                 BuffTemplate {
@@ -198,7 +192,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 2.0,
             kind: SkillType::Awakening,
             cast_duration: Duration::seconds(1),
-            buff_duration: None,
             cooldown: Duration::seconds(300),
             ..Default::default()
         },
@@ -211,7 +204,6 @@ pub fn get_bard_skills() -> Vec<SkillTemplate> {
             max_ratio: 2.0,
             kind: SkillType::HyperAwakening,
             cast_duration: Duration::seconds(3),
-            buff_duration: None,
             cooldown: Duration::seconds(300),
             ..Default::default()
         },

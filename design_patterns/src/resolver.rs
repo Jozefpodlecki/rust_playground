@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Item<'a> {
-    name: &'a str
+    pub name: &'a str
 }
 
 #[derive(Default, Debug)]
@@ -28,11 +28,4 @@ impl<'a> Service<'a> {
 
         self.resolver.add(item);
     }
-}
-
-fn main() {
-    let name = String::from("test");
-    let mut resolver = Resolver::default();
-
-    resolver.add(Item { name: &name });
 }

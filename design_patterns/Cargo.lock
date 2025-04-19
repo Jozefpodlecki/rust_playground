@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "borrow_mut"
+name = "design_patterns"
 version = "0.1.0"

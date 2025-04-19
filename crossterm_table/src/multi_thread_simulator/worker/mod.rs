@@ -85,6 +85,14 @@ pub fn spawn_player_threads(
     worker_threads
 }
 
+pub fn spawn_boss_thread() {
+    let handle = thread::spawn(move || {
+        loop {
+            
+        }
+    });
+}
+
 pub fn spawn_result_listener_thread(
     rx: mpsc::Receiver<AttackResult>,
     encounter: Encounter,

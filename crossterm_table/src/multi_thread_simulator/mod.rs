@@ -4,6 +4,8 @@ mod stats;
 mod attack;
 mod worker;
 mod id_generator;
+mod compute_damage;
+mod skills_manager;
 
 use std::{
     sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Receiver}, Arc, Mutex, RwLock},
@@ -15,7 +17,7 @@ use uuid::Uuid;
 use worker::*;
 use std::collections::HashMap;
 
-use crate::{models::{player_template::*, *}, utils::random_number_in_range};
+use crate::{models::{boss_state::BossState, player_template::*, *}, utils::random_number_in_range};
 
 #[derive(Default)]
 pub struct MultiThreadSimulator {
@@ -85,7 +87,7 @@ impl MultiThreadSimulator {
             let state = BossState {
                 id: self.encounter.boss.id,
                 current_hp: self.encounter.boss.current_hp,
-                active_debuffs: HashMap::new()
+                active_debuffs: Vec::new()
             };
             Arc::new(RwLock::new(state))
         };
@@ -100,6 +102,8 @@ impl MultiThreadSimulator {
             rx,
             self.encounter.clone(),
             boss_state.clone());
+
+        spawn_boss_thread();
 
         self.rx = Some(rx_encounter);
         self.start_flag.store(true, Ordering::Release);

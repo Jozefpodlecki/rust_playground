@@ -1,5 +1,5 @@
-use crate::{models::Encounter, utils::{format_unit, generate_separator}};
-use std::fmt::Write; // For `write!` macro
+use crate::{models::encounter::Encounter, utils::{format_unit, generate_separator}};
+use std::fmt::Write;
 use anyhow::*;
 
 pub struct Renderer {

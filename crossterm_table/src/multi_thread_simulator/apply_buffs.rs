@@ -9,7 +9,6 @@ pub fn apply_buffs(
     player_template: &PlayerTemplate,
     buffs: &Vec<BuffTemplate>,
     now: DateTime<Utc>,
-    party_state: Arc<RwLock<PartyState>>,
     boss_state: Arc<RwLock<BossState>>,
     active_buffs: &mut HashMap<u32, Buff>,
     active_buff_types: &mut HashMap<BuffType, DateTime<Utc>>,

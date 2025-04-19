@@ -1,7 +1,5 @@
 use chrono::{DateTime, Utc};
 
-use super::Boss;
-
 pub struct BossTemplate {
     pub name: &'static str,
     pub enrage_timer: &'static str,
@@ -27,7 +25,7 @@ impl EncounterTemplate {
         party_count: 2,
     };
 
-   pub const ECHIDNA_G2: EncounterTemplate = EncounterTemplate {
+    pub const ECHIDNA_G2: EncounterTemplate = EncounterTemplate {
         name: "Echidna G2",
         boss: BossTemplate {
             name: "Covetous Master Echidna",
@@ -36,5 +34,27 @@ impl EncounterTemplate {
             enrage_timer: "09:00",
         },
         party_count: 2,
+    };
+
+    pub const BEHEMOTH_G1: EncounterTemplate = EncounterTemplate {
+        name: "Behemoth G1",
+        boss: BossTemplate {
+            name: "Behemoth, the Storm Commander",
+            max_hp: 2.08e11 as u64,
+            hp_bars: 500,
+            enrage_timer: "12:00",
+        },
+        party_count: 4,
+    };
+
+    pub const BEHEMOTH_G2: EncounterTemplate = EncounterTemplate {
+        name: "Behemoth G2",
+        boss: BossTemplate {
+            name: "Behemoth, Cruel Storm Slayer",
+            max_hp: 2.93e11 as u64,
+            hp_bars: 705,
+            enrage_timer: "12:00",
+        },
+        party_count: 4,
     };
 }

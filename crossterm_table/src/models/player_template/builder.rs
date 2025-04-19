@@ -1,6 +1,6 @@
 use crate::models::class::Class;
 
-use super::{artist::get_artist_skills, bard::get_bard_skills, berserker::get_berserker_skills, paladin::get_paladin_skills, PlayerTemplate, SkillTemplate};
+use super::{aeromancer::get_aeromancer_skills, artist::get_artist_skills, bard::get_bard_skills, generic::get_generic_skills, paladin::get_paladin_skills, PlayerTemplate, SkillTemplate};
 
 #[derive(Default, Debug, Clone)]
 pub struct PlayerTemplateBuilder {
@@ -25,6 +25,16 @@ impl PlayerTemplateBuilder {
         self
     }
 
+    pub fn with_min_max_ratio(mut self, min: f32, max: f32) -> Self {
+
+        for skill in self.skills.iter_mut() {
+            skill.min_ratio = min;
+            skill.max_ratio = max;
+        }
+
+        self
+    }
+
     fn apply_support_stats(&mut self) {
         self.crit_rate = 0.1;
         self.crit_damage = 1.0;
@@ -33,10 +43,19 @@ impl PlayerTemplateBuilder {
     }
 
     pub fn deadeye(mut self) -> Self {
+
+        self.class = Some(Class::Deadeye);
+        self.skills = get_generic_skills();
+
         self
     }
 
     pub fn slayer(mut self) -> Self {
+
+        self.class = Some(Class::Sorceress);
+        self.skills = get_generic_skills();
+
+
         self
     }
 
@@ -50,11 +69,11 @@ impl PlayerTemplateBuilder {
         self
     }
 
-    pub fn reflux_sorceress(mut self) -> Self {
-        self
-    }
+    pub fn sorceress(mut self) -> Self {
 
-    pub fn aeromancer(mut self) -> Self {
+        self.class = Some(Class::Sorceress);
+        self.skills = get_generic_skills();
+
         self
     }
 
@@ -79,7 +98,7 @@ impl PlayerTemplateBuilder {
     pub fn berserker(mut self) -> Self {
 
         self.class = Some(Class::Berserker);
-        self.skills = get_berserker_skills();
+        self.skills = get_generic_skills();
         self.crit_rate = 0.75;
         self.crit_damage = 2.0;
         self.cooldown_reduction = 0.2;
@@ -91,9 +110,31 @@ impl PlayerTemplateBuilder {
     pub fn gunslinger(mut self) -> Self {
 
         self.class = Some(Class::Gunslinger);
+        self.skills = get_generic_skills();
 
         self
     }
+
+    pub fn arcanist(mut self) -> Self {
+
+        self.class = Some(Class::Arcanist);
+        self.skills = get_generic_skills();
+
+        self
+    }
+
+    pub fn aeromancer(mut self) -> Self {
+
+        self.class = Some(Class::Aeromancer);
+        self.skills = get_aeromancer_skills();
+        self.crit_rate = 0.75;
+        self.crit_damage = 2.0;
+        self.cooldown_reduction = 0.2;
+        self.attack_power = 5e6 as u64;
+
+        self
+    }
+    
     
     pub fn build(self) -> PlayerTemplate {
         PlayerTemplate {

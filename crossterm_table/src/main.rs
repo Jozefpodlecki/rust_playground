@@ -16,7 +16,6 @@ fn main() -> Result<()> {
         eprintln!("Panic occurred: {}", panic_info);
     }));
 
-    // run()?;
     run_threaded()?;
 
     Ok(())

@@ -66,7 +66,6 @@ use super::*;
                 priority: 2,
                 kind: SkillType::Normal,
                 cast_duration: Duration::milliseconds(250),
-                buff_duration: None,
                 cooldown: Duration::seconds(15),
                 ..Default::default()
             },
@@ -76,7 +75,6 @@ use super::*;
                 priority: 2,
                 kind: SkillType::Normal,
                 cast_duration: Duration::milliseconds(250),
-                buff_duration: None,
                 cooldown: Duration::seconds(15),
                 ..Default::default()
             },
@@ -86,7 +84,6 @@ use super::*;
                 priority: 2,
                 kind: SkillType::Normal,
                 cast_duration: Duration::milliseconds(250),
-                buff_duration: None,
                 cooldown: Duration::seconds(15),
                 ..Default::default()
             },
@@ -96,7 +93,6 @@ use super::*;
                 priority: 2,
                 kind: SkillType::Normal,
                 cast_duration: Duration::milliseconds(250),
-                buff_duration: None,
                 cooldown: Duration::seconds(15),
                 ..Default::default()
             },
@@ -106,7 +102,6 @@ use super::*;
                 priority: 2,
                 kind: SkillType::Awakening,
                 cast_duration: Duration::milliseconds(250),
-                buff_duration: None,
                 cooldown: Duration::seconds(15),
                 ..Default::default()
             },

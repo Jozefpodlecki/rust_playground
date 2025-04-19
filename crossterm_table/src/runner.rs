@@ -29,16 +29,16 @@ pub fn run_threaded() -> Result<()> {
 
     let player_templates = vec![
         PlayerTemplateBuilder::new().berserker().with_name("Clueless").build(),
-        PlayerTemplate::deadeye(),
-        PlayerTemplate::slayer(),
+        PlayerTemplateBuilder::new().deadeye().build(),
+        PlayerTemplateBuilder::new().slayer().build(),
         PlayerTemplateBuilder::new().bard().build(),
-        PlayerTemplate::reflux_sorceress(),
-        PlayerTemplate::arcanist(),
-        PlayerTemplate::aeromancer(),
+        PlayerTemplateBuilder::new().sorceress().build(),
+        PlayerTemplateBuilder::new().arcanist().build(),
+        PlayerTemplateBuilder::new().aeromancer().build(),
         PlayerTemplateBuilder::new().artist().build(),
-        PlayerTemplate::reflux_sorceress(),
-        PlayerTemplate::arcanist(),
-        PlayerTemplate::aeromancer(),
+        PlayerTemplateBuilder::new().sorceress().build(),
+        PlayerTemplateBuilder::new().arcanist().build(),
+        PlayerTemplateBuilder::new().aeromancer().build(),
         PlayerTemplateBuilder::new().paladin().build(),
     ];
 

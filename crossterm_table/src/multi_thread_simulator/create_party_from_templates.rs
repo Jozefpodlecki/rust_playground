@@ -35,7 +35,12 @@ impl MultiThreadSimulator {
                 let id = id_generator.next_player_id();
 
                 for skill in template.skills.iter_mut() {
-                    let cooldown_reduction = template.cooldown_reduction + skill.cooldown_gem;
+                    if skill.kind == SkillType::Identity {
+                        continue;
+                    }
+
+                    let mut cooldown_reduction = template.cooldown_reduction + skill.cooldown_gem + skill.cooldown_reduction;
+
                     skill.cooldown = Self::apply_cooldown_reduction(skill.cooldown, cooldown_reduction);
                 }
 
@@ -44,7 +49,7 @@ impl MultiThreadSimulator {
                 let player = Player {
                     id,
                     name: template.name.clone().unwrap_or_else(|| id_generator.next_player_name(12)),
-                    class: template.class.clone(),
+                    class: template.class,
                     stats: PlayerStats {
                         skills: PlayerSkillsStats {
                             ..Default::default()
