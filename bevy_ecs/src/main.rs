@@ -14,10 +14,9 @@ fn main() {
     App::new()
         .add_plugins(TimePlugin)
         .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_millis(500)))
-        .add_systems(Startup, (setup))
+        .add_systems(Startup, (setup, apply_initial_buffs))
         .add_systems(Update, (
             print_encounter,
-            apply_buffs,
             reassign_targets_system,
             skill_casting_system,
             phase_trigger_system
