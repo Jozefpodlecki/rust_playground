@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +23,8 @@ pub struct Boss {
     pub name: String,
 }
 
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Settings {
-    port: u16
+    pub port: u16,
+    pub summary_emit_interval: Duration
 }

@@ -16,7 +16,7 @@ impl Producer {
         }
     }
 
-    pub fn start(&mut self) -> UnboundedReceiver<Vec<u8>> {
+    pub fn start(&mut self, port: u16) -> UnboundedReceiver<Vec<u8>> {
         let config = bincode::config::standard();
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();

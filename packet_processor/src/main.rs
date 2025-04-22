@@ -9,6 +9,9 @@ mod handler;
 mod models;
 mod emitter;
 mod orchestrator;
+mod settings_manager;
+mod interval_timer;
+mod source;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -17,7 +20,7 @@ async fn main() -> Result<()> {
 
     let orchestrator = Orchestrator::new();
 
-    orchestrator.run()?;
+    orchestrator.run().await?;
 
     Ok(())
 }
