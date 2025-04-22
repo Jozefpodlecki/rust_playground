@@ -1,102 +1,95 @@
-use std::{sync::mpsc, thread, time::Duration};
+use std::{sync::Arc, thread};
 
-use bincode::{config::Configuration, Decode};
+use log::*;
+use tokio::{runtime::Runtime, sync::watch};
 
-use crate::{game_state::{self, GameState}, packet::{AttackPacket, NewNpcPacket, NewPlayerPacket, PacketType}};
+use crate::{app_state::AppState, emitter::Emitter, handler::Handler, producer::Producer};
 
 
 pub struct Processor {
-
+    handle: Option<thread::JoinHandle<Result<AppState, anyhow::Error>>>,
+    producer: Producer,
+    handler: Option<Handler>,
+    emitter: Arc<Emitter>,
+    shutdown_tx: Option<watch::Sender<()>>,
 }
 
 impl Processor {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(
+        producer: Producer,
+        handler: Handler,
+        emitter: Arc<Emitter>) -> Self {
+        Self {
+            handle: None,
+            producer,
+            emitter,
+            handler: Some(handler),
+            shutdown_tx: None
+        }
     }
 
-    pub fn run(&self) {
-        let (tx, rx) = mpsc::channel::<(PacketType, Vec<u8>)>();
-        let config = bincode::config::standard();
-        let mut game_state = GameState::new();
+    pub fn is_running(&self) -> bool {
+        self.handle.is_some()
+    }
 
-        thread::spawn(move || {
-            
-            
-            let kind = PacketType::NewPlayer;
-            let packet = NewPlayerPacket {
-                id: 1,
-                name: "Player".into(),
-            };
-            let data = bincode::encode_to_vec(packet, config).unwrap();
-            tx.send((kind, data)).unwrap();
+    pub fn start(&mut self, mut state: AppState) {
+      
+        let mut rx = self.producer.start();
+        let handler = self.handler.take().expect("Handler unset");
 
-            let kind = PacketType::NewNpc;
-            let packet = NewNpcPacket {
-                id: 2,
-                name: "Boss".into(),
-            };
-            let data = bincode::encode_to_vec(packet, config).unwrap();
-            tx.send((kind, data)).unwrap();
+        let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+        self.shutdown_tx = Some(shutdown_tx);
 
-            let kind = PacketType::Start;
-            tx.send((kind, vec![])).unwrap();
+        let emitter = self.emitter.clone();
 
-            let duration: Duration = Duration::from_secs(1);
-            let mut total_damage = 0;
+        let handle = thread::spawn(move || {
+            let runtime = Runtime::new()?;
+          
+            runtime.block_on(async {
+                
+                loop {
+                    tokio::select! {
+                        data = rx.recv() => {
+                            let data = match data {
+                                Some(data) => data,
+                                None => break,
+                            };
 
-            loop {
-                if total_damage > 10 {
-                    break;
+                            handler.handle(&data, &mut state).await?;
+
+                            
+                        }
+    
+                        _ = shutdown_rx.changed() => {
+                            break;
+                        }
+                    }
                 }
 
-                let kind = PacketType::Attack;
-                let packet = AttackPacket {
-                    source_id: 1,
-                    target_id: 2,
-                    damage: 1
-                };
-                let data = bincode::encode_to_vec(packet, config).unwrap();
-                tx.send((kind, data)).unwrap();
-                thread::sleep(duration);
-            }
-            
-            let kind = PacketType::End;
-            tx.send((kind, vec![])).unwrap();
-
+                anyhow::Ok(state)
+            })
         });
 
-        while let Ok((kind, data)) = rx.recv() {
-            println!("{:?}", kind);
+        self.handle = Some(handle);
 
-            match kind {
-                PacketType::NewPlayer => {
-                    if let Some(packet) = parse::<NewPlayerPacket>(&data, config) {
-                        game_state.on_new_player(packet);
-                    }
-                },
-                PacketType::NewNpc => {
-                    if let Some(packet) = parse::<NewNpcPacket>(&data, config) {
-                        game_state.on_new_npc(packet);
-                    }
-                },
-                PacketType::Attack => {
-                    if let Some(packet) = parse::<AttackPacket>(&data, config) {
-                        game_state.on_attack(packet);
-                    }
-                },
-                PacketType::Start => {
+    }
 
-                },
-                PacketType::End => {
-
-                },
+    pub fn stop(&mut self) {
+        if let Some(tx) = self.shutdown_tx.take() {
+            let _ = tx.send(());
+        }
+    
+        if let Some(handle) = self.handle.take() {
+            match handle.join() {
+                Ok(result) => {
+                    if let Err(err) = result {
+                        error!("Processor error: {:?}", err);
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to join thread: {:?}", err);
+                }
             }
         }
     }
-}
-
-fn parse<T>(data: &[u8], config: Configuration) -> Option<T>
-    where T: bincode::de::Decode<()> {
-    let (packet, _): (T, _)  = bincode::decode_from_slice(&data, config).unwrap();
-    Some(packet)
 }

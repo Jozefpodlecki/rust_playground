@@ -1,20 +1,23 @@
-use anyhow::Result;
-use processor::Processor;
+use anyhow::*;
+use orchestrator::Orchestrator;
 use simple_logger::SimpleLogger;
 
-mod packet;
+mod app_state;
 mod processor;
-mod game_state;
+mod producer;
+mod handler;
 mod models;
+mod emitter;
+mod orchestrator;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     
     SimpleLogger::new().env().init().unwrap();
 
-    let processor = Processor::new();
+    let orchestrator = Orchestrator::new();
 
-    processor.run();
+    orchestrator.run()?;
 
     Ok(())
 }

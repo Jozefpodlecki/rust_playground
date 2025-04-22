@@ -1,5 +1,5 @@
 [package]
-name = "tokio_async_tests"
+name = "reqwest_country_api"
 version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"

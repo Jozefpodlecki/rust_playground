@@ -1,0 +1,271 @@
+{
+    "name": "Behemoth G1",
+    "bosses": [
+        {
+            "name": "Behemoth, the Storm Commander",
+            "hp": 500000000000,
+            "hp_bars": 500,
+            "minions": [
+                {
+                    "name": "Despicable Skolakia",
+                    "hp": 5000000000,
+                    "hp_bars": 1,
+                    "conditions": {
+                        "party": 1,
+                        "spawns_when": [
+                            {
+                                "boss": "Behemoth, the Storm Commander",
+                                "operator": "less-equal",
+                                "hp": 460
+                            }
+                        ]
+                    }
+                },
+                {
+                    "name": "Untrue Crimson Yoho",
+                    "hp": 5000000000,
+                    "hp_bars": 1,
+                    "conditions": {
+                        "party": 2,
+                        "spawns_when": [
+                            {
+                                "boss": "Despicable Skolakia",
+                                "state": "Dead"
+                            }
+                        ],
+                        "spawns_after": "30s"
+                    }
+                },
+                {
+                    "name": "Ruthless Lakadroff",
+                    "hp": 5000000000,
+                    "hp_bars": 1,
+                    "conditions": {
+                        "party": 3,
+                        "spawns_when": [
+                            {
+                                "boss": "Untrue Crimson Yoho",
+                                "state": "Dead"
+                            }
+                        ],
+                         "spawns_after": "30s"
+                    }
+                },
+                {
+                    "name": "Vicious Argeos",
+                    "hp": 5000000000,
+                    "hp_bars": 1,
+                    "conditions": {
+                        "party": 4,
+                        "spawns_when": [
+                            {
+                                "boss": "Untrue Crimson Yoho",
+                                "state": "Dead"
+                            }
+                        ],
+                         "spawns_after": "30s"
+                    }
+                }
+            ]
+        }
+    ],
+    "parties": [
+        {
+            "id": 1,
+            "members": [
+                {
+                    "class": "Arcanist",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "swiftness": 500,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Crit",
+                            "stat": "crit",
+                            "modifier": 100
+                        }
+                    ],
+                    "skills": []
+                },
+                {
+                    "class": "Bard",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "swiftness": 1700,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Swiftness",
+                            "stat": "swiftness",
+                            "modifier": 0.1
+                        }
+                    ],
+                    "skills": []
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "members": [
+                {
+                    "class": "Berserker",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 50,
+                    "swiftness": 500,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Crit",
+                            "stat": "crit",
+                            "modifier": 100
+                        }
+                    ],
+                    "skills": []
+                },
+                {
+                    "class": "Paladin",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 500,
+                    "swiftness": 1700,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Swiftness",
+                            "stat": "swiftness",
+                            "modifier": 0.1
+                        }
+                    ],
+                    "skills": [
+                        {
+                            "id": 36080,
+                            "name": "Sword of Justice",
+                            "identity_gain": 0.1,
+                            "cooldown": 27
+                        },
+                        {
+                            "id": 36170,
+                            "name": "Wrath of God",
+                            "identity_gain": 0.1,
+                            "cooldown": 27
+                        },
+                        {
+                            "id": 36200,
+                            "name": "Heavenly Blessings",
+                            "identity_gain": 0.1,
+                            "cooldown": 36
+                        },
+                        {
+                            "id": 36800,
+                            "name": "Holy Aura",
+                            "requires_full_identity": true,
+                            "buffs": [
+                                {
+                                    "name": "Holy Aura",
+                                    "target": "party",
+                                    "stat": "damage_percentage",
+                                    "modifier": 0.1,
+                                    "duration": 16
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "members": [
+                {
+                    "class": "Aeromancer",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 50,
+                    "swiftness": 500,
+                    "buffs": [],
+                    "skills": []
+                },
+                {
+                    "class": "Paladin",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 50,
+                    "swiftness": 1700,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Swiftness",
+                            "stat": "swiftness",
+                            "modifier": 0.1
+                        }
+                    ],
+                    "skills": []
+                }
+            ]
+        },
+        {
+            "id": 4,
+            "members": [
+                {
+                    "class": "Sorceress",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 50,
+                    "swiftness": 500,
+                    "buffs": [],
+                    "skills": []
+                },
+                {
+                    "class": "Artist",
+                    "intelligence": 100,
+                    "weapon_power": 100,
+                    "crit": 100,
+                    "specialisation": 500,
+                    "swiftness": 1700,
+                    "buffs": [
+                        {
+                            "name": "Vitality Training",
+                            "stat": "hp",
+                            "modifier": 0.05
+                        },
+                        {
+                            "name": "Improved Swiftness",
+                            "stat": "swiftness",
+                            "modifier": 0.1
+                        }
+                    ],
+                    "skills": []
+                }
+            ]
+        }
+    ]
+}
