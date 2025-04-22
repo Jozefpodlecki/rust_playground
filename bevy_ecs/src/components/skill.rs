@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use bevy_ecs::prelude::*;
 use rand::{rng, Rng};
@@ -13,7 +13,8 @@ pub struct Skill {
     pub min_ratio: u64,
     pub max_ratio: u64,
     pub cooldown: Duration,
-    pub buffs: Vec<Buff>
+    pub buffs: Vec<Buff>,
+    pub casting_duration: Duration,
 }
 
 impl Skill {
@@ -46,6 +47,7 @@ impl SkillSet {
                 max_ratio: 200,
                 cooldown: Duration::from_secs(5),
                 buffs: vec![Buff::temporary(BuffType::Brand, 0.1, 10.0)],
+                casting_duration: Duration::from_millis(250),
             },
             Skill {
                 name: "Buff".to_string(),
@@ -55,6 +57,7 @@ impl SkillSet {
                 max_ratio: 0,
                 cooldown: Duration::from_secs(10),
                 buffs: vec![Buff::temporary(BuffType::AttackPower, 0.1, 10.0)],
+                casting_duration: Duration::from_millis(250),
             },
         ])
     }
@@ -69,6 +72,7 @@ impl SkillSet {
                 max_ratio: 2000,
                 cooldown: Duration::from_secs(3),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250),
             },
             Skill {
                 name: "Berserker Rage".to_string(),
@@ -78,6 +82,7 @@ impl SkillSet {
                 max_ratio: 2500,
                 cooldown: Duration::from_secs(6),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250),
             },
         ])
     }
@@ -92,6 +97,7 @@ impl SkillSet {
                 max_ratio: 1500,
                 cooldown: Duration::from_secs(4),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250),
             },
             Skill {
                 name: "Gale Force".to_string(),
@@ -101,6 +107,7 @@ impl SkillSet {
                 max_ratio: 1800,
                 cooldown: Duration::from_secs(6),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250),
             },
         ])
     }
@@ -115,6 +122,7 @@ impl SkillSet {
                 max_ratio: 1600,
                 cooldown: Duration::from_secs(6),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250),
             },
             Skill {
                 name: "Flame Wave".to_string(),
@@ -124,7 +132,15 @@ impl SkillSet {
                 max_ratio: 2500,
                 cooldown: Duration::from_secs(8),
                 buffs: vec![],
+                casting_duration: Duration::from_millis(250), 
             },
         ])
     }
+}
+
+#[derive(Default, Component)]
+pub struct CastingState {
+    pub is_casting: bool,
+    pub cast_duration: Duration,
+    pub cast_start_time: Option<Instant>,
 }

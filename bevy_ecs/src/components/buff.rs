@@ -12,6 +12,14 @@ pub struct Buff {
     pub kind: BuffType,
     pub modifier: f64,
     pub expiry: Option<Instant>,
+    pub is_debuff: bool,
+    pub target: BuffTarget
+}
+
+#[derive(Clone)]
+pub enum BuffTarget {
+    TargetSelf,
+    Party
 }
 
 #[derive(Clone)]
@@ -28,6 +36,8 @@ impl Buff {
         Buff {
             kind,
             modifier,
+            is_debuff: false,
+            target: BuffTarget::TargetSelf,
             expiry: None,
         }
     }
@@ -36,6 +46,8 @@ impl Buff {
         Buff {
             kind,
             modifier,
+            is_debuff: false,
+            target: BuffTarget::TargetSelf,
             expiry: Some(Instant::now() + Duration::from_secs_f64(duration)),
         }
     }

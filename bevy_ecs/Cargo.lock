@@ -550,6 +550,8 @@ dependencies = [
  "chrono",
  "crossterm",
  "rand 0.9.1",
+ "serde",
+ "serde_json",
  "strum",
  "strum_macros",
  "uuid",
