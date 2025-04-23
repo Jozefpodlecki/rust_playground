@@ -1,4 +1,4 @@
-use std::{future, sync::Arc, thread, time::Duration};
+use std::{future, sync::Arc, thread::{self, sleep}, time::Duration};
 
 use log::*;
 use tokio::{runtime::Runtime, sync::{mpsc::UnboundedReceiver, watch, Mutex}};
@@ -36,7 +36,7 @@ impl Processor {
 
     pub fn is_running(&self) -> bool {
         if let Some(handle) = &self.handle {
-            return handle.is_finished();
+            return !handle.is_finished();
         }
 
         false
@@ -95,17 +95,6 @@ impl Processor {
 
         loop {
             tokio::select! {
-                data = producer.recv() => {
-                    if let Some(data) = data {
-                        handler.handle(&data, &mut state).await?;
-
-                        let summary = state.get_summary(&settings);
-
-                        if interval_timer.tick_if_elapsed() {
-                            emitter.emit(summary)?;
-                        }  
-                    };
-                }
                 _ = process_status_rx.changed() => {
                     let process_status = process_status_rx.borrow().clone();
 
@@ -135,34 +124,46 @@ impl Processor {
                     info!("settings changed");
                     let new_settings = settings_rx.borrow().clone();
 
-                    if new_settings.port != settings.port {
-                        producer.stop();
-                    }
+                    let port_changed = new_settings.port != settings.port;
 
                     settings = new_settings;
                     interval_timer.set_interval(settings.summary_emit_interval);
+
+                    if port_changed {
+                        producer.stop();
+                        producer.start(settings.port);
+                    }
                 }
                 _ = shutdown_rx.changed() => {
                     info!("shutdown");
                     break;
                 }
-                _ = &mut pending => {
-                    
+                data = producer.recv() => {
+                    match data {
+                        Some(data) => {
+                            handler.handle(&data, &mut state).await?;
+
+                            let summary = state.get_summary(&settings);
+
+                            if interval_timer.tick_if_elapsed() {
+                                emitter.emit(summary)?;
+                            }  
+                        },
+                        None => sleep(Duration::from_millis(500)),
+                    };
                 }
             }
-            info!("loop");
         }
 
-        info!("exit");
         anyhow::Ok(())
     }
 
     pub async fn stop(&mut self) {
-        self.producer.lock().await.stop();
-
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(());
         }
+
+        self.producer.lock().await.stop();
     
         if let Some(handle) = self.handle.take() {
             match handle.join() {

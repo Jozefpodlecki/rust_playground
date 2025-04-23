@@ -7,10 +7,11 @@ use serde::{Deserialize, Serialize};
 pub enum Packet {
     NewPlayer {
         id: u64,
+        character_id: u64,
         name: String,
     },
     Party {
-        id: u64,
+        id: u32,
         members: Vec<PartyMember>,
     },
     NewBoss {
@@ -33,16 +34,30 @@ pub struct Player {
     pub name: String,
 }
 
+pub enum EntityType {
+    Player,
+    Boss
+}
+
+pub struct Entity {
+    pub id: u64,
+    pub kind: EntityType,
+    pub character_id: u64,
+    pub name: String,  
+}
+
 #[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct PartyMember {
     pub character_id: u64,
     pub name: String,
 }
 
-#[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]
+#[derive(Default, Debug, Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct Boss {
     pub id: u64,
     pub name: String,
+    pub hp: u64,
+    pub current_hp: u64,
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]

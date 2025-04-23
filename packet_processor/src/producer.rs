@@ -1,4 +1,4 @@
-use std::{future, sync::{atomic::{AtomicBool, Ordering}, Arc}, thread};
+use std::{sync::{atomic::{AtomicBool, Ordering}, Arc}, thread};
 
 use log::error;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -25,17 +25,18 @@ impl Producer {
     pub fn start(&mut self, _port: u16) {
 
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
-        let source = self.source.take().expect("Source not set");
+        let mut source = self.source.take().expect("Source not set");
         let stop_flag = self.stop_flag.clone();
 
         let handle = thread::spawn(move || {
 
-            for data in source {
+            loop {
                 if stop_flag.load(Ordering::Relaxed) {
                     break;
                 }
 
-                tx.send(data)?;
+                source.run(tx.clone());
+                // tx.send(data)?;
             }
            
             anyhow::Ok(())
@@ -57,13 +58,12 @@ impl Producer {
             return data
         }
 
-        future::pending::<()>().await;
         None
     }
 
     pub fn is_running(&self) -> bool {
         if let Some(handle) = &self.handle {
-            return handle.is_finished()
+            return !handle.is_finished()
         }
 
         return false
@@ -71,6 +71,7 @@ impl Producer {
 
     pub fn stop(&mut self) {
         self.stop_flag.store(true, Ordering::Relaxed);
+        self.rx = None;
 
         if let Some(handle) = self.handle.take() {
             match handle.join() {

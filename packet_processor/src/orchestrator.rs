@@ -95,9 +95,9 @@ impl Orchestrator {
                 "Stop Processor" => {
                     let mut processor = processor.lock().await;
 
-                    println!("Stopping processor...");
-                    if !processor.is_running() {
-                        processor.stop();
+                    if processor.is_running() {
+                        println!("Stopping processor...");
+                        processor.stop().await;
                     }
                     
                 }
@@ -111,8 +111,6 @@ impl Orchestrator {
                 _ => println!("Unexpected option selected"),
             }
         }
-
-        info!("test");
 
         Ok(())
     }

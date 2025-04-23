@@ -20,7 +20,7 @@ impl Handler {
         let (packet, _) = bincode::decode_from_slice::<Packet, Configuration>(data, self.config)?;
         
         match packet {
-            Packet::NewPlayer { id, name } => state.new_player(id, name),
+            Packet::NewPlayer { id, character_id, name } => state.new_player(id, character_id, name),
             Packet::Party { id, members } => todo!(),
             Packet::NewBoss { id, name } => todo!(),
             Packet::Damage { skill_id, source_id, target_id, value } => todo!(),
