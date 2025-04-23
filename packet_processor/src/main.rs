@@ -10,8 +10,10 @@ mod models;
 mod emitter;
 mod orchestrator;
 mod settings_manager;
+mod process_checker;
 mod interval_timer;
 mod source;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<()> {

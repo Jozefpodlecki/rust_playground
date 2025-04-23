@@ -2,15 +2,18 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
+use log::info;
 use rand::{rng, Rng};
 use tokio::sync::Mutex;
 use crate::app_state::AppState;
 use crate::emitter::Emitter;
 use crate::handler::Handler;
 use crate::models::Settings;
+use crate::process_checker::{ProcessChecker, ProcessStatus};
 use crate::processor::Processor;
 use crate::producer::Producer;
 use crate::settings_manager::SettingsManager;
+use crate::source::Source;
 use inquire::Select;
 pub struct Orchestrator {
 
@@ -22,26 +25,31 @@ impl Orchestrator {
     }
 
     pub async fn run(&self) -> Result<()> {
+        let process_checker = ProcessChecker::new();
+        let process_checker = Arc::new(Mutex::new(process_checker));
         let settings_manager = SettingsManager::new();
         let settings_manager = Arc::new(Mutex::new(settings_manager));
         let handler = Handler::new();
-        let producer = Producer::new();
+        let handler = Arc::new(handler);
+        let source = Source::new();
+        let producer = Producer::new(source);
+        let producer = Arc::new(Mutex::new(producer));
         let emitter = Emitter::new();
         let emitter = Arc::new(emitter);
         let mut processor = Processor::new(
+            process_checker.clone(),
             settings_manager.clone(),
             producer,
             handler,
             emitter);
-        let app_state = AppState::new();
-    
-        processor.start(app_state).await;
     
         let processor = Arc::new(Mutex::new(processor));
 
         let options = vec![
             "Start Processor",
             "Stop Processor",
+            "Process Checker - Stop",
+            "Process Checker - Running",
             "Change Settings (port)",
             "Change Settings",
             "Show Status",
@@ -53,14 +61,24 @@ impl Orchestrator {
 
             match answer {
                 "Start Processor" => {
-                    let processor = processor.lock().await;
+                    let mut processor = processor.lock().await;
 
                     if processor.is_running() {
                         println!("The processor is already running");
                     }
                     else {
                         println!("Starting processor...");
+                        let app_state = AppState::new();
+                        processor.start(app_state).await;
                     }
+                }
+                "Process Checker - Stop" => {
+                    let mut process_checker = process_checker.lock().await;
+                    process_checker.update(ProcessStatus::Stopped)?;
+                }
+                "Process Checker - Running" => {
+                    let mut process_checker = process_checker.lock().await;
+                    process_checker.update(ProcessStatus::Stopped)?;
                 }
                 "Change Settings (port)" => {
                     let mut settings_manager = settings_manager.lock().await;
@@ -94,7 +112,7 @@ impl Orchestrator {
             }
         }
 
-        
+        info!("test");
 
         Ok(())
     }
