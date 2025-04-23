@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use bincode::{Decode, Encode};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]
 pub enum Packet {
@@ -34,16 +36,32 @@ pub struct Player {
     pub name: String,
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub enum EntityType {
+    #[default]
+    Unknown,
     Player,
     Boss
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Entity {
     pub id: u64,
     pub kind: EntityType,
-    pub character_id: u64,
+    pub character_id: Option<u64>,
     pub name: String,  
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct EntityStats {
+
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct EncounterFragment {
+    pub id: Uuid,
+    pub started_on: DateTime<Utc>,
+    pub players: Vec<EntityStats>
 }
 
 #[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]

@@ -21,10 +21,10 @@ impl Handler {
         
         match packet {
             Packet::NewPlayer { id, character_id, name } => state.new_player(id, character_id, name),
-            Packet::Party { id, members } => todo!(),
-            Packet::NewBoss { id, name } => todo!(),
-            Packet::Damage { skill_id, source_id, target_id, value } => todo!(),
-            Packet::RaidEnd => todo!(),
+            Packet::Party { id, members } => state.new_party(id, &members),
+            Packet::NewBoss { id, name } => state.new_boss(id, name),
+            Packet::Damage { skill_id, source_id, target_id, value } => state.on_damage(skill_id, source_id, target_id, value),
+            Packet::RaidEnd => state.on_raid_end(),
         }
         
         anyhow::Ok(())
