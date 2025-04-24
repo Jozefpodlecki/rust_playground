@@ -42,7 +42,7 @@ impl Processor {
         false
     }
 
-    pub async fn start(&mut self, state: AppState) {
+    pub async fn start(&mut self) {
 
         if self.handle.is_some() {
             return;
@@ -62,6 +62,8 @@ impl Processor {
             let runtime = Runtime::new()?;
           
             runtime.block_on(async {
+                let state = AppState::new();
+                
                 Self::process(
                     state,
                     process_checker,

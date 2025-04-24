@@ -11,6 +11,7 @@ pub enum Packet {
         id: u64,
         character_id: u64,
         name: String,
+        gear_score: f32
     },
     Party {
         id: u32,
@@ -20,11 +21,16 @@ pub enum Packet {
         id: u64,
         name: String,
     },
+    AddBuff {
+        target_id: u64
+    },
     Damage {
         skill_id: u32,
         source_id: u64,
         target_id: u64,
-        value: u64
+        value: u64,
+        hp: u64,
+        current_hp: u64
     },
     RaidEnd
 }
@@ -34,6 +40,7 @@ pub struct Player {
     pub id: u64,
     pub character_id: u64,
     pub name: String,
+    pub gear_score: f32
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -49,25 +56,42 @@ pub struct Entity {
     pub id: u64,
     pub kind: EntityType,
     pub character_id: Option<u64>,
-    pub name: String,  
+    pub name: String,
+    pub gear_score: f32
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct EntityStats {
+    pub total_damage: u64,
+    pub dps: f32,
+    pub total_damage_percentage: f32,
+    pub current_hp: u64,
+    pub hp: u64
+}
 
+#[derive(Debug, Serialize)]
+pub struct EncounterFragment<'a> {
+    pub id: &'a Uuid,
+    pub started_on: &'a DateTime<Utc>,
+    pub players: Vec<EntityStatsSummary>
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct EncounterFragment {
-    pub id: Uuid,
-    pub started_on: DateTime<Utc>,
-    pub players: Vec<EntityStats>
+pub struct EntityStatsSummary {
+
+}
+
+#[derive(Debug, Default)]
+pub struct RaidStats {
+    pub total_damage: u64,
+    pub dps: f32
 }
 
 #[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]
 pub struct PartyMember {
     pub character_id: u64,
     pub name: String,
+    pub gear_score: f32
 }
 
 #[derive(Default, Debug, Encode, Decode, Serialize, Deserialize, Clone)]

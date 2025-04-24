@@ -68,8 +68,7 @@ impl Orchestrator {
                     }
                     else {
                         println!("Starting processor...");
-                        let app_state = AppState::new();
-                        processor.start(app_state).await;
+                        processor.start().await;
                     }
                 }
                 "Process Checker - Stop" => {

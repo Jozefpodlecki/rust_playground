@@ -14,6 +14,7 @@ mod process_checker;
 mod interval_timer;
 mod source;
 mod utils;
+mod hp_log;
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use crate::{models::{Boss, Packet, PartyMember, Player}, utils::random_alphabetic_string_capitalized};
 use bincode::{config::Configuration, Decode};
 use rand::{rng, Rng};
@@ -12,7 +14,9 @@ pub struct Party {
 }
 
 pub struct AttackResult {
-    pub damage: u64
+    pub is_critical: bool,
+    pub damage: u64,
+    pub current_hp: u64
 }
 
 pub struct Source {
@@ -37,23 +41,28 @@ impl Source {
     }
 
     pub fn run(&mut self, tx: UnboundedSender<Vec<u8>>) {
+        let interval = Duration::from_millis(500);
         let mut players = Vec::new();
         
         let dps = self.spawn_player();
         players.push(dps.0);
         tx.send(dps.1).unwrap();
+        sleep(interval);
 
         let dps = self.spawn_player();
         players.push(dps.0);
         tx.send(dps.1).unwrap();
+        sleep(interval);
 
         let dps = self.spawn_player();
         players.push(dps.0);
         tx.send(dps.1).unwrap();
+        sleep(interval);
 
         let support = self.spawn_player();
         players.push(support.0);
         tx.send(support.1).unwrap();
+        sleep(interval);
 
         let party = self.spawn_party(&players);
         tx.send(party.1).unwrap();
@@ -80,21 +89,31 @@ impl Source {
         let party = self.spawn_party(&players);
         tx.send(party.1).unwrap();
         self.players.extend(players);
+        sleep(interval);
 
         let boss = self.spawn_boss();
         tx.send(boss.1).unwrap();
         self.boss = boss.0;
-        
-        let rng = rng();
-        let players_length = self.players.len();
+        sleep(interval);
 
         loop {
 
+            if self.boss.hp == 0 {
+                break;
+            }
+
             for player in self.players.iter() {
+                
+                if self.boss.hp == 0 {
+                    break;
+                }
+
                 let result = self.perform_attack(&player, &self.boss);
                 tx.send(result.1).unwrap();
 
-                self.boss.hp = result.0.damage;
+                self.boss.hp = result.0.current_hp;
+
+                sleep(interval);
             }
         }
         
@@ -106,7 +125,8 @@ impl Source {
             id: rng().random(),
             members: players.iter().map(|pr| PartyMember {
                 character_id: pr.character_id,
-                name: pr.name.to_string()
+                name: pr.name.to_string(),
+                gear_score: rng().random_range(1660.0..1710.0)
             }).collect()
         };
         let data = bincode::encode_to_vec(packet, self.config).unwrap();
@@ -120,15 +140,25 @@ impl Source {
 
     pub fn perform_attack(&self, player: &Player, boss: &Boss) -> (AttackResult, Vec<u8>) {
 
-        let result = AttackResult {
+        let mut result = AttackResult {
+            is_critical: rng().random(),
+            current_hp: 0,
             damage: rng().random_range(10..99),
         };
+
+        if result.is_critical {
+            result.damage = result.damage * 2;
+        }
+
+        result.current_hp = boss.current_hp.saturating_sub(result.damage);
 
         let packet = Packet::Damage { 
             skill_id: 1,
             source_id: player.id,
             target_id: boss.id,
-            value: 100
+            value: result.damage,
+            hp: boss.hp,
+            current_hp: result.current_hp
         };
         let data = bincode::encode_to_vec(packet, self.config).unwrap();
 
@@ -157,13 +187,15 @@ impl Source {
         let player = Player {
             id: rng().random(),
             character_id: rng().random(),
-            name: random_alphabetic_string_capitalized(10)
+            name: random_alphabetic_string_capitalized(10),
+            gear_score: rng().random_range(1660.0..1710.0)
         };
       
         let packet = Packet::NewPlayer { 
             id: player.id,
             character_id: player.character_id,
-            name: player.name.clone()
+            name: player.name.clone(),
+            gear_score: player.gear_score
         };
         let data = bincode::encode_to_vec(packet, self.config).unwrap();
 
