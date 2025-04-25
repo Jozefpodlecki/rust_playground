@@ -1,70 +1,91 @@
-use std::sync::{atomic::{AtomicBool, Ordering}, Arc};
+use std::{fs::File, io::BufReader, path::Path, sync::{atomic::AtomicBool, Arc}, thread::JoinHandle};
 use anyhow::{Ok, Result};
 use log::*;
-use tokio::{sync::RwLock, task::{self, JoinHandle}};
-
-use crate::wrapper::WindivertWrapper;
+use tokio::{runtime::Runtime, sync::{mpsc::UnboundedReceiver, watch}, task::{self}};
+use windivert::{prelude::WinDivertFlags, WinDivert};
+use std::thread::spawn;
 
 pub struct Consumer {
     handle: Option<JoinHandle<Result<()>>>,
-    windivert: Arc<RwLock<WindivertWrapper>>,
-    shutdown: Arc<AtomicBool>
+    shutdown: Arc<AtomicBool>,
+    shutdown_tx: Option<watch::Sender<()>>,
 }
 
 impl Consumer {
     pub fn new() -> Self {
         let shutdown = Arc::new(AtomicBool::new(false));
-        let ip_address = "127.0.0.1"; 
-        let port = 443;
-        let windivert = Arc::new(RwLock::new(WindivertWrapper::new(ip_address, port).unwrap()));
 
         Self {
-            windivert,
             handle: None,
-            shutdown
+            shutdown,
+            shutdown_tx: None
         }
     }
 
-    pub async fn start(&mut self) -> Result<()> {
+    pub async fn start(&mut self, ip_address: &str, port: u16) -> Result<UnboundedReceiver<Vec<u8>>> {
    
-        let shutdown = self.shutdown.clone();
-        let windivert = self.windivert.clone();
-        let handle = task::spawn(Self::consume(windivert, shutdown));
+        let filter = format!("tcp.SrcPort == {}", port);
+       
+        let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+        self.shutdown_tx = Some(shutdown_tx);
+
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+
+        let handle = spawn(move || {
+            let runtime = Runtime::new()?;
+            
+            runtime.block_on(async {
+                let flags = WinDivertFlags::new().set_recv_only().set_sniff();
+                let windivert = Arc::new(WinDivert::network(&filter, 0, flags)?);
+                
+                loop {
+                    let windivert = windivert.clone();
+                    
+                    let recv = task::spawn_blocking(move || {
+                        let mut buffer = vec![0u8; 65535];
+                        let result = windivert.recv(Some(&mut buffer)).unwrap();
+                        let data = result.data.to_vec();
+                        data
+                    });
+    
+                    tokio::select! {
+                        result = recv => {
+                            use std::result::Result::Ok;
+                            match result {
+                                Ok(data) => {
+                                    tx.send(data)?;
+                                },
+                                Err(err) => {
+                                    info!("{err}");
+                                },
+                            }
+                        }
+                        _ = shutdown_rx.changed() => {
+                            info!("shutdown");
+                            break;
+                        }
+                    }
+                }
+
+                anyhow::Ok(())
+            })?;
+
+            anyhow::Ok(())
+        });
 
         self.handle = Some(handle);
 
-        Ok(())
+        Ok(rx)
     }
 
-    async fn consume(windivert: Arc<RwLock<WindivertWrapper>>, shutdown: Arc<AtomicBool>) -> Result<()> {
 
-        debug!("windivert.start");
-        windivert.write().await.start().await?;
-
-        debug!("recv loop");
-        while !shutdown.load(Ordering::Relaxed) {
-            debug!("windivert.recv");
-            match windivert.write().await.recv().await {
-                Some(data) => {
-                    info!("Packet length: {}", data.len());
-                },
-                None => todo!(),
-            }
+    pub fn stop(&mut self) -> Result<()> {
+        if let Some(tx) = self.shutdown_tx.take() {
+            let _ = tx.send(());
         }
 
-        debug!("end recv loop");
-        Ok(())
-    }
-
-    pub async fn stop(&mut self) -> Result<()> {
-        debug!("stop");
-        self.shutdown.store(true, Ordering::Relaxed);
-        debug!("self.windivert.write");
-        self.windivert.write().await.stop().await?;
-
-        debug!("self.handle.take");
         if let Some(handle) = self.handle.take() {
-            if let Err(err) = handle.await {
+            if let Err(err) = handle.join() {
                 error!("Error stopping thread: {:?}", err);
             }
         }

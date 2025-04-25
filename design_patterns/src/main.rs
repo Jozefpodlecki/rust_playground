@@ -1,7 +1,8 @@
-use resolver::{Item, Resolver};
+use state::{Item, Resolver};
 
 mod arc_rw_lock_wrapper;
-mod resolver;
+mod state;
+mod looper;
 
 fn main() {
     let name = String::from("test");
