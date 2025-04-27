@@ -42,7 +42,7 @@ impl AppState {
             entities_by_character_id: HashMap::new(),
             raid_stats: RaidStats::default(),
             stats: HashMap::new(),
-            hp_log: HpLog::new(Uuid::nil()),
+            hp_log: HpLog::new(),
             has_ended: false,
         }
     }
@@ -139,7 +139,7 @@ impl AppState {
                 let ts = Timestamp::from_unix(&uuid::NoContext, duration.num_seconds() as u64, duration.subsec_nanos() as u32);
                 self.id = Uuid::new_v7(ts);
 
-                self.hp_log = HpLog::new(self.id);
+                self.hp_log.clear();
             }
         }
         else {
@@ -170,7 +170,7 @@ impl AppState {
         }
 
         let hp_percentage = current_hp as f32 / hp as f32;
-        self.hp_log.insert(duration_seconds, current_hp, hp_percentage);
+        self.hp_log.insert(self.id,duration_seconds, current_hp, hp_percentage);
     }
 
     pub fn on_raid_end(&mut self) {
