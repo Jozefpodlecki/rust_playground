@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 use once_cell::sync::Lazy;
 use uuid::{Timestamp, Uuid};
 
-use crate::{hp_log::HpLog, models::*};
+use crate::{hp_log_manager::HpLogManager, models::*};
 
 pub struct Skill {
     pub id: u32,
@@ -28,7 +28,7 @@ pub struct AppState {
     entities_by_character_id: HashMap<u64, Rc<RefCell<Entity>>>,
     raid_stats: RaidStats,
     stats: HashMap<u64, EntityStats>,
-    hp_log: HpLog,
+    hp_log: HpLogManager,
     has_ended: bool
 }
 
@@ -42,7 +42,7 @@ impl AppState {
             entities_by_character_id: HashMap::new(),
             raid_stats: RaidStats::default(),
             stats: HashMap::new(),
-            hp_log: HpLog::new(),
+            hp_log: HpLogManager::new(),
             has_ended: false,
         }
     }
@@ -52,6 +52,7 @@ impl AppState {
             id,
             kind: EntityType::Player,
             character_id: Some(character_id),
+            owner_id: None,
             name,
             gear_score: gear_score
         };
@@ -59,6 +60,7 @@ impl AppState {
         let entity = Rc::new(RefCell::new(entity));
         self.entities_by_id.insert(id, entity.clone());
         self.entities_by_character_id.insert(character_id, entity);
+        self.stats.insert(id, EntityStats::default());
     }
 
     fn new_player_from_party(character_id: u64, name: String, gear_score: f32) -> Rc<RefCell<Entity>> {
@@ -66,6 +68,7 @@ impl AppState {
             id: 0,
             kind: EntityType::Player,
             character_id: Some(character_id),
+            owner_id: None,
             name,
             gear_score: gear_score
         };
@@ -79,6 +82,7 @@ impl AppState {
             id: id,
             kind: EntityType::Unknown,
             character_id: None,
+            owner_id: None,
             name: "".into(),
             gear_score: 0.0
         };
@@ -101,10 +105,45 @@ impl AppState {
 
         let entity = Rc::new(RefCell::new(entity));
         self.entities_by_id.insert(id, entity);
+        self.stats.insert(id, EntityStats::default());
     }
 
-    pub fn add_buff(&mut self, target_id: u64) {
+    pub fn add_buff(&mut self, target_id: u64, effect: StatusEffect) {
+    }
 
+    fn resolve_entity(&mut self, target_id: u64, effect: &StatusEffect) -> Rc<RefCell<Entity>> {
+        let lookup = if effect.target == BuffTarget::Party {
+            self.entities_by_character_id.get(&target_id)
+        } else {
+            self.entities_by_id.get(&target_id)
+        };
+    
+        match lookup {
+            Some(entity) => {
+                let owner_id = entity.borrow().owner_id;
+                if let Some(owner_id) = owner_id {
+                    self.entities_by_id
+                        .get(&owner_id)
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            let unknown = Self::new_unknown(owner_id, None);
+                            self.entities_by_id.insert(owner_id, unknown.clone());
+                            unknown
+                        })
+                } else {
+                    entity.clone()
+                }
+            }
+            None => {
+                let unknown = Self::new_unknown(target_id, None);
+                if effect.target == BuffTarget::Party {
+                    self.entities_by_character_id.insert(target_id, unknown.clone());
+                }
+                self.entities_by_id.insert(target_id, unknown.clone());
+                
+                unknown
+            }
+        }
     }
 
     pub fn new_party(&mut self, id: u32, members: &[PartyMember]) {
@@ -122,7 +161,7 @@ impl AppState {
         }
     }
 
-    pub fn on_damage(&mut self,
+    pub async fn on_damage(&mut self,
         skill_id: u32,
         source_id: u64,
         target_id: u64,
@@ -170,7 +209,7 @@ impl AppState {
         }
 
         let hp_percentage = current_hp as f32 / hp as f32;
-        self.hp_log.insert(self.id,duration_seconds, current_hp, hp_percentage);
+        self.hp_log.insert(self.id,duration_seconds, current_hp, hp_percentage).await;
     }
 
     pub fn on_raid_end(&mut self) {

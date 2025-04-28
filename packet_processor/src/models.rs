@@ -22,7 +22,12 @@ pub enum Packet {
         name: String,
     },
     AddBuff {
-        target_id: u64
+        target_id: u64,
+        effect: StatusEffect
+    },
+    AddPartyBuff {
+        target_id: u64,
+        effect: StatusEffect
     },
     Damage {
         skill_id: u32,
@@ -47,6 +52,7 @@ pub struct Player {
 pub enum EntityType {
     #[default]
     Unknown,
+    Projectile,
     Player,
     Boss
 }
@@ -56,6 +62,7 @@ pub struct Entity {
     pub id: u64,
     pub kind: EntityType,
     pub character_id: Option<u64>,
+    pub owner_id: Option<u64>,
     pub name: String,
     pub gear_score: f32
 }
@@ -106,4 +113,18 @@ pub struct Boss {
 pub struct Settings {
     pub port: u16,
     pub summary_emit_interval: Duration
+}
+
+#[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum BuffTarget {
+    TargetSelf,
+    Party
+}
+
+#[derive(Debug, Encode, Decode, Serialize, Deserialize, Clone)]
+pub struct StatusEffect {
+    pub source_id: u64,
+    pub target: BuffTarget,
+    pub duration: u64,
+    pub value: u64
 }

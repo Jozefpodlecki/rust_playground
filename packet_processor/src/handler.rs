@@ -21,7 +21,8 @@ impl Handler {
         
         match packet {
             Packet::NewPlayer { id, character_id, name, gear_score } => state.new_player(id, character_id, name, gear_score),
-            Packet::AddBuff { target_id } => state.add_buff(target_id),
+            Packet::AddBuff { target_id, effect } => state.add_buff(target_id, effect),
+            Packet::AddPartyBuff { target_id, effect  } => state.add_buff(target_id, effect),
             Packet::Party { id, members } => state.new_party(id, &members),
             Packet::NewBoss { id, name } => state.new_boss(id, name),
             Packet::Damage { skill_id, source_id, target_id, value, current_hp, hp } => state.on_damage(
@@ -30,7 +31,7 @@ impl Handler {
                 target_id,
                 value,
                 current_hp,
-                hp),
+                hp).await,
             Packet::RaidEnd => state.on_raid_end(),
         }
         

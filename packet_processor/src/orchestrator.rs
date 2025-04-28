@@ -55,61 +55,63 @@ impl Orchestrator {
             "Show Status",
             "Exit",
         ];
+
+        processor.lock().await.start().await;
         
-        loop {
-            let answer = Select::new("Choose an action:", options.clone()).prompt()?;
+        // loop {
+        //     let answer = Select::new("Choose an action:", options.clone()).prompt()?;
 
-            match answer {
-                "Start Processor" => {
-                    let mut processor = processor.lock().await;
+        //     match answer {
+        //         "Start Processor" => {
+        //             let mut processor = processor.lock().await;
 
-                    if processor.is_running() {
-                        println!("The processor is already running");
-                    }
-                    else {
-                        println!("Starting processor...");
-                        processor.start().await;
-                    }
-                }
-                "Process Checker - Stop" => {
-                    let mut process_checker = process_checker.lock().await;
-                    process_checker.update(ProcessStatus::Stopped)?;
-                }
-                "Process Checker - Running" => {
-                    let mut process_checker = process_checker.lock().await;
-                    process_checker.update(ProcessStatus::Stopped)?;
-                }
-                "Change Settings (port)" => {
-                    let mut settings_manager = settings_manager.lock().await;
-                    let mut settings = Settings::default();
-                    settings.port = rng().random_range(4000..8000);
-                    settings_manager.save(settings);
-                }
-                "Change Settings" => {
-                    let mut settings_manager = settings_manager.lock().await;
-                    let mut settings = Settings::default();
-                    settings.summary_emit_interval = Duration::from_secs(rng().random_range(5..10));
-                    settings_manager.save(settings);
-                }
-                "Stop Processor" => {
-                    let mut processor = processor.lock().await;
+        //             if processor.is_running() {
+        //                 println!("The processor is already running");
+        //             }
+        //             else {
+        //                 println!("Starting processor...");
+        //                 processor.start().await;
+        //             }
+        //         }
+        //         "Process Checker - Stop" => {
+        //             let mut process_checker = process_checker.lock().await;
+        //             process_checker.update(ProcessStatus::Stopped)?;
+        //         }
+        //         "Process Checker - Running" => {
+        //             let mut process_checker = process_checker.lock().await;
+        //             process_checker.update(ProcessStatus::Stopped)?;
+        //         }
+        //         "Change Settings (port)" => {
+        //             let mut settings_manager = settings_manager.lock().await;
+        //             let mut settings = Settings::default();
+        //             settings.port = rng().random_range(4000..8000);
+        //             settings_manager.save(settings);
+        //         }
+        //         "Change Settings" => {
+        //             let mut settings_manager = settings_manager.lock().await;
+        //             let mut settings = Settings::default();
+        //             settings.summary_emit_interval = Duration::from_secs(rng().random_range(5..10));
+        //             settings_manager.save(settings);
+        //         }
+        //         "Stop Processor" => {
+        //             let mut processor = processor.lock().await;
 
-                    if processor.is_running() {
-                        println!("Stopping processor...");
-                        processor.stop().await;
-                    }
+        //             if processor.is_running() {
+        //                 println!("Stopping processor...");
+        //                 processor.stop().await;
+        //             }
                     
-                }
-                "Show Status" => {
-                    println!("Showing the status...");
-                }
-                "Exit" => {
-                    println!("Exiting...");
-                    break;
-                }
-                _ => println!("Unexpected option selected"),
-            }
-        }
+        //         }
+        //         "Show Status" => {
+        //             println!("Showing the status...");
+        //         }
+        //         "Exit" => {
+        //             println!("Exiting...");
+        //             break;
+        //         }
+        //         _ => println!("Unexpected option selected"),
+        //     }
+        // }
 
         Ok(())
     }
