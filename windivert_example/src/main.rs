@@ -1,7 +1,8 @@
 
-use std::{fs::File, io::{BufReader, Read, Write}, path::{Path, PathBuf}, time::Duration};
+use std::{env, fs::File, io::{BufReader, BufWriter, Read, Write}, path::{Path, PathBuf}, time::Duration};
 
 use anyhow::{Ok, Result};
+use chrono::Local;
 use consumer::Consumer;
 use log::*;
 use simple_logger::SimpleLogger;
@@ -12,46 +13,70 @@ mod consumer;
 
 async fn run() -> Result<()> {
 
-    let path = Path::new("dump.data");
+    let filter = match env::args().nth(1) {
+        Some(filter) => filter,
+        None => {
+            println!("No arguments");
+            return Ok(());
+        },
+    };
 
-    if path.exists() {
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
+    info!("Filter: {}", filter);
 
-        loop {
-            let mut len_buf = [0u8; 4];
-            if reader.read_exact(&mut len_buf).is_err() {
+    // let path = Path::new("dump.data");
+    // if path.exists() {
+    //     let file = File::open(path)?;
+    //     let mut reader = BufReader::new(file);
+
+    //     loop {
+    //         let mut len_buf = [0u8; 4];
+    //         if reader.read_exact(&mut len_buf).is_err() {
+    //             break;
+    //         }
+    
+    //         let len = u32::from_le_bytes(len_buf) as usize;
+    //         let mut chunk = vec![0u8; len];
+    //         reader.read_exact(&mut chunk)?;
+    //         info!("{} {:?}", len, chunk);
+    //     }
+
+    //     return Ok(());
+    // }
+  
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("dump_{}.data", timestamp);
+    let path = Path::new(&filename);
+    let abs_path = env::current_dir()?.join(path);
+
+    let ip_address = "127.0.0.1"; 
+    let port = 6040;
+    // info!("Listening on port {}", port);
+    let mut consumer = Consumer::new();
+    let mut rx = consumer.start(filter.to_string()).await?; 
+    let file = File::create(path)?;
+    let mut writer = BufWriter::new(file);
+    info!("Output will be saved to: {}", abs_path.display());
+
+    loop {
+        tokio::select! {
+            data = rx.recv() => {
+                if let Some(data) = data {
+                    let len = data.len() as u32;
+                    info!("received {} bytes", len);
+                    writer.write_all(&len.to_le_bytes())?;
+                    writer.write_all(&data)?;
+                } else {
+                    break;
+                }
+            }
+            _ = tokio::signal::ctrl_c() => {
+                info!("Received Ctrl+C, shutting down.");
+                writer.flush()?;
+                consumer.stop()?;
                 break;
             }
-    
-            let len = u32::from_le_bytes(len_buf) as usize;
-            let mut chunk = vec![0u8; len];
-            reader.read_exact(&mut chunk)?;
         }
-
-        return Ok(());
     }
-  
-    let ip_address = "127.0.0.1"; 
-    let port = 443;
-    let mut consumer = Consumer::new();
-    let mut rx = consumer.start(ip_address, port).await?; 
-    let mut file = File::create(path)?;
-        
-    loop {
-        let data = match rx.recv().await {
-            Some(data) => data,
-            None => break,
-        };
-
-        let len = data.len() as u32;
-        file.write_all(&len.to_le_bytes())?; 
-        file.write_all(&data)?;   
-    }
-
-    file.flush()?;
-
-    consumer.stop()?;
 
     Ok(())
 }

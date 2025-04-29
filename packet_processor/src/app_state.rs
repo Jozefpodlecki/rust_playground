@@ -109,10 +109,14 @@ impl AppState {
     }
 
     pub fn add_buff(&mut self, target_id: u64, effect: StatusEffect) {
+
+        let entity = self.resolve_entity(target_id, effect.target);
+
+
     }
 
-    fn resolve_entity(&mut self, target_id: u64, effect: &StatusEffect) -> Rc<RefCell<Entity>> {
-        let lookup = if effect.target == BuffTarget::Party {
+    fn resolve_entity(&mut self, target_id: u64, buff_target: BuffTarget) -> Rc<RefCell<Entity>> {
+        let lookup = if buff_target == BuffTarget::Party {
             self.entities_by_character_id.get(&target_id)
         } else {
             self.entities_by_id.get(&target_id)

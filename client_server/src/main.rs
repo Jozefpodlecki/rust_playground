@@ -24,9 +24,9 @@ async fn main() -> Result<()> {
     let address = format!("127.0.0.1:{}", args.port);
     let retry_delay = Duration::from_secs(3); 
     
-    let duration = Duration::from_secs(15);
-    info!("Starting in {:?}", duration);
-    sleep(duration).await;
+    // let duration = Duration::from_secs(15);
+    // info!("Starting in {:?}", duration);
+    // sleep(duration).await;
 
     loop {
         match TcpStream::connect(&address).await {

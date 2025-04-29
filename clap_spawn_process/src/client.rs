@@ -35,7 +35,7 @@ impl Client {
                             }
                             Ok(size) => {
                                 // let payload = &buffer[..size];
-                                // info!("Received {} bytes: {:?}", size, payload);
+                                info!("Received {} bytes", size);
                             }
                             Err(err) => {
                                 error!("Failed to connect to {}: {}", address, err);
