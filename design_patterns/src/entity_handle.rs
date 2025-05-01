@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::ptr::NonNull;
 
 #[derive(Debug)]
@@ -15,12 +16,18 @@ impl EntityHandle {
         let boxed = Box::new(entity);
         Self(NonNull::new(Box::into_raw(boxed)).unwrap())
     }
+}
 
-    fn get(&self) -> &Entity {
-        unsafe { self.0.as_ref() }
+impl Deref for EntityHandle {
+    type Target = Entity;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &self.0.as_ref() }
     }
+}
 
-    fn get_mut(&mut self) -> &mut Entity {
+impl DerefMut for EntityHandle {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { self.0.as_mut() }
     }
 }
@@ -48,7 +55,7 @@ impl State {
 
     pub fn insert(&mut self, entity: Entity) {
         let handle = EntityHandle::new(entity);
-        let entity_ref = handle.get();
+        let entity_ref = &*handle;
     
         let id = entity_ref.id;
         let name = entity_ref.name.clone();
@@ -60,7 +67,7 @@ impl State {
     }
 
     pub fn get_by_id(&self, id: u32) -> Option<&Entity> {
-        self.by_id.get(&id).map(|h| h.get())
+        self.by_id.get(&id).map(|h| &**h)
     }
     
     pub fn get_by_name(&self, name: &str) -> Option<&Entity> {
@@ -69,7 +76,7 @@ impl State {
 
     pub fn remove_by_id(&mut self, id: u32) -> Option<Entity> {
         if let Some(handle) = self.by_id.remove(&id) {
-            let entity_ref = handle.get();
+            let entity_ref = &handle;
             self.by_name.remove(&entity_ref.name);
             let raw = handle.0.as_ptr();
             mem::forget(handle);
