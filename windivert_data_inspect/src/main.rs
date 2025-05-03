@@ -1,5 +1,5 @@
 use std::{collections::HashMap, fs::File, io::{BufRead, BufReader, Read}, path::Path, thread::sleep, time::Duration};
-use byteorder::{LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use std::io::Cursor;
 use anyhow::{Ok, Result};
 use log::*;
@@ -11,9 +11,10 @@ mod utils;
 #[derive(Debug)]
 struct Record {
     length: u32,
-    header: [u8; 4],
+    header: u32,
     header_hex: String,
     payload: Vec<u8>,
+    payload_hex: String,
 }
 
 fn hex_line_to_bytes(line: &str) -> Vec<u8> {
@@ -61,8 +62,9 @@ fn parse_record(buffer: &[u8]) -> Option<Record> {
 
     if payload.len() == length as usize {
         let header_hex = format_hex_with_spaces(&header);
-        // let payload_hex = format_hex_with_spaces(&record.payload);
-        Some(Record { length, header_hex, header, payload })
+        let header_u32 = LittleEndian::read_u32(&header);
+        let payload_hex = format_hex_with_spaces(&payload);
+        Some(Record { length, header_hex, header: header_u32, payload, payload_hex })
     } else {
         // let header_hex = format_hex_with_spaces(&header);
         // println!("{} {} {}", header_hex, payload.len(), length);
@@ -81,14 +83,14 @@ async fn main() -> Result<()> {
 
     let mut buffer: Vec<u8> = Vec::new();
     let mut i = 0;
-    let mut grouped: HashMap<String, Vec<Record>> = HashMap::new();
+    let mut grouped: HashMap<u32, Vec<Record>> = HashMap::new();
 
     while reader.read_until(b'\n', &mut buffer)? > 0 {
         buffer.retain(|&byte| !byte.is_ascii_whitespace());
        
         if let Some(record) = parse_record(&buffer) {
             
-            let records = grouped.entry(record.header_hex.clone()).or_default();
+            let records = grouped.entry(record.header).or_default();
             records.push(record);
             
             // println!(
@@ -106,6 +108,13 @@ async fn main() -> Result<()> {
 
     for (key, records) in grouped.iter() {
         println!("{} {}", key, records.len());
+    }
+
+    let records = grouped.get(&16940919).unwrap();
+
+    for record in records {
+        
+        println!("{:?}", record.payload_hex);
     }
 
     // for (i, line) in reader.lines().enumerate() {
