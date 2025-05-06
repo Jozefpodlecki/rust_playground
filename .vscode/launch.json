@@ -2,15 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
+            "type": "node-terminal",
+            "name": "Web Debug",
             "request": "launch",
-            "name": "Debug DuckDb Repository",
-            "program": "${workspaceFolder}/duckdb_repository/target/debug/duckdb_repository",
-            "args": [],
-            "cwd": "${workspaceRoot}/duckdb_repository",
-            "sourceLanguages": [
-                "rust"
-            ]
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}/web" 
         },
+        {
+            "name": "App Debug",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceRoot}/app/target/debug/rust_playground.exe",
+            "cwd": "${workspaceRoot}/app",
+        }
     ]
 }

@@ -1,5 +1,5 @@
 
-name: Build with passing env
+name: CI
 
 on:
   workflow_dispatch:
@@ -7,12 +7,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      API_KEY: "12345"
     steps:
       - uses: actions/checkout@v4
-      - run: cargo build --release
-        working-directory: embed_config
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache-dependency-path: web/package-lock.json
+          cache: 'npm'
+      - run: npm ci
+        working-directory: ./web
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: tauri-apps/tauri-action@v0
         env:
-          API_KEY: ${{ env.API_KEY }} 
-      - run: ./embed_config/target/release/embed_config
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          includeRelease: true
+          tagName: ${{ github.ref_name }}
+          releaseName: "Release ${{ github.ref_name }}"
+          releaseDraft: false
+          prerelease: false

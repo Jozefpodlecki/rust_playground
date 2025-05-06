@@ -1,8 +1,0 @@
-[package]
-name = "const_generic_example"
-version = "0.1.0"
-authors = ["Jozef Podlecki"]
-edition = "2024"
-rust-version = "1.85"
-
-[dependencies]
