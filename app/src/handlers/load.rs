@@ -1,5 +1,6 @@
 
 use std::{process::Command, sync::Arc};
+use chrono::Utc;
 use tauri::{command, App, AppHandle, State};
 use std::error::Error as StdError;
 
@@ -19,7 +20,7 @@ pub async fn load(
         app_name: "Rust Playground".into(),
         rust_version,
         github_link: "https://github.com/Jozefpodlecki/rust_playground".into(),
-
+        loaded_on: Utc::now(),
         version
     };
 

@@ -1,0 +1,22 @@
+
+use std::path::PathBuf;
+use tauri::command;
+use tokio::fs;
+
+use crate::error::AppError;
+
+#[command]
+pub async fn get_markdown(id: u64) -> Result<String, AppError> {
+    let mut path = PathBuf::from("exercises");
+    path.push(format!("{}_exercise.md", id));
+
+    if !path.exists() {
+        return Err(AppError::Unknown);
+    }
+
+    let content = fs::read_to_string(&path)
+        .await
+        .map_err(|e| AppError::Unknown)?;
+
+    Ok(content)
+}

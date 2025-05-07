@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 
@@ -8,4 +9,11 @@ pub struct LoadResult {
     pub rust_version: String,
     pub github_link: String,
     pub version: String,
+    pub loaded_on: DateTime<Utc>
+}
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Exercise {
+    
 }

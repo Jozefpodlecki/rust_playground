@@ -6,7 +6,7 @@ edition = "2024"
 rust-version = "1.85"
 
 [lib]
-name = "tauri_app_lib"
+name = "rust_playground_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -21,3 +21,5 @@ serde_json = "1"
 chrono = { version = "0.4.38", features = ["serde"] }
 thiserror = "2.0.12"
 log = "0.4.22"
+sqlx = { version = "0.8.5", features = [ "runtime-tokio", "sqlite" ] }
+anyhow = "1.0.96"

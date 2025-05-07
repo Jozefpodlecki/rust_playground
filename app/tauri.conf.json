@@ -10,7 +10,8 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
+        "label": "main",
+        "title": "Rust Playground",
         "width": 800,
         "height": 600
       }

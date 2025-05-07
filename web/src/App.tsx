@@ -1,19 +1,24 @@
-import { useState } from "react";
-
 import "./App.css";
 import { Flex, Spinner } from "@chakra-ui/react";
+import { Route, Routes } from "react-router-dom";
+import Home from "./Home";
+import { useApp } from "./appProvider";
+import Exercise from "./components/Exercise/Main";
+import Example from "./components/Example/Main";
 
-const App = () => {
- 
-	async function greet() {
-		// setGreetMsg(await invoke("greet", { name }));
-	}
-
+const App: React.FC = () => {
+	const app = useApp();
+	
 	return (
 	<main className="">
 		
 		<Flex height="100vh" align="center" justify="center">
-			<Spinner size="lg" colorPalette="gray" />
+			{app.isLoading ? <Spinner size="lg" colorPalette="gray" /> :
+			<Routes>
+				<Route path="/" element={<Home />} />
+				<Route path="/exercise" element={<Exercise />} />
+				<Route path="/example" element={<Example />} />
+			</Routes>}
 		</Flex>
 	</main>
 	);
