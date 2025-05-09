@@ -9,5 +9,7 @@ use crate::{error::AppError, models::{Exercise, LoadResult}, services::AppReadyS
 #[command]
 pub async fn get_exercises() -> Result<Vec<Exercise>, AppError> {
 
+    
+
     Ok(vec![])
 }

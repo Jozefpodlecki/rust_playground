@@ -4,7 +4,7 @@ use log::info;
 use sqlx::{migrate::Migrator, sqlite::SqlitePoolOptions, SqlitePool};
 use tauri::{App, Manager};
 
-use crate::services::AppReadyState;
+use crate::{exercise_manager::{self, ExerciseManager}, services::AppReadyState};
 
 pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
 
@@ -17,12 +17,15 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
     app.manage(app_ready_state);
 
     tokio::spawn(async {
-        let pool = SqlitePoolOptions::new()
+        let pool: sqlx::Pool<sqlx::Sqlite> = SqlitePoolOptions::new()
             .max_connections(5)
             .connect("")
             .await?;
 
         sqlx::migrate!().run(&pool).await?;
+
+        let exercise_manager = ExerciseManager::new(pool.clone());
+
         anyhow::Ok(())
     });
 

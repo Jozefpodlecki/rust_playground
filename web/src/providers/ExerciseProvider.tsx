@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getExercises } from './api';
-import { Exercise } from './models';
+import { getExercises } from '@/api';
+import { Exercise } from '@/models';
 
 export interface ExerciseState {
 	current: Exercise | null;

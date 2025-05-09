@@ -7,7 +7,7 @@ use std::error::Error as StdError;
 use crate::{error::AppError, models::{Exercise, LoadResult}, services::AppReadyState};
 
 #[command]
-pub async fn get_exercises() -> Result<Vec<Exercise>, AppError> {
+pub async fn update_session() -> Result<Vec<Exercise>, AppError> {
 
     Ok(vec![])
 }

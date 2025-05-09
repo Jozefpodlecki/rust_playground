@@ -2,9 +2,9 @@ import "./App.css";
 import { Flex, Spinner } from "@chakra-ui/react";
 import { Route, Routes } from "react-router-dom";
 import Home from "./Home";
-import { useApp } from "./appProvider";
-import Exercise from "./components/Exercise/Main";
-import Example from "./components/Example/Main";
+import { useApp } from "./providers/AppProvider";
+import Exercise from "@/components/Exercise/Main";
+import Example from "@/components/Example/Main";
 
 const App: React.FC = () => {
 	const app = useApp();

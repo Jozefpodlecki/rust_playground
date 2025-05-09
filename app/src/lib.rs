@@ -4,6 +4,7 @@ mod panic_hook;
 mod services;
 mod models;
 mod error;
+mod exercise_manager;
 
 use handlers::generate_handlers;
 pub use setup_app::setup_app;

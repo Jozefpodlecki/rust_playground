@@ -1,5 +1,5 @@
 import { useContext, createContext, PropsWithChildren, useEffect, useState } from "react";
-import { load } from "./api";
+import { load } from "../api";
 
 const defaultState = {
 	appName: "",

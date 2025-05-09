@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IconFolder, IconCheck } from "@tabler/icons-react";
 import { setFolder, verifyExercise } from "../../api";
-import { useExercises } from "../../ExerciseProvider";
+import { useExercises } from "../../providers/ExerciseProvider";
 
 interface State {
 	folder: string;
@@ -44,7 +44,7 @@ const InputPanel: React.FC = () => {
 			  ...prevState,
 			  verifying: true,
 			}));
-			const response = await verifyExercise(exercise.current!.id); // Verifying exercise based on the current exercise
+			const response = await verifyExercise(exercise.current!.id);
 			setState((prevState) => ({
 			  ...prevState,
 			  result: response,
@@ -61,7 +61,7 @@ const InputPanel: React.FC = () => {
 	};
 
   return (
-    <div className="bg-gray-800 text-white p-6 rounded-xl shadow w-full">
+    <div className="bg-gray-800 text-white p-6">
       <div className="flex flex-col gap-4">
         <button
           onClick={selectFolder}

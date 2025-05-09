@@ -43,5 +43,11 @@ pub fn get_rust_version() -> Result<String, AppError> {
     let rust_version = String::from_utf8(output.stdout)
         .map_err(|e| AppError::Generic(Box::new(e)))?;
 
-    Ok(rust_version.trim().to_string())  // Trim any extra whitespace
+    let version = rust_version
+        .split_whitespace()
+        .take(2)
+        .collect::<Vec<&str>>()
+        .join(" ");
+
+    Ok(version.trim().to_string())
 }
