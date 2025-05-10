@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-
+use sqlx::FromRow;
+use chrono::NaiveDate;
+use uuid::Uuid;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -12,8 +14,29 @@ pub struct LoadResult {
     pub loaded_on: DateTime<Utc>
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Exercise {
-    
+    id: Uuid,
+    name: String,
+    markdown: String,
+    created_on: DateTime<Utc>
+}
+
+#[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExerciseSession {
+    pub id: Uuid,
+    pub exercise_id: Uuid,
+    pub folder_path: String,
+    pub started_on: DateTime<Utc>,
+    pub completed_on: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateExerciseSession {
+    pub exercise_id: Uuid,
+    pub folder_path: Option<String>,
+    pub completed_on: Option<DateTime<Utc>>,
 }

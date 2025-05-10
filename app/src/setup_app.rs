@@ -8,7 +8,6 @@ use crate::{exercise_manager::{self, ExerciseManager}, services::AppReadyState};
 
 pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
 
-    info!("test");
     let window = app.get_webview_window("main").unwrap();
    
     window.maximize()?;
@@ -16,7 +15,9 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
     let app_ready_state = Arc::new(AppReadyState::new());
     app.manage(app_ready_state);
 
-    tokio::spawn(async {
+    let app = app.handle().clone();
+
+    tokio::spawn(async move {
         let pool: sqlx::Pool<sqlx::Sqlite> = SqlitePoolOptions::new()
             .max_connections(5)
             .connect("")
@@ -24,7 +25,9 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
 
         sqlx::migrate!().run(&pool).await?;
 
-        let exercise_manager = ExerciseManager::new(pool.clone());
+        let exercise_manager = Arc::new(ExerciseManager::new(pool.clone()));
+
+        app.manage(exercise_manager);
 
         anyhow::Ok(())
     });

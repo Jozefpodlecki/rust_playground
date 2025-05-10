@@ -1,13 +1,21 @@
 
-use std::{process::Command, sync::Arc};
-use chrono::Utc;
-use tauri::{command, App, AppHandle, State};
-use std::error::Error as StdError;
+use std::sync::Arc;
 
-use crate::{error::AppError, models::{Exercise, LoadResult}, services::AppReadyState};
+use tauri::{command, State};
+
+use crate::{error::AppError, exercise_manager::ExerciseManager, models::UpdateExerciseSession};
 
 #[command]
-pub async fn update_session() -> Result<Vec<Exercise>, AppError> {
+pub async fn update_session(
+    exercise_manager: State<'_, Arc<ExerciseManager>>,
+    payload: UpdateExerciseSession) -> Result<(), AppError> {
 
-    Ok(vec![])
+    exercise_manager.update_exercise_session(
+        payload.exercise_id,
+        payload.folder_path,
+        payload.completed_on
+    ).await
+    .map_err(|e| AppError::Unknown)?;
+
+    Ok(())
 }

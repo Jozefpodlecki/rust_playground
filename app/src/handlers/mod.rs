@@ -9,6 +9,7 @@ pub fn generate_handlers() -> Box<dyn Fn(tauri::ipc::Invoke) -> bool + Send + Sy
     Box::new(generate_handler![
         load::load,
         get_exercises::get_exercises,
-        get_markdown::get_markdown
+        get_markdown::get_markdown,
+        update_session::update_session
     ])
 }
