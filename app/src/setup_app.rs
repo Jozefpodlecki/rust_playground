@@ -1,15 +1,17 @@
+use anyhow::*;
+use log::{error, info};
+use sqlx::{migrate::{MigrateDatabase, Migrator}, sqlite::SqlitePoolOptions, Sqlite, SqlitePool};
 use std::{error::Error, path::Path, sync::Arc};
+use tauri::{App, AppHandle, Manager};
 
-use log::info;
-use sqlx::{migrate::Migrator, sqlite::SqlitePoolOptions, SqlitePool};
-use tauri::{App, Manager};
+use crate::{
+    exercise_manager::{self, ExerciseManager},
+    services::AppReadyState,
+};
 
-use crate::{exercise_manager::{self, ExerciseManager}, services::AppReadyState};
-
-pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
-
+pub fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").unwrap();
-   
+
     window.maximize()?;
 
     let app_ready_state = Arc::new(AppReadyState::new());
@@ -18,23 +20,35 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
     let app = app.handle().clone();
 
     tokio::spawn(async move {
-        let pool: sqlx::Pool<sqlx::Sqlite> = SqlitePoolOptions::new()
-            .max_connections(5)
-            .connect("")
-            .await?;
-
-        sqlx::migrate!().run(&pool).await?;
-
-        let exercise_manager = Arc::new(ExerciseManager::new(pool.clone()));
-
-        app.manage(exercise_manager);
-
-        anyhow::Ok(())
+        if let Err(err) = setup_db(app).await {
+            error!("{}", err);
+        }
     });
 
-    
+    std::result::Result::Ok(())
+}
 
-    Ok(())
+async fn setup_db(app: AppHandle) -> Result<()> {
+    println!("Current dir: {:?}", std::env::current_dir()?);
+    let connection_string = "sqlite://rust_playground.db";
+    let database_exists = Sqlite::database_exists(connection_string).await.unwrap_or(false);
+
+    if !database_exists {
+        Sqlite::create_database(connection_string).await?;
+    }
+
+    let pool: sqlx::Pool<sqlx::Sqlite> = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(connection_string)
+        .await?;
+
+    sqlx::migrate!().run(&pool).await?;
+
+    let exercise_manager = Arc::new(ExerciseManager::new(pool.clone()));
+
+    app.manage(exercise_manager);
+
+    anyhow::Ok(())
 }
 
 // use std::path::Path;
@@ -64,7 +78,7 @@ pub fn setup_app(app: &mut App) -> Result<(), Box<dyn Error>> {
 //             Err(error) => panic!("error: {}", error),
 //         }
 //     }
-   
+
 //     let db = SqlitePool::connect(DB_URL).await.unwrap();
 //     let migrator = Migrator::new(Path::new("./migrations")).await.unwrap();
 //     let migration_results = migrator.run(&db).await;

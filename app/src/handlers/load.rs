@@ -1,14 +1,14 @@
-
-use std::{process::Command, sync::Arc};
 use chrono::Utc;
-use tauri::{command, App, AppHandle, State};
+use std::{process::Command, sync::Arc};
+use tauri::{App, AppHandle, State, command};
 
 use crate::{error::AppError, models::LoadResult, services::AppReadyState};
 
 #[command]
 pub async fn load(
     app_ready_state: State<'_, Arc<AppReadyState>>,
-    app_handle: AppHandle) -> Result<LoadResult, AppError> {
+    app_handle: AppHandle,
+) -> Result<LoadResult, AppError> {
     app_ready_state.mark_ready();
 
     let version = app_handle.package_info().version.to_string();
@@ -20,7 +20,7 @@ pub async fn load(
         rust_version,
         github_link: "https://github.com/Jozefpodlecki/rust_playground".into(),
         loaded_on: Utc::now(),
-        version
+        version,
     };
 
     Ok(result)
@@ -39,8 +39,8 @@ pub fn get_rust_version() -> Result<String, AppError> {
         ))));
     }
 
-    let rust_version = String::from_utf8(output.stdout)
-        .map_err(|e| AppError::Generic(Box::new(e)))?;
+    let rust_version =
+        String::from_utf8(output.stdout).map_err(|e| AppError::Generic(Box::new(e)))?;
 
     let version = rust_version
         .split_whitespace()

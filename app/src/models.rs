@@ -1,7 +1,7 @@
+use chrono::NaiveDate;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use chrono::NaiveDate;
 use uuid::Uuid;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -11,7 +11,7 @@ pub struct LoadResult {
     pub rust_version: String,
     pub github_link: String,
     pub version: String,
-    pub loaded_on: DateTime<Utc>
+    pub loaded_on: DateTime<Utc>,
 }
 
 #[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
@@ -20,7 +20,7 @@ pub struct Exercise {
     id: Uuid,
     name: String,
     markdown: String,
-    created_on: DateTime<Utc>
+    created_on: DateTime<Utc>,
 }
 
 #[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]

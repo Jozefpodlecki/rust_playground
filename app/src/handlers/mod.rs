@@ -1,6 +1,6 @@
-mod load;
 mod get_exercises;
 mod get_markdown;
+mod load;
 mod update_session;
 
 use tauri::generate_handler;

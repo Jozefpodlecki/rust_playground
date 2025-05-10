@@ -4,7 +4,7 @@ import MarkdownViewer from "./MarkdownViewer";
 import InputPanel from "./InputPanel";
 import { IconList } from "@tabler/icons-react";
 import { useExercises } from "@/providers/ExerciseProvider";
-import { getFakeExercises, getMarkdown } from "@/api";
+import { getExercises, getMarkdown } from "@/api";
 import TopBar from "../TopBar";
 import { Exercise } from "@/models";
 
@@ -27,10 +27,13 @@ const Main: React.FC = () => {
 			setMarkdown(markdown);
 		}
 
-	
+		try {
+			const exercises = await getExercises();
+			setTableOfContents(exercises);	
+		} catch (error) {
+			console.log(error);
+		}
 
-		const exercises = await getFakeExercises();
-		setTableOfContents(exercises);
 	}
 
 	const onSelect = (exercise: Exercise) => {

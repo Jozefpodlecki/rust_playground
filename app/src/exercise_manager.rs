@@ -1,12 +1,12 @@
+use anyhow::*;
 use chrono::{DateTime, Utc};
 use sqlx::{Pool, Sqlite};
-use anyhow::*;
 use uuid::Uuid;
 
 use crate::models::Exercise;
 
 pub struct ExerciseManager {
-    pool: Pool<Sqlite>
+    pool: Pool<Sqlite>,
 }
 
 impl ExerciseManager {
@@ -15,12 +15,11 @@ impl ExerciseManager {
     }
 
     pub async fn get_exercises(&self) -> Result<Vec<Exercise>> {
-        
         let exercises: Vec<Exercise> = sqlx::query_as::<_, Exercise>(
-        "SELECT id, name, markdown, created_on, completed_on FROM exercise"
-            )
-            .fetch_all(&self.pool)
-            .await?;
+            "SELECT id, name, markdown, created_on, completed_on FROM exercise",
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
         Ok(exercises)
     }
@@ -60,8 +59,6 @@ impl ExerciseManager {
         query = query.bind(exercise_id);
         query.execute(&self.pool).await?;
 
-    Ok(())
-
+        Ok(())
     }
-
 }

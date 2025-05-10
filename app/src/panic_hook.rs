@@ -11,9 +11,11 @@ pub fn set_hook() {
             "Unknown panic message".to_string()
         };
 
-        let location = info.location().map_or("unknown location".to_string(), |location| {
-            format!("{}:{}", location.file(), location.line())
-        });
+        let location = info
+            .location()
+            .map_or("unknown location".to_string(), |location| {
+                format!("{}:{}", location.file(), location.line())
+            });
 
         error!("Panicked at '{}', {}", message, location);
     }));

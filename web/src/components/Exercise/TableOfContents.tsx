@@ -10,7 +10,7 @@ interface Props {
 const TableOfContents: React.FC<Props> = ({ open, items, onSelect }) => {
 
     const onClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
-        const id = Number(event.currentTarget.dataset.id);
+        const id = event.currentTarget.dataset.id;
         const item = items.find(pr => pr.id === id);
         onSelect(item!);
     }, []);
@@ -25,7 +25,7 @@ const TableOfContents: React.FC<Props> = ({ open, items, onSelect }) => {
             {items.map((item, index) => (
             <li data-id={item.id} key={index}
                 onClick={onClick}
-                className="text-blue-500 hover:underline">
+                className="cursor pointer hover:underline">
                 {item.name}
             </li>
             ))}

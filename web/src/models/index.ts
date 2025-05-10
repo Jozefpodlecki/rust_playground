@@ -8,6 +8,6 @@ export interface LoadResult {
 }
 
 export interface Exercise {
-    id: number;
+    id: string;
     name: string;
 }

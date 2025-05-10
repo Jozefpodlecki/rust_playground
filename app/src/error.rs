@@ -4,8 +4,10 @@ pub enum AppError {
     Generic(#[from] Box<dyn std::error::Error>),
     #[error("Serialization")]
     Serde(#[from] serde_json::error::Error),
+    #[error("Sqlite")]
+    Sqlite(Box<dyn std::error::Error>),
     #[error("Unknown error")]
-    Unknown
+    Unknown,
 }
 
 impl serde::Serialize for AppError {
