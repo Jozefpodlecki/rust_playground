@@ -26,9 +26,19 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 
 	useEffect(() => {
 
-		getExercises();
+		onLoad();
 
 	}, []);
+
+	async function onLoad() {
+
+		try {
+			const exercises = await getExercises();	
+		} catch (error) {
+			console.log(error);
+		}
+		
+	}
 
 	const verifyExercise = async (id: string): Promise<boolean> => {
 		// const success = await invoke<boolean>("verify_exercise", { id });

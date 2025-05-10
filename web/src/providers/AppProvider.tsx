@@ -37,13 +37,18 @@ export const AppProvider: React.FC<PropsWithChildren> = ({ children }) => {
 	}, []);
 
 	async function onLoad() {
-		const result = await load();
+		try {
+			const result = await load();
 
-		setState(state => ({
-			...state,
-			isLoading: false,
-			...result
-		}))
+			setState(state => ({
+				...state,
+				isLoading: false,
+				...result
+			}));
+
+		} catch (error) {
+			console.log(error);
+		}
 	}
 
 	return (

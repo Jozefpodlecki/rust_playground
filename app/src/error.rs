@@ -1,11 +1,13 @@
+use log::error;
+
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
-    #[error("Generic error")]
+    #[error("Generic error: {0}")]
     Generic(#[from] Box<dyn std::error::Error>),
-    #[error("Serialization")]
+    #[error("Serialization: {0}")]
     Serde(#[from] serde_json::error::Error),
-    #[error("Sqlite")]
-    Sqlite(Box<dyn std::error::Error>),
+    #[error("Sqlite: {0}")]
+    Sqlite(String),
     #[error("Unknown error")]
     Unknown,
 }
@@ -15,6 +17,7 @@ impl serde::Serialize for AppError {
     where
         S: serde::ser::Serializer,
     {
+        error!("{}", self);
         serializer.serialize_str(self.to_string().as_ref())
     }
 }

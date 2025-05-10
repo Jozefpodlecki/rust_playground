@@ -15,6 +15,9 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_log::Builder::new()
+            .level_for("tao::platform_impl", log::LevelFilter::Error)
+            .level_for("tao", log::LevelFilter::Error)
+            .level_for("sqlx::query", log::LevelFilter::Warn)
             .target(tauri_plugin_log::Target::new(
             tauri_plugin_log::TargetKind::Stdout,
         ))

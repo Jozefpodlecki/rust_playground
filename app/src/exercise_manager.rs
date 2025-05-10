@@ -16,7 +16,7 @@ impl ExerciseManager {
 
     pub async fn get_exercises(&self) -> Result<Vec<Exercise>> {
         let exercises: Vec<Exercise> = sqlx::query_as::<_, Exercise>(
-            "SELECT id, name, markdown, created_on, completed_on FROM exercise",
+            "SELECT id, name, markdown, created_on FROM exercise",
         )
         .fetch_all(&self.pool)
         .await?;

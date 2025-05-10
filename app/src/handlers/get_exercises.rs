@@ -10,7 +10,7 @@ pub async fn get_exercises(
     let exercises = exercise_manager
         .get_exercises()
         .await
-        .map_err(|err| AppError::Sqlite(err.into()))?;
+        .map_err(|err| AppError::Sqlite(err.to_string()))?;
 
     Ok(exercises)
 }

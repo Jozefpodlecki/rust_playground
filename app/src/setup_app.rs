@@ -13,6 +13,7 @@ pub fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::E
     let window = app.get_webview_window("main").unwrap();
 
     window.maximize()?;
+    window.open_devtools();
 
     let app_ready_state = Arc::new(AppReadyState::new());
     app.manage(app_ready_state);
