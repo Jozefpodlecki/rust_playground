@@ -1,13 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getExercises, getLastExerciseSession } from '@/api';
+import { createSession, getExercises, getLastExerciseSession } from '@/api';
 import { Exercise, ExerciseSession } from '@/models';
 
 export interface ExerciseState {
-	current: ExerciseSession | undefined;
+	currentExercise: Exercise;
+	currentSession: ExerciseSession | undefined;
 	exercises: Exercise[];
 	progressPercent: number;
 	completedIds: string[];
-	verifyExercise: (id: string) => Promise<boolean>;
+	createExerciseSession(exerciseId: string, folderPath: string): Promise<ExerciseSession>;
+	verifyExercise(id: string): Promise<boolean>;
 }
 
 const ExerciseContext = createContext<ExerciseState | undefined>(undefined);
@@ -22,10 +24,12 @@ export const useExercises = () => {
 
 export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 	const [state, setState] = useState<ExerciseState>({
-		current: undefined,
+		currentExercise: null!,
+		currentSession: undefined,
 		exercises: [],
 		progressPercent: 0,
 		completedIds: [],
+		createExerciseSession,
 		verifyExercise
 	});
 
@@ -39,13 +43,21 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 
 		try {
 			const exercises = await getExercises();	
-			const session = await getLastExerciseSession();
+			const currentSession = await getLastExerciseSession();
 
+			let exerciseId = exercises[0].id;
+						
+			if(currentSession) {
+				exerciseId = currentSession.exerciseId;
+			}
+	
+			const currentExercise = exercises.find(pr => pr.id === exerciseId)!;
 
 			setState(pr => {
 				return {
 					...pr,
-					current: session,
+					currentExercise,
+					currentSession,
 					exercises
 				}
 			});
@@ -53,6 +65,23 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 			console.log(error);
 		}
 		
+	}
+
+	async function createExerciseSession(exerciseId: string, folderPath: string) {
+
+		const session = await createSession({
+			exerciseId: exerciseId,
+			folderPath,
+		});
+
+		setState(pr => {
+			return {
+				...pr,
+				currentSession: session
+			}
+		})
+
+		return session;
 	}
 
 	async function verifyExercise(id: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import { Exercise, ExerciseSession, LoadResult } from "@/models";
+import { CreateExerciseSession, Exercise, ExerciseSession, LoadResult, UpdateExerciseSession } from "@/models";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from '@tauri-apps/plugin-dialog';
 
@@ -8,6 +8,20 @@ export async function openFolderDialog(): Promise<string | null> {
     });
 
     return result;
+}
+
+export async function createSession(payload: CreateExerciseSession): Promise<ExerciseSession> {
+    const id = await invoke<ExerciseSession>("create_session",  {
+        payload
+    });
+
+    return id;
+}
+
+export async function updateSession(payload: UpdateExerciseSession): Promise<never> {
+    return invoke("update_session",  {
+        payload
+    });
 }
 
 export async function load(): Promise<LoadResult> {
@@ -22,9 +36,9 @@ export async function getLastExerciseSession(): Promise<ExerciseSession | undefi
     return invoke("get_last_exercise_session");
 }
 
-export async function verifyExercise(id: string): Promise<never> {
+export async function verifyExercise(sessionId: string): Promise<never> {
     return invoke("verify_exercise",  {
-        id
+        sessionId
     });
 }
 

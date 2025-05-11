@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{process::Command, sync::Arc};
 use tauri::{State, command};
 use uuid::Uuid;
 
@@ -14,6 +14,17 @@ pub async fn verify_exercise(
     session_id: Uuid
 ) -> Result<VerifyResult, AppError> {
     
+    let session = exercise_manager.get_session_by_id(session_id)
+        .await
+        .map_err(|err| AppError::Sqlite(err.to_string()))?
+        .unwrap();
+
+    let status = Command::new("cargo")
+        .arg("run")
+        .current_dir(session.folder_path)
+        .status()
+        .map_err(|err| AppError::Command(err.to_string()))?;
+
     let result = VerifyResult {
         
     };

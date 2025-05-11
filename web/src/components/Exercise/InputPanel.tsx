@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { IconFolder, IconCheck } from "@tabler/icons-react";
-import { openFolderDialog, verifyExercise } from "@/api";
+import { createSession, openFolderDialog, updateSession, verifyExercise } from "@/api";
 import { useExercises } from "@/providers/ExerciseProvider";
 import {
   Box,
@@ -17,32 +17,46 @@ interface State {
 	result: string;
 }
 
-interface Props {
-	projectFolder: string | null;
-}
-
-const InputPanel: React.FC<Props> = ({ projectFolder: _projectFolder }) => {
+const InputPanel: React.FC = () => {
+	const {
+		currentExercise,
+		currentSession,
+		createExerciseSession
+	} = useExercises();
 	const [{ projectFolder, isVerifying, result }, setState] = useState<State>({
-		projectFolder: _projectFolder,
+		projectFolder: currentSession?.folderPath || null,
 		isVerifying: false,
 		result: "",
 	});
 
-	const exercise = useExercises();
-
 	const onProjectFolderSelect = async () => {
-	try {
-		const projectFolder = await openFolderDialog();
+		try {
+			const projectFolder = await openFolderDialog();
 
-		if(!projectFolder) {
-			return;
+			if(!projectFolder) {
+				return;
+			}
+
+			// if(sessionId) {
+			// 	await updateSession({
+			// 		id: sessionId,
+			// 		exerciseId: exerciseId,
+			// 		folderPath: projectFolder,
+			// 		completedOn: null
+			// 	})
+			// }
+			// else {
+			// 	const id = await createSession({
+			// 		exerciseId: exerciseId,
+			// 		folderPath: projectFolder
+			// 	})
+			// }
+
+			setState((state) => ({ ...state, projectFolder }));
+		} catch (err) {
+			console.error("Folder selection failed", err);
+
 		}
-
-		setState((state) => ({ ...state, projectFolder }));
-	} catch (err) {
-		console.error("Folder selection failed", err);
-
-	}
 	};
 
 	const onVerify = async () => {

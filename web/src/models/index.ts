@@ -7,6 +7,20 @@ export interface LoadResult {
 	loadedOn: string;
 }
 
+export interface CreateExerciseSession {
+    exerciseId: string;
+    folderPath: string;
+}
+
+
+export interface UpdateExerciseSession {
+    id: string;
+    exerciseId: string;
+    folderPath: string | null;
+    completedOn: string | null;
+}
+
+
 export interface Exercise {
     id: string;
     name: string;

@@ -8,11 +8,24 @@ import { getExercises, getMarkdown } from "@/api";
 import TopBar from "../TopBar";
 import { Exercise } from "@/models";
 
+interface State {
+	markdown: string;
+	activeExerciseId: string;
+}
+
 const Main: React.FC = () => {
 	const [isDrawerOpen, setIsDrawerOpen] = useState(true);
-	const [markdown, setMarkdown] = useState<string>("");
+	const [{
+		markdown,
+		activeExerciseId
+	}, setState] = useState<State>({
+		markdown: "",
+		activeExerciseId: ""
+	});
+	
 	const {
-		current,
+		currentExercise,
+		currentSession,
 		exercises
 	} = useExercises();
 
@@ -24,16 +37,15 @@ const Main: React.FC = () => {
 
 		try {
 
-		let exerciseId = exercises[0].id;
-			
-		if(current) {
-			exerciseId = current.exerciseId;
-		}
+		const markdown = await getMarkdown(currentExercise.markdown);
 
-		const exercise = exercises.find(pr => pr.id === exerciseId)!;
-
-		const markdown = await getMarkdown(exercise.markdown);
-		setMarkdown(markdown);
+		setState(pr => {
+			return {
+				...pr,
+				markdown,
+				activeExerciseId: currentExercise.id
+			}
+		});
 
 		} catch (error) {
 			console.log(error);
@@ -44,7 +56,13 @@ const Main: React.FC = () => {
 
 	const onSelect = async (exercise: Exercise) => {
 		const markdown = await getMarkdown(exercise.markdown);
-		setMarkdown(markdown);
+			setState(pr => {
+			return {
+				...pr,
+				markdown,
+				activeExerciseId: exercise.id
+			}
+		});
 	}
 
 	return (
@@ -54,10 +72,10 @@ const Main: React.FC = () => {
 			<TableOfContents
 				open={isDrawerOpen}
 				items={exercises}
-				activeId={""}
+				activeId={activeExerciseId}
 				onSelect={onSelect} />
 			<MarkdownViewer markdown={markdown} />
-			<InputPanel projectFolder={current?.folderPath || null} />
+			<InputPanel />
 		</div>
 	</section>
 	);

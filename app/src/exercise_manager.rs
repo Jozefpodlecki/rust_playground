@@ -23,6 +23,20 @@ impl ExerciseManager {
         Ok(exercises)
     }
 
+    pub async fn get_session_by_id(&self, session_id: Uuid) -> Result<Option<ExerciseSession>> {
+        let session: Option<ExerciseSession> = sqlx::query_as::<_, ExerciseSession>(
+            "SELECT
+            id, exercise_id, folder_path, started_on, completed_on 
+            FROM exercise_session 
+            WHERE id = ?",
+        )
+        .bind(session_id) 
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(session)
+    }
+
     pub async fn get_last_exercise_session(&self) -> Result<Option<ExerciseSession>> {
         let session: Option<ExerciseSession> = sqlx::query_as::<_, ExerciseSession>(
             "SELECT
@@ -37,18 +51,28 @@ impl ExerciseManager {
         Ok(session)
     }
 
-    pub async fn create_exercise_session(&self, payload: CreateExerciseSession) -> Result<()> {
+    pub async fn create_exercise_session(&self, payload: CreateExerciseSession) -> Result<ExerciseSession> {
+        let id = Uuid::new_v4();
+
         sqlx::query(
-            "INSERT INTO exercise_session (id, exercise_id, folder_path)
-                VALUES (?, ?, ?)",
+            "INSERT INTO exercise_session
+            (id, exercise_id, folder_path)
+            VALUES
+            (?, ?, ?)",
         )
-        .bind(Uuid::new_v4()) // Generate a new UUID for the session ID
+        .bind(id)
         .bind(payload.exercise_id)
-        .bind(payload.folder_path)
+        .bind(payload.folder_path.clone())
         .execute(&self.pool)
         .await?;
 
-        Ok(())
+        Ok(ExerciseSession {
+            id,
+            exercise_id: payload.exercise_id,
+            started_on: Utc::now(),
+            folder_path: payload.folder_path,
+            completed_on: None
+        })
     }
 
     pub async fn update_exercise_session(&self, payload: UpdateExerciseSession) -> Result<()> {
