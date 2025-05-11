@@ -1,13 +1,15 @@
 import { Exercise } from "@/models";
+import { Box } from "@chakra-ui/react";
 import { useCallback } from "react";
 
 interface Props {
     open: boolean;
     items: Exercise[];
+    activeId: string;
     onSelect(exercise: Exercise): void;
 }
   
-const TableOfContents: React.FC<Props> = ({ open, items, onSelect }) => {
+const TableOfContents: React.FC<Props> = ({ open, items, activeId, onSelect }) => {
 
     const onClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
         const id = event.currentTarget.dataset.id;
@@ -21,15 +23,20 @@ const TableOfContents: React.FC<Props> = ({ open, items, onSelect }) => {
             open ? "transform-none" : "-translate-x-full"
         }`}
         >
-        <ul>
+        <div>
             {items.map((item, index) => (
-            <li data-id={item.id} key={index}
+            <Box data-id={item.id} key={index}
                 onClick={onClick}
-                className="cursor pointer hover:underline">
+                p="2"
+                background={item.id === activeId ? "gray.800" : "gray.900" }
+                _hover={{
+                    bg: item.id === activeId ? "gray.600" : "gray.700",
+                }}
+                className="cursor-pointer">
                 {item.name}
-            </li>
+            </Box >
             ))}
-        </ul>
+        </div>
         </div>
     );
 };

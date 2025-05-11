@@ -9,8 +9,8 @@ const TopBar: React.FC = () => {
     const location = useLocation();
     const isLandingPage = location.pathname === "/";
 
-    return <nav className="bg-gray-900 text-white h-8 flex items-center px-6 shadow-sm justify-between w-full">
-        <div className="flex-1 h-full bg-gray-700 relative">
+    return <nav className="bg-gray-900 text-white h-8 flex items-center">
+        {/* <div className="flex-1 h-full bg-gray-700 relative">
             <div
                 className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -18,8 +18,8 @@ const TopBar: React.FC = () => {
             <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
                 {progressPercent}% Complete
             </div>
-        </div>
-        <div className="flex flex-row m-40">
+        </div> */}
+        <div className="flex flex-row">
             {isLandingPage ? null : <Link to="/" className="w-10 flex justify-center items-center">
                 <IconHome size={20} />
             </Link>}

@@ -1,5 +1,9 @@
 import Markdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
+import remarkFrontmatter from "remark-frontmatter";
+import remarkGfm from "remark-gfm";
+import "github-markdown-css";
+import { Box } from "@chakra-ui/react";
 
 interface Props {
   markdown: string;
@@ -7,9 +11,11 @@ interface Props {
 
 const MarkdownViewer: React.FC<Props> = ({ markdown }) => {
   return (
-    <div className="w-2/3 bg-gray-800 overflow-y-auto">
-      <Markdown rehypePlugins={[rehypeHighlight]}>{markdown}</Markdown>
-    </div>
+	<Box p="4" width={"2/3"} className="overflow-y-auto markdown-body">
+		<Markdown
+			remarkPlugins={[remarkFrontmatter]}
+	  		rehypePlugins={[remarkGfm, rehypeHighlight]}>{markdown}</Markdown>
+    </Box>
   );
 };
 

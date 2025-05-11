@@ -10,4 +10,13 @@ export interface LoadResult {
 export interface Exercise {
     id: string;
     name: string;
+    markdown: string;
+}
+
+export interface ExerciseSession {
+    id: string;
+    exerciseId: string;
+    folderPath: string,
+    startedOn: string;
+    completedOn?: string;
 }

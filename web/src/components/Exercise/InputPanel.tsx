@@ -1,94 +1,102 @@
 import { useState } from "react";
 import { IconFolder, IconCheck } from "@tabler/icons-react";
-import { setFolder, verifyExercise } from "../../api";
-import { useExercises } from "../../providers/ExerciseProvider";
+import { openFolderDialog, verifyExercise } from "@/api";
+import { useExercises } from "@/providers/ExerciseProvider";
+import {
+  Box,
+  Button,
+  Icon,
+  Text,
+  VStack,
+  Code,
+} from "@chakra-ui/react";
 
 interface State {
-	folder: string;
+	projectFolder: string;
 	verifying: boolean;
 	result: string;
 }
 
 const InputPanel: React.FC = () => {
-	const [{
-		folder,
-		verifying,
-		result
-	}, setState] = useState<State>({
-		folder: "",
+	const [{ projectFolder, verifying, result }, setState] = useState<State>({
+		projectFolder: "",
 		verifying: false,
-		result: ""
+		result: "",
 	});
+
 	const exercise = useExercises();
-	const selectFolder = async () => {
+
+	const onProjectFolderSelect = async () => {
 	try {
-		const folder = await setFolder();
-		setState(state => {
-			return {
-				...state,
-				folder
-			}
-		});
+		const projectFolder = await openFolderDialog();
+		debugger;
+		if(!projectFolder) {
+			return;
+		}
+
+		setState((state) => ({ ...state, projectFolder }));
 	} catch (err) {
 		console.error("Folder selection failed", err);
+
 	}
 	};
 
-	const verify = async () => {
-		if (!folder) {
+	const onVerify = async () => {
+    	if (!projectFolder) {
 			return;
 		}
 
 		try {
-			setState((prevState) => ({
-			  ...prevState,
-			  verifying: true,
-			}));
+			setState((prev) => ({ ...prev, verifying: true }));
 			const response = await verifyExercise(exercise.current!.id);
-			setState((prevState) => ({
-			  ...prevState,
-			  result: response,
-			  verifying: false,
-			}));
-		  } catch (err) {
-			setState((prevState) => ({
-			  ...prevState,
-			  result: "Verification failed.",
-			  verifying: false,
+			setState((prev) => ({ ...prev, result: response, verifying: false }));
+		} catch (err) {
+			setState((prev) => ({
+				...prev,
+				result: "Verification failed.",
+				verifying: false,
 			}));
 			console.error(err);
 		}
 	};
 
-  return (
-    <div className="bg-gray-800 text-white p-6">
-      <div className="flex flex-col gap-4">
-        <button
-          onClick={selectFolder}
-          className="flex items-center bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
-        >
-          <IconFolder size={20} className="mr-2" />
-          {folder ? "Change Folder" : "Browse..."}
-        </button>
+	return (
+	<Box className="grow-1" bg="gray.900" color="white" p={6} borderRadius="xl" shadow="md">
+		<VStack align="stretch">
+		<Button
+			onClick={onProjectFolderSelect}
+			colorScheme="blue"
+			variant="solid"
+		>
+			<Icon as={IconFolder} />
+			{projectFolder ? "Change Folder" : "Select Project"}
+		</Button>
 
-        {folder && (
-          <p className="text-sm text-gray-300 break-all">
-            Selected: <span className="text-white">{folder}</span>
-          </p>
-        )}
+		{projectFolder && (
+			<Text fontSize="sm" color="gray.300" wordBreak="break-all">
+			Selected: <Code colorScheme="whiteAlpha">{projectFolder}</Code>
+			</Text>
+		)}
 
-        <button
-          onClick={verify}
-          disabled={!folder || verifying}
-          className="flex items-center bg-green-600 hover:bg-green-700 px-4 py-2 rounded"
-        >
-          <IconCheck size={20} className="mr-2" />
-          {verifying ? "Verifying..." : "Verify"}
-        </button>
+		<Button
+			onClick={onVerify}
+			disabled={!projectFolder || verifying}
+			loading={verifying}
+			loadingText="Verifying..."
+			colorScheme="green"
+			variant="solid"
+		>
+		<Icon as={IconCheck} />
+			Verify
+		</Button>
 
-        {result && <p className="text-sm text-yellow-400">{result}</p>}
-      </div>
-    </div>
+		{result && (
+			<Text fontSize="sm" color="yellow.400">
+			{result}
+			</Text>
+		)}
+		</VStack>
+	</Box>
   );
 };
 

@@ -11,9 +11,9 @@ import { Exercise } from "@/models";
 const Main: React.FC = () => {
 	const [isDrawerOpen, setIsDrawerOpen] = useState(true);
 	const [markdown, setMarkdown] = useState<string>("");
-	const [tableOfContents, setTableOfContents] = useState<Exercise[]>([]);
 	const {
-		current
+		current,
+		exercises
 	} = useExercises();
 
 	useEffect(() => {
@@ -22,29 +22,40 @@ const Main: React.FC = () => {
 
 	async function onLoad() {
 
+		try {
+
+		let exerciseId = exercises[0].id;
+			
 		if(current) {
-			const markdown = await getMarkdown(current!.id);
-			setMarkdown(markdown);
+			exerciseId = current.exerciseId;
 		}
 
-		try {
-			const exercises = await getExercises();
-			setTableOfContents(exercises);	
+		const exercise = exercises.find(pr => pr.id === exerciseId)!;
+
+		const markdown = await getMarkdown(exercise.markdown);
+		setMarkdown(markdown);
+
 		} catch (error) {
 			console.log(error);
 		}
+	
 
 	}
 
-	const onSelect = (exercise: Exercise) => {
-
+	const onSelect = async (exercise: Exercise) => {
+		const markdown = await getMarkdown(exercise.markdown);
+		setMarkdown(markdown);
 	}
 
 	return (
 	<section className="flex flex-col h-full w-full bg-gray-900 text-white">
 		<TopBar/>
 		<div className="flex h-full w-full p-6 gap-1">
-			<TableOfContents open={isDrawerOpen} items={tableOfContents} onSelect={onSelect} />
+			<TableOfContents
+				open={isDrawerOpen}
+				items={exercises}
+				activeId={""}
+				onSelect={onSelect} />
 			<MarkdownViewer markdown={markdown} />
 			<InputPanel />
 		</div>

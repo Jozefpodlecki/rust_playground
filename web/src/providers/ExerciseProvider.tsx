@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getExercises } from '@/api';
-import { Exercise } from '@/models';
+import { getExercises, getLastExerciseSession } from '@/api';
+import { Exercise, ExerciseSession } from '@/models';
 
 export interface ExerciseState {
-	current: Exercise | null;
+	current: ExerciseSession | undefined;
+	exercises: Exercise[];
 	progressPercent: number;
 	completedIds: string[];
-	setCurrentId: (id: string) => void;
 	verifyExercise: (id: string) => Promise<boolean>;
 }
 
@@ -21,8 +21,13 @@ export const useExercises = () => {
 };
 
 export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-	const [currentId, setCurrentId] = useState<string | null>(null);
-	const [completedIds, setCompletedIds] = useState<string[]>([]);
+	const [state, setState] = useState<ExerciseState>({
+		current: undefined,
+		exercises: [],
+		progressPercent: 0,
+		completedIds: [],
+		verifyExercise
+	});
 
 	useEffect(() => {
 
@@ -34,13 +39,23 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 
 		try {
 			const exercises = await getExercises();	
+			const session = await getLastExerciseSession();
+
+
+			setState(pr => {
+				return {
+					...pr,
+					current: session,
+					exercises
+				}
+			});
 		} catch (error) {
 			console.log(error);
 		}
 		
 	}
 
-	const verifyExercise = async (id: string): Promise<boolean> => {
+	async function verifyExercise(id: string): Promise<boolean> {
 		// const success = await invoke<boolean>("verify_exercise", { id });
 
 		// if (success && !completedIds.includes(id)) {
@@ -51,11 +66,9 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 		return Promise.resolve(true);
 	};
 
-	const progressPercent = (completedIds.length / 10) * 100;
-
 	return (
 	<ExerciseContext.Provider
-		value={{ current: null, setCurrentId, completedIds, verifyExercise, progressPercent }}
+		value={state}
 	>
 		{children}
 	</ExerciseContext.Provider>
