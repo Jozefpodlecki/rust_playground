@@ -35,7 +35,23 @@ pub struct ExerciseSession {
 
 #[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VerifyResult {
+    
+    
+}
+
+
+#[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateExerciseSession {
+    pub exercise_id: Uuid,
+    pub folder_path: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateExerciseSession {
+    pub id: Uuid,
     pub exercise_id: Uuid,
     pub folder_path: Option<String>,
     pub completed_on: Option<DateTime<Utc>>,

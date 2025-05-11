@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jozef Podlecki"]
 edition = "2024"
 rust-version = "1.85"
+repository = "https://github.com/Jozefpodlecki/rust_playground"
 
 [lib]
 name = "rust_playground_lib"
@@ -25,3 +26,4 @@ sqlx = { version = "0.8.5", features = [ "runtime-tokio", "sqlite", "uuid", "chr
 anyhow = "1.0.96"
 uuid = { version = "1", features = ["v4"] }
 tauri-plugin-log = "2"
+tauri-plugin-dialog = "2"

@@ -9,14 +9,6 @@ tags: ["threading", "concurrency", "basic"]
 
 Create a simple Rust program that spawns a background thread to perform some work while the main thread continues executing.
 
-## 🧠 Objective
-
-You should be able to:
-
-- Spawn threads using `std::thread`
-- Pass data between threads
-- Join threads cleanly
-
 ## ✅ Requirements
 
 Write a Rust program that:
@@ -34,3 +26,4 @@ Main thread is free!
 Working...
 ...
 Background thread finished!
+```

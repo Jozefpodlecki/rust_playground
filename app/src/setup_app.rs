@@ -1,6 +1,10 @@
 use anyhow::*;
 use log::{error, info};
-use sqlx::{migrate::{MigrateDatabase, Migrator}, sqlite::SqlitePoolOptions, Sqlite, SqlitePool};
+use sqlx::{
+    Sqlite, SqlitePool,
+    migrate::{MigrateDatabase, Migrator},
+    sqlite::SqlitePoolOptions,
+};
 use std::{error::Error, path::Path, sync::Arc};
 use tauri::{App, AppHandle, Manager};
 
@@ -32,7 +36,9 @@ pub fn setup_app(app: &mut App) -> std::result::Result<(), Box<dyn std::error::E
 async fn setup_db(app: AppHandle) -> Result<()> {
     println!("Current dir: {:?}", std::env::current_dir()?);
     let connection_string = "sqlite://rust_playground.db";
-    let database_exists = Sqlite::database_exists(connection_string).await.unwrap_or(false);
+    let database_exists = Sqlite::database_exists(connection_string)
+        .await
+        .unwrap_or(false);
 
     if !database_exists {
         Sqlite::create_database(connection_string).await?;

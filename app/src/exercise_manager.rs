@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{Pool, Sqlite};
 use uuid::Uuid;
 
-use crate::models::Exercise;
+use crate::models::{CreateExerciseSession, Exercise, ExerciseSession, UpdateExerciseSession};
 
 pub struct ExerciseManager {
     pool: Pool<Sqlite>,
@@ -15,28 +15,50 @@ impl ExerciseManager {
     }
 
     pub async fn get_exercises(&self) -> Result<Vec<Exercise>> {
-        let exercises: Vec<Exercise> = sqlx::query_as::<_, Exercise>(
-            "SELECT id, name, markdown, created_on FROM exercise",
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let exercises: Vec<Exercise> =
+            sqlx::query_as::<_, Exercise>("SELECT id, name, markdown, created_on FROM exercise")
+                .fetch_all(&self.pool)
+                .await?;
 
         Ok(exercises)
     }
 
-    pub async fn update_exercise_session(
-        &self,
-        exercise_id: Uuid,
-        folder_path: Option<String>,
-        completed_on: Option<DateTime<Utc>>,
-    ) -> Result<()> {
+    pub async fn get_last_exercise_session(&self) -> Result<Option<ExerciseSession>> {
+        let session: Option<ExerciseSession> = sqlx::query_as::<_, ExerciseSession>(
+            "SELECT
+            id, exercise_id, folder_path, started_on, completed_on 
+            FROM exercise_session 
+            ORDER BY started_on DESC 
+            LIMIT 1",
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(session)
+    }
+
+    pub async fn create_exercise_session(&self, payload: CreateExerciseSession) -> Result<()> {
+        sqlx::query(
+            "INSERT INTO exercise_session (id, exercise_id, folder_path)
+                VALUES (?, ?, ?)",
+        )
+        .bind(Uuid::new_v4()) // Generate a new UUID for the session ID
+        .bind(payload.exercise_id)
+        .bind(payload.folder_path)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn update_exercise_session(&self, payload: UpdateExerciseSession) -> Result<()> {
         let mut sql = String::from("UPDATE exercise_session SET ");
         let mut sets = Vec::new();
 
-        if folder_path.is_some() {
+        if payload.folder_path.is_some() {
             sets.push("folder_path = ?");
         }
-        if completed_on.is_some() {
+        if payload.completed_on.is_some() {
             sets.push("completed_on = ?");
         }
 
@@ -49,14 +71,14 @@ impl ExerciseManager {
 
         let mut query = sqlx::query(&sql);
 
-        if let Some(fp) = folder_path {
+        if let Some(fp) = payload.folder_path {
             query = query.bind(fp);
         }
-        if let Some(co) = completed_on {
+        if let Some(co) = payload.completed_on {
             query = query.bind(co);
         }
 
-        query = query.bind(exercise_id);
+        query = query.bind(payload.exercise_id);
         query.execute(&self.pool).await?;
 
         Ok(())

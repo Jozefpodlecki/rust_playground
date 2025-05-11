@@ -6,9 +6,9 @@ CREATE TABLE exercise (
 );
 
 CREATE TABLE exercise_session (
-    id NVARCHAR(40) PRIMARY KEY,
-    exercise_id NVARCHAR(40) NOT NULL,
-    folder_path NVARCHAR(20) NOT NULL,
+    id BLOB PRIMARY KEY,
+    exercise_id BLOB NOT NULL,
+    folder_path NVARCHAR(20) NULL,
     started_on DATETIME DEFAULT CURRENT_TIMESTAMP,
     completed_on DATETIME NULL,
     FOREIGN KEY (exercise_id) REFERENCES exercise(id)
@@ -16,4 +16,10 @@ CREATE TABLE exercise_session (
 
 INSERT INTO exercise (id, name, markdown)
 VALUES
-('550e8400-e29b-41d4-a716-446655440000', 'Background Worker', '1_background_worker.md');
+(X'550e8400e29b41d4a716446655440001', 'Welcome', '1_welcome.md'),
+(X'550e8400e29b41d4a716446655440002', 'Background Worker', '2_background_worker.md'),
+(X'550e8400e29b41d4a716446655440003', 'Tcp Client', '3_tcp_client.md'),
+(X'550e8400e29b41d4a716446655440004', 'REST Countries', '4_rest_countries.md'),
+(X'550e8400e29b41d4a716446655440005', 'Tcp Client', '5_tcp_client.md'),
+(X'550e8400e29b41d4a716446655440006', 'Tcp Client', '6_tcp_client.md'),
+(X'550e8400e29b41d4a716446655440007', 'Tcp Client', '7_tcp_client.md')

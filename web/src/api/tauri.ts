@@ -4,7 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 
 export async function openFolderDialog(): Promise<string | null> {
     const result = await open({
-        directory: true
+        directory: true,
     });
 
     return result;

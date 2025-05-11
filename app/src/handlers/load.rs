@@ -1,8 +1,11 @@
-use chrono::Utc;
-use std::{process::Command, sync::Arc};
-use tauri::{App, AppHandle, State, command};
+use std::sync::Arc;
 
-use crate::{error::AppError, models::LoadResult, services::AppReadyState};
+use chrono::Utc;
+use tauri::{AppHandle, State, command};
+
+use crate::{
+    error::AppError, models::LoadResult, services::AppReadyState, utils::get_rust_version,
+};
 
 #[command]
 pub async fn load(
@@ -18,35 +21,10 @@ pub async fn load(
     let result = LoadResult {
         app_name: "Rust Playground".into(),
         rust_version,
-        github_link: "https://github.com/Jozefpodlecki/rust_playground".into(),
+        github_link: env!("CARGO_PKG_REPOSITORY").to_string(),
         loaded_on: Utc::now(),
         version,
     };
 
     Ok(result)
-}
-
-pub fn get_rust_version() -> Result<String, AppError> {
-    let output = Command::new("rustc")
-        .arg("--version")
-        .output()
-        .map_err(|e| AppError::Generic(Box::new(e)))?;
-
-    if !output.status.success() {
-        return Err(AppError::Generic(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "rustc returned an error",
-        ))));
-    }
-
-    let rust_version =
-        String::from_utf8(output.stdout).map_err(|e| AppError::Generic(Box::new(e)))?;
-
-    let version = rust_version
-        .split_whitespace()
-        .take(2)
-        .collect::<Vec<&str>>()
-        .join(" ");
-
-    Ok(version.trim().to_string())
 }

@@ -12,15 +12,19 @@ import {
 } from "@chakra-ui/react";
 
 interface State {
-	projectFolder: string;
-	verifying: boolean;
+	projectFolder: string | null;
+	isVerifying: boolean;
 	result: string;
 }
 
-const InputPanel: React.FC = () => {
-	const [{ projectFolder, verifying, result }, setState] = useState<State>({
-		projectFolder: "",
-		verifying: false,
+interface Props {
+	projectFolder: string | null;
+}
+
+const InputPanel: React.FC<Props> = ({ projectFolder: _projectFolder }) => {
+	const [{ projectFolder, isVerifying, result }, setState] = useState<State>({
+		projectFolder: _projectFolder,
+		isVerifying: false,
 		result: "",
 	});
 
@@ -29,7 +33,7 @@ const InputPanel: React.FC = () => {
 	const onProjectFolderSelect = async () => {
 	try {
 		const projectFolder = await openFolderDialog();
-		debugger;
+
 		if(!projectFolder) {
 			return;
 		}
@@ -47,16 +51,16 @@ const InputPanel: React.FC = () => {
 		}
 
 		try {
-			setState((prev) => ({ ...prev, verifying: true }));
+			setState((prev) => ({ ...prev, isVerifying: true }));
 			const response = await verifyExercise(exercise.current!.id);
-			setState((prev) => ({ ...prev, result: response, verifying: false }));
-		} catch (err) {
-			setState((prev) => ({
-				...prev,
-				result: "Verification failed.",
-				verifying: false,
-			}));
-			console.error(err);
+			setState((prev) => ({ ...prev, result: response, isVerifying: false }));
+		} catch (error) {
+			// setState((prev) => ({
+			// 	...prev,
+			// 	result: "Verification failed.",
+			// 	verifying: false,
+			// }));
+			// console.error(error);
 		}
 	};
 
@@ -68,20 +72,14 @@ const InputPanel: React.FC = () => {
 			colorScheme="blue"
 			variant="solid"
 		>
-			<Icon as={IconFolder} />
-			{projectFolder ? "Change Folder" : "Select Project"}
+			<IconFolder />
+			{projectFolder ? `Change` : "Select project with solution"}
 		</Button>
-
-		{projectFolder && (
-			<Text fontSize="sm" color="gray.300" wordBreak="break-all">
-			Selected: <Code colorScheme="whiteAlpha">{projectFolder}</Code>
-			</Text>
-		)}
 
 		<Button
 			onClick={onVerify}
-			disabled={!projectFolder || verifying}
-			loading={verifying}
+			disabled={!projectFolder || isVerifying}
+			loading={isVerifying}
 			loadingText="Verifying..."
 			colorScheme="green"
 			variant="solid"

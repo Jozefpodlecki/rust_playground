@@ -57,7 +57,7 @@ const Main: React.FC = () => {
 				activeId={""}
 				onSelect={onSelect} />
 			<MarkdownViewer markdown={markdown} />
-			<InputPanel />
+			<InputPanel projectFolder={current?.folderPath || null} />
 		</div>
 	</section>
 	);
