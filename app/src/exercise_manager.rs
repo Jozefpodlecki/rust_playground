@@ -59,12 +59,13 @@ impl ExerciseManager {
         let started_on = Utc::now();
         sqlx::query(
             "INSERT INTO exercise_session
-            (id, started_on, exercise_id, folder_path)
+            (id, started_on, command_args, exercise_id, folder_path)
             VALUES
-            (?, ?, ?, ?)",
+            (?, ?, ?, ?, ?)",
         )
         .bind(id)
         .bind(started_on)
+        .bind(payload.command_args.clone())
         .bind(payload.exercise_id)
         .bind(payload.folder_path.clone())
         .execute(&self.pool)
@@ -73,7 +74,7 @@ impl ExerciseManager {
         Ok(ExerciseSession {
             id,
             exercise_id: payload.exercise_id,
-            command_args: "".into(),
+            command_args: payload.command_args,
             started_on,
             updated_on: started_on,
             folder_path: payload.folder_path,

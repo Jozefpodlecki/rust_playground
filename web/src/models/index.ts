@@ -9,6 +9,7 @@ export interface LoadResult {
 
 export interface CreateExerciseSession {
     exerciseId: string;
+    commandArgs: string;
     folderPath: string;
 }
 
@@ -16,6 +17,7 @@ export interface CreateExerciseSession {
 export interface UpdateExerciseSession {
     id: string;
     folderPath: string | null;
+    commandArgs: string | null;
     completedOn: string | null;
 }
 

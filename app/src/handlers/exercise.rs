@@ -20,7 +20,7 @@ pub async fn verify_exercise(
         .unwrap();
 
     let status = Command::new("cargo")
-        .arg("run")
+        .arg(session.command_args)
         .current_dir(session.folder_path)
         .status()
         .map_err(|err| AppError::Command(err.to_string()))?;

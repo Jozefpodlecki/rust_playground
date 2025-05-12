@@ -9,11 +9,14 @@ import {
   Text,
   VStack,
   Code,
+  Input,
+  Field,
 } from "@chakra-ui/react";
 
 interface State {
 	isVerifying: boolean;
 	result: string;
+	commandArgs: string;
 }
 
 const InputPanel: React.FC = () => {
@@ -23,9 +26,14 @@ const InputPanel: React.FC = () => {
 		updateExerciseSession,
 		createExerciseSession
 	} = useExercises();
-	const [{ isVerifying, result }, setState] = useState<State>({
+	const [{ 
+		isVerifying,
+		result,
+		commandArgs
+	 }, setState] = useState<State>({
 		isVerifying: false,
 		result: "",
+		commandArgs: "cargo run",
 	});
 
 	const onProjectFolderSelect = async () => {
@@ -40,12 +48,14 @@ const InputPanel: React.FC = () => {
 				await updateExerciseSession({
 					id: currentSession.id,
 					completedOn: null,
+					commandArgs: commandArgs,
 					folderPath: projectFolder
 				})
 			}
 			else {
 				await createExerciseSession({
 					exerciseId: currentExercise.id,
+					commandArgs: commandArgs,
 					folderPath: projectFolder
 				});
 			}
@@ -75,6 +85,28 @@ const InputPanel: React.FC = () => {
 		}
 	};
 
+	const onCommandArgs = async () => {
+			if(currentSession) {
+				await updateExerciseSession({
+					id: currentSession.id,
+					completedOn: null,
+					commandArgs: commandArgs,
+					folderPath: null
+				})
+			}
+			else {
+				await createExerciseSession({
+					exerciseId: currentExercise.id,
+					commandArgs: commandArgs,
+					folderPath: ""
+				});
+			}
+	}
+
+	const onCommandArgsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    	setState((prev) => ({ ...prev, commandArgs: event.target.value }));
+  	};
+
 	return (
 	<Box className="grow-1" bg="gray.900" color="white" p={6} borderRadius="xl" shadow="md">
 		<VStack align="stretch">
@@ -86,6 +118,19 @@ const InputPanel: React.FC = () => {
 			<IconFolder />
 			{currentSession?.folderPath ? `Change` : "Select project with solution"}
 		</Button>
+
+	  	<Field.Root>
+          <Field.Label color="white">Run Arguments</Field.Label>
+          <Input
+            placeholder="Enter command arguments"
+            value={commandArgs}
+			onBlur={onCommandArgs}
+			onChange={onCommandArgsChange}
+            bg="gray.800"
+            color="white"
+            borderRadius="md"
+          />
+        </Field.Root>
 
 		<Button
 			onClick={onVerify}

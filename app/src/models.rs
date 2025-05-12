@@ -55,6 +55,7 @@ pub struct VerifyResult {
 pub struct CreateExerciseSession {
     pub exercise_id: Uuid,
     pub folder_path: String,
+    pub command_args: String,
 }
 
 #[derive(Debug, Default, Clone, FromRow, Serialize, Deserialize)]
@@ -63,5 +64,6 @@ pub struct UpdateExerciseSession {
     pub id: Uuid,
     pub exercise_id: Uuid,
     pub folder_path: Option<String>,
+    pub command_args: Option<String>,
     pub completed_on: Option<DateTime<Utc>>,
 }
