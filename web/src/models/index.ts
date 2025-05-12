@@ -15,7 +15,6 @@ export interface CreateExerciseSession {
 
 export interface UpdateExerciseSession {
     id: string;
-    exerciseId: string;
     folderPath: string | null;
     completedOn: string | null;
 }

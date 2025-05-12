@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { createSession, getExercises, getLastExerciseSession } from '@/api';
-import { Exercise, ExerciseSession } from '@/models';
+import { createSession, getExercises, getLastExerciseSession, updateSession } from '@/api';
+import { CreateExerciseSession, Exercise, ExerciseSession, UpdateExerciseSession } from '@/models';
 
 export interface ExerciseState {
 	currentExercise: Exercise;
@@ -8,7 +8,8 @@ export interface ExerciseState {
 	exercises: Exercise[];
 	progressPercent: number;
 	completedIds: string[];
-	createExerciseSession(exerciseId: string, folderPath: string): Promise<ExerciseSession>;
+	updateExerciseSession(payload: UpdateExerciseSession): Promise<ExerciseSession>;
+	createExerciseSession(payload: CreateExerciseSession): Promise<ExerciseSession>;
 	verifyExercise(id: string): Promise<boolean>;
 }
 
@@ -29,6 +30,7 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 		exercises: [],
 		progressPercent: 0,
 		completedIds: [],
+		updateExerciseSession,
 		createExerciseSession,
 		verifyExercise
 	});
@@ -67,12 +69,15 @@ export const ExerciseProvider: React.FC<React.PropsWithChildren> = ({ children }
 		
 	}
 
-	async function createExerciseSession(exerciseId: string, folderPath: string) {
+	async function updateExerciseSession(payload: UpdateExerciseSession) {
+		const session = await updateSession(payload);
 
-		const session = await createSession({
-			exerciseId: exerciseId,
-			folderPath,
-		});
+		return session;
+	}
+
+	async function createExerciseSession(payload: CreateExerciseSession) {
+
+		const session = await createSession(payload);
 
 		setState(pr => {
 			return {

@@ -29,7 +29,9 @@ pub struct ExerciseSession {
     pub id: Uuid,
     pub exercise_id: Uuid,
     pub folder_path: String,
+    pub command_args: String,
     pub started_on: DateTime<Utc>,
+    pub updated_on: DateTime<Utc>,
     pub completed_on: Option<DateTime<Utc>>,
 }
 

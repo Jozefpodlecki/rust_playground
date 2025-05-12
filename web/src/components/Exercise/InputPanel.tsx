@@ -12,7 +12,6 @@ import {
 } from "@chakra-ui/react";
 
 interface State {
-	projectFolder: string | null;
 	isVerifying: boolean;
 	result: string;
 }
@@ -21,10 +20,10 @@ const InputPanel: React.FC = () => {
 	const {
 		currentExercise,
 		currentSession,
+		updateExerciseSession,
 		createExerciseSession
 	} = useExercises();
-	const [{ projectFolder, isVerifying, result }, setState] = useState<State>({
-		projectFolder: currentSession?.folderPath || null,
+	const [{ isVerifying, result }, setState] = useState<State>({
 		isVerifying: false,
 		result: "",
 	});
@@ -37,22 +36,20 @@ const InputPanel: React.FC = () => {
 				return;
 			}
 
-			// if(sessionId) {
-			// 	await updateSession({
-			// 		id: sessionId,
-			// 		exerciseId: exerciseId,
-			// 		folderPath: projectFolder,
-			// 		completedOn: null
-			// 	})
-			// }
-			// else {
-			// 	const id = await createSession({
-			// 		exerciseId: exerciseId,
-			// 		folderPath: projectFolder
-			// 	})
-			// }
+			if(currentSession) {
+				await updateExerciseSession({
+					id: currentSession.id,
+					completedOn: null,
+					folderPath: projectFolder
+				})
+			}
+			else {
+				await createExerciseSession({
+					exerciseId: currentExercise.id,
+					folderPath: projectFolder
+				});
+			}
 
-			setState((state) => ({ ...state, projectFolder }));
 		} catch (err) {
 			console.error("Folder selection failed", err);
 
@@ -60,13 +57,13 @@ const InputPanel: React.FC = () => {
 	};
 
 	const onVerify = async () => {
-    	if (!projectFolder) {
+    	if (!currentSession) {
 			return;
 		}
 
 		try {
 			setState((prev) => ({ ...prev, isVerifying: true }));
-			const response = await verifyExercise(exercise.current!.id);
+			const response = await verifyExercise(currentSession.id);
 			setState((prev) => ({ ...prev, result: response, isVerifying: false }));
 		} catch (error) {
 			// setState((prev) => ({
@@ -87,12 +84,12 @@ const InputPanel: React.FC = () => {
 			variant="solid"
 		>
 			<IconFolder />
-			{projectFolder ? `Change` : "Select project with solution"}
+			{currentSession?.folderPath ? `Change` : "Select project with solution"}
 		</Button>
 
 		<Button
 			onClick={onVerify}
-			disabled={!projectFolder || isVerifying}
+			disabled={!currentSession?.folderPath || isVerifying}
 			loading={isVerifying}
 			loadingText="Verifying..."
 			colorScheme="green"

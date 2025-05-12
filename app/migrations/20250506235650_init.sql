@@ -9,7 +9,9 @@ CREATE TABLE exercise_session (
     id BLOB PRIMARY KEY,
     exercise_id BLOB NOT NULL,
     folder_path NVARCHAR(20) NULL,
+    command_args NVARCHAR(20) NULL,
     started_on DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_on DATETIME DEFAULT CURRENT_TIMESTAMP,
     completed_on DATETIME NULL,
     FOREIGN KEY (exercise_id) REFERENCES exercise(id)
 );

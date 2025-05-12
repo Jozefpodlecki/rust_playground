@@ -18,7 +18,7 @@ export async function createSession(payload: CreateExerciseSession): Promise<Exe
     return id;
 }
 
-export async function updateSession(payload: UpdateExerciseSession): Promise<never> {
+export async function updateSession(payload: UpdateExerciseSession): Promise<ExerciseSession> {
     return invoke("update_session",  {
         payload
     });

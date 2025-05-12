@@ -16,7 +16,10 @@ impl ExerciseManager {
 
     pub async fn get_exercises(&self) -> Result<Vec<Exercise>> {
         let exercises: Vec<Exercise> =
-            sqlx::query_as::<_, Exercise>("SELECT id, name, markdown, created_on FROM exercise")
+            sqlx::query_as::<_, Exercise>("
+            SELECT
+                id, name, markdown, created_on
+            FROM exercise")
                 .fetch_all(&self.pool)
                 .await?;
 
@@ -53,14 +56,15 @@ impl ExerciseManager {
 
     pub async fn create_exercise_session(&self, payload: CreateExerciseSession) -> Result<ExerciseSession> {
         let id = Uuid::new_v4();
-
+        let started_on = Utc::now();
         sqlx::query(
             "INSERT INTO exercise_session
-            (id, exercise_id, folder_path)
+            (id, started_on, exercise_id, folder_path)
             VALUES
-            (?, ?, ?)",
+            (?, ?, ?, ?)",
         )
         .bind(id)
+        .bind(started_on)
         .bind(payload.exercise_id)
         .bind(payload.folder_path.clone())
         .execute(&self.pool)
@@ -69,7 +73,9 @@ impl ExerciseManager {
         Ok(ExerciseSession {
             id,
             exercise_id: payload.exercise_id,
-            started_on: Utc::now(),
+            command_args: "".into(),
+            started_on,
+            updated_on: started_on,
             folder_path: payload.folder_path,
             completed_on: None
         })
