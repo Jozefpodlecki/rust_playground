@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::{Cursor, Read, Seek, SeekFrom}, sync::Arc};
+use std::{env, fs::File, io::{Cursor, Read, Seek, SeekFrom}, path::Path, sync::Arc};
 use anyhow::*;
 use aes::Aes256;
 use ::blowfish::BlowfishLE;
@@ -9,6 +9,18 @@ use hex_literal::hex;
 mod blowfishv2;
 mod blowfish;
 mod lpk_entry;
+
+#[derive(Debug, Clone)]
+pub struct LpkEntry {
+    max_length: i32,
+    length: i32,
+    content_type: String,
+    compressed_or_encrypted: bool,
+}
+
+impl LpkEntry {
+
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -24,7 +36,7 @@ async fn main() -> Result<()> {
     let file_count = reader.read_i32::<LittleEndian>()?;
     let entry_size = 528;
     let entries_size = file_count * entry_size;
-    
+
     println!("{file_count} {entries_size:?}");
 
     let mut entry_bytes: Vec<u8> = vec![0u8; entries_size as usize];
@@ -42,11 +54,30 @@ async fn main() -> Result<()> {
     
     let mut chars_buf = vec![0u8; relative_file_path_length as usize];
     cursor.read_exact(&mut chars_buf)?;
-    print!("{:?}", String::from_utf8(chars_buf));
+    
+    let file_path = String::from_utf8(chars_buf).unwrap();
 
     cursor.seek(SeekFrom::Start(1 * entry_size as u64)).unwrap();
     cursor.seek(SeekFrom::Current(-12)).unwrap();
 
+    let extension = Path::new(&file_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap();
+
+    let max_length = cursor.read_i32::<LittleEndian>()?;
+    let length = cursor.read_i32::<LittleEndian>()?;
+    let content_type = extension.to_string();
+    let compressed_or_encrypted = cursor.read_i32::<LittleEndian>()? > 1;
+
+    let entry = LpkEntry {
+        max_length,
+        length,
+        content_type,
+        compressed_or_encrypted
+    };
+
+    println!("{entry:?}");
 
     Ok(())
 }
