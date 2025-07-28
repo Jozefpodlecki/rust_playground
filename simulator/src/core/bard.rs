@@ -43,16 +43,24 @@ impl BardSimulatorPlayer {
 }
 
 impl SimulatorPlayer for BardSimulatorPlayer {
+
+    fn base(&self) -> SimulatorPlayerBase {
+        self.base.clone().unwrap()
+    }
+
     fn run(&mut self, context: Arc<SimulatorContext>, sender: Sender<SimulatorEvent>) {
         let base = self.base.take().unwrap();
 
         let handle = thread::spawn(move || {
 
+            context.barrier.wait();
+
             loop {
 
-                if context.current_boss.read().unwrap().current_hp <= 0 {
-                    
-                }
+                let current_boss = context.current_boss.read().unwrap();
+                let target_id = current_boss.id;
+
+                
 
                 thread::sleep(Duration::from_secs(2));
             }

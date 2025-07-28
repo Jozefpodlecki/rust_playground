@@ -4,13 +4,16 @@ pub mod event;
 pub mod template;
 pub mod utils;
 pub mod bard;
+pub mod boss;
+
 use std::sync::{Arc, Barrier, RwLock};
 
 use crossbeam::channel::unbounded;
 
+use log::info;
 use rand::{rng, Rng};
 
-use crate::core::{bard::{BardSimulatorPlayer}, event::SimulatorEvent, player::*, types::*};
+use crate::core::{bard::BardSimulatorPlayer, boss::SimulatorBoss, event::SimulatorEvent, player::*, types::*};
 
 pub struct Simulator {
     parties: Vec<SimulatorParty>
@@ -57,47 +60,49 @@ impl Simulator {
     pub fn run(mut self) {
         let (tx, rx) = unbounded::<SimulatorEvent>();
 
-        let boss = SimulatorBoss {
-            current_hp: 0,
-            hp_bars: 0,
-            id: 0,
-            max_hp: 10
-        };
+        let boss = SimulatorBoss::new();
 
         let context = SimulatorContext {
+            player_ids: vec![],
             barrier: Arc::new(Barrier::new(5)),
             current_boss: RwLock::new(boss)
         };
+
         let context = Arc::new(context);
 
         for party in self.parties.iter_mut() {
+
+            let mut members = vec![];
+
             for player in party.members.iter_mut() {
+
+                let base = player.base();
+
+                let event = SimulatorEvent::NewPlayer { 
+                    id: base.id,
+                    name: base.name.clone(),
+                    class_id: base.class_id
+                };
+
+                members.push(base);
+
+                tx.send(event).unwrap();
+
                 player.run(context.clone(), tx.clone());
             }
+
+            let event = SimulatorEvent::NewParty { 
+                id: party.id,
+                members,
+            };
+
+            tx.send(event).unwrap();
         }
 
+        context.clone().current_boss.write().unwrap().run(context, rx.clone(), tx.clone());
+
         while let Ok(event) = rx.recv() {
-            match event {
-                SimulatorEvent::NewPlayer {  } => {
-
-                },
-                SimulatorEvent::NewParty {  } => {
-
-                },
-                SimulatorEvent::NewBoss {  } => {
-
-                },
-                SimulatorEvent::RaidComplete {  } => 
-                {
-
-                },
-                SimulatorEvent::BossDead {  } => {
-
-                },
-                SimulatorEvent::SkillDamage { source_id, skill_id, damage, target_id } => {
-                    
-                },
-            }
+           info!("{event:?}");
         }
     }
 }

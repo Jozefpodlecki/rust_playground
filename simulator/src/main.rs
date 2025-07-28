@@ -6,6 +6,7 @@ mod core;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    flexi_logger::Logger::try_with_env().unwrap().start().unwrap();
 
     let template = template_3dps_1support();
     

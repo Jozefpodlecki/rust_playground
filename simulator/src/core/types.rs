@@ -1,6 +1,6 @@
 use std::sync::{Arc, Barrier, RwLock};
 
-use crate::core::player::{Class, SimulatorPlayer};
+use crate::core::{boss::SimulatorBoss, player::{Class, SimulatorPlayer}};
 
 pub struct EncounterTemplate {
     pub boss: EncounterTemplateBoss,
@@ -27,14 +27,8 @@ pub struct EncounterTemplatePartyMember {
 
 pub struct SimulatorContext {
     pub barrier: Arc<Barrier>,
+    pub player_ids: Vec<u64>,
     pub current_boss: RwLock<SimulatorBoss>
-}
-
-pub struct SimulatorBoss {
-    pub id: u64,
-    pub hp_bars: u32,
-    pub current_hp: i64,
-    pub max_hp: i64
 }
 
 pub struct SimulatorParty {

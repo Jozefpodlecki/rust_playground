@@ -21,9 +21,11 @@ pub struct SimulatorPlayerArgs {
 }
 
 pub trait SimulatorPlayer {
+    fn base(&self) -> SimulatorPlayerBase;
     fn run(&mut self, context: Arc<SimulatorContext>, sender: Sender<SimulatorEvent>);
 }
 
+#[derive(Debug, Clone)]
 pub struct SimulatorPlayerBase {
     pub id: u64,
     pub name: String,
@@ -37,6 +39,8 @@ pub struct SimulatorPlayerBase {
     pub cooldowns: HashMap<u32, DateTime<Utc>>
 }
 
+
+#[derive(Debug, Clone)]
 pub struct SimulatorPlayerSkill {
     pub id: u32,
     pub deals_damage: bool,
@@ -44,26 +48,35 @@ pub struct SimulatorPlayerSkill {
     pub cooldown: chrono::Duration,
 }
 
+
+#[derive(Debug, Copy, Clone)]
 pub struct SimulatorPlayerSkillBuff {
     id: u32,
     expires_on: DateTime<Utc>
 }
 
+
+#[derive(Debug, Copy, Clone)]
 pub enum SimulatorPlayerSkillBuffType {
     DamageAdditive(f32),
     DamageMultiply(f32)
 }
 
+
+#[derive(Debug, Copy, Clone)]
 pub enum SimulatorPlayerSkillBuffTarget {
     SelfTarget,
     Party,
 }
 
+
+#[derive(Debug, Clone)]
 pub enum SimulatorPlayerSkillBuffCategory {
     Buff,
     Debuff,
 }
 
+#[derive(Debug, Clone)]
 pub enum SimulatorPlayerSkillEffectType {
     Summon {
         npc_id: u32,
@@ -76,6 +89,8 @@ pub enum SimulatorPlayerSkillEffectType {
     }
 }
 
+
+#[derive(Debug, Clone)]
 pub struct SimulatorPlayerSkillEffect {
     id: u32,
     effect_type: SimulatorPlayerSkillEffectType
@@ -116,19 +131,29 @@ impl BerserkerSimulatorPlayer {
 
 
 impl SimulatorPlayer for BerserkerSimulatorPlayer {
+
+    fn base(&self) -> SimulatorPlayerBase {
+        self.base.clone().unwrap()
+    }
+
     fn run(&mut self, context: Arc<SimulatorContext>, sender: Sender<SimulatorEvent>) {
         let base = self.base.take().unwrap();
         
         let handle = thread::spawn(move || {
-            thread::sleep(Duration::from_secs(1));
+            
             let mut rng = rng();
+            context.barrier.wait();
+
             loop {
+                let current_boss = context.current_boss.read().unwrap();
+                let target_id = current_boss.id;
+
                 let damage = base.attack_power;
                 sender.send(SimulatorEvent::SkillDamage {
                     source_id: base.id as u64,
                     skill_id: 100,
                     damage,
-                    target_id: 0, // boss
+                    target_id: target_id
                 }).unwrap();
                 thread::sleep(Duration::from_millis(500 + rng.random_range(0..200)));
             }
@@ -206,12 +231,19 @@ impl GunslingerSimulatorPlayer {
 }
 
 impl SimulatorPlayer for SorceressSimulatorPlayer {
+
+    fn base(&self) -> SimulatorPlayerBase {
+        self.base.clone().unwrap()
+    }
+
     fn run(&mut self, context: Arc<SimulatorContext>, sender: Sender<SimulatorEvent>) {
         let base = self.base.take().unwrap();
         
         let handle = thread::spawn(move || {
-            thread::sleep(Duration::from_secs(1));
+            
             let mut rng = rng();
+            context.barrier.wait();
+
             loop {
                 let damage = base.attack_power;
                 sender.send(SimulatorEvent::SkillDamage {
@@ -229,22 +261,32 @@ impl SimulatorPlayer for SorceressSimulatorPlayer {
 }
 
 impl SimulatorPlayer for GunslingerSimulatorPlayer {
+
+    fn base(&self) -> SimulatorPlayerBase {
+        self.base.clone().unwrap()
+    }
+
     fn run(&mut self, context: Arc<SimulatorContext>, sender: Sender<SimulatorEvent>) {
         let base = self.base.take().unwrap();
         
         let handle = thread::spawn(move || {
             
             let mut rng = rng();
+
+            context.barrier.wait();
+
             loop {
                 let damage = base.attack_power;
 
                 let skill = base.skills.get(&100).unwrap();
+                let current_boss = context.current_boss.read().unwrap();
+                let target_id = current_boss.id;
 
                 sender.send(SimulatorEvent::SkillDamage {
                     source_id: base.id as u64,
                     skill_id: 101,
                     damage,
-                    target_id: 0,
+                    target_id,
                 }).unwrap();
                 thread::sleep(Duration::from_millis(500 + rng.random_range(0..200)));
             }
