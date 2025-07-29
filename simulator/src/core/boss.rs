@@ -1,59 +1,190 @@
-use std::{sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, sync::Arc, thread};
 
+use chrono::{DateTime, Duration, Utc};
 use crossbeam::channel::{Receiver, Sender};
-use rand::{rng, seq::IndexedRandom};
+use rand::{rng, seq::IndexedRandom, RngCore};
 
-use crate::core::{event::SimulatorEvent, types::SimulatorContext};
+use crate::core::{event::SimulatorEvent, player::SimulatorPlayerSkillBuff, types::{EncounterTemplateBoss, EncounterTemplateBossSummonConditon, SimulatorContext}};
 
 pub struct SimulatorBoss {
     pub id: u64,
-    pub hp_bars: u32,
+    pub name: String,
+    pub npc_id: u32,
+    pub hp_bars: u16,
+    pub bar_per_hp: f32,
     pub current_hp: i64,
     pub max_hp: i64,
-    handle: Option<thread::JoinHandle<()>>
+    next_attack_on: DateTime<Utc>,
+    summons: Vec<SimulatorBossSummon>,
+    buffs: HashMap<u32, SimulatorPlayerSkillBuff>,
+    handle: Option<thread::JoinHandle<()>>,
+}
+
+pub struct SimulatorBossSummon {
+    pub id: u64,
+    pub is_active: bool,
+    pub current_hp: i64,
+    pub max_hp: i64,
+    pub condition: EncounterTemplateBossSummonConditon,
+    pub next_attack_on: DateTime<Utc>
 }
 
 impl SimulatorBoss {
-    pub fn new() -> Self {
+    pub fn new(args: EncounterTemplateBoss) -> Self {
+
+        let mut rng = rng();
+
+        let mut summons = vec![];
+
+        for summon in args.summons {
+            let boss_summon = SimulatorBossSummon {
+                id: rng.next_u64(),
+                is_active: false,
+                max_hp: summon.max_hp,
+                current_hp: summon.max_hp,
+                condition: summon.condition,
+                next_attack_on: DateTime::<Utc>::MIN_UTC
+            };
+
+            summons.push(boss_summon);
+        }
+
         Self {
-            current_hp: 0,
-            hp_bars: 0,
-            id: 0,
-            max_hp: 0,
+            id: args.id,
+            name: "Boss".into(),
+            npc_id: args.npc_id,
+            current_hp: args.max_hp,
+            hp_bars: args.hp_bars,
+            bar_per_hp: args.max_hp as f32 / args.hp_bars as f32,
+            max_hp: args.max_hp,
+            summons,
+            buffs: HashMap::new(),
+            next_attack_on: DateTime::<Utc>::MIN_UTC,
             handle: None,
         }
     }
 
     pub fn run(&mut self, context: Arc<SimulatorContext>, receiver: Receiver<SimulatorEvent>, sender: Sender<SimulatorEvent>) {
-        let id = self.id;
-        
-        let handle = thread::spawn(move || {
-            
-            let mut rng = rng();
+        let context = context.clone();
 
-            context.barrier.wait();
-
-            let duration = Duration::from_secs(1);
-            
-
-            loop {
-                if let Ok(event) = receiver.recv_timeout(duration) {
-
-                }
-
-                let target_id = *context.player_ids.choose(&mut rng).unwrap();
-
-                let event = SimulatorEvent::SkillDamage { 
-                    damage: 0,
-                    skill_id: 0,
-                    source_id: id,
-                    target_id,
-                };
-
-                sender.send(event).unwrap();
-            }
-        });
+        let handle = thread::spawn(move || Self::run_inner(context, receiver, sender));
 
         self.handle = Some(handle);
+    }
+
+    #[inline(always)]
+    pub fn run_inner(context: Arc<SimulatorContext>, receiver: Receiver<SimulatorEvent>, sender: Sender<SimulatorEvent>) {
+
+        context.barrier.wait();
+        
+        loop {
+            Self::tick(&context, &receiver, &sender);
+        }
+    }
+
+    #[inline(always)]
+    pub fn tick(context: &Arc<SimulatorContext>, receiver: &Receiver<SimulatorEvent>, sender: &Sender<SimulatorEvent>) {
+        let id = context.current_boss.read().unwrap().id;
+        let mut rng = rng();
+        let now = Utc::now();
+        let hp_bars;
+        let duration = std::time::Duration::from_secs(1);
+
+        if let Ok(event) = receiver.recv_timeout(duration) {
+            match event {
+                SimulatorEvent::Buff { id, buff_type, source_id, target_id, duration } => {
+                    let mut context = context.current_boss.write().unwrap();
+
+                    if context.buffs.get(&id).is_some() {
+                        let event = SimulatorEvent::RemoveBuff { id };
+                        sender.send(event).unwrap();
+                    }
+
+                    let buff =  SimulatorPlayerSkillBuff {
+                        id,
+                        expires_on: now + duration
+                    };
+
+                    context.buffs.insert(id, buff);
+                },
+                SimulatorEvent::SkillDamage {
+                    damage,
+                    target_id,
+                    .. } => {
+                    if target_id != id {
+                        return;
+                    }
+
+                    let mut context = context.current_boss.write().unwrap();
+
+                    if context.current_hp > damage {
+                        context.current_hp -= damage;
+                    }
+                    else {
+                        context.current_hp = 0;
+                    }
+
+                    hp_bars = context.current_hp as f32 * context.bar_per_hp;
+                    context.hp_bars = hp_bars as u16;
+                },
+                _ => {}
+            }
+        }                
+
+        {
+            let mut context = context.current_boss.write().unwrap();
+
+            for summon in context.summons.iter_mut() {
+                match (summon.is_active, summon.condition) {
+                    (true, _) => {
+                        
+                    },
+                    (true, _) => {
+
+                    },
+                    (false, EncounterTemplateBossSummonConditon::HpBars(bars)) => {
+                        if context.hp_bars <= bars {
+                            summon.is_active = true;
+                        }
+                    },
+                    (false, EncounterTemplateBossSummonConditon::Death) => {
+                        if context.current_hp == 0 {
+                            summon.is_active = true;
+                        }
+                    },
+                }
+            }
+        }
+
+        {
+            let context = context.current_boss.read().unwrap();
+        
+            if context.current_hp == 0 {
+                return;
+            }
+
+            if context.next_attack_on > now {
+                return;
+            }
+        }
+
+        {
+            let mut context = context.current_boss.write().unwrap();
+            context.next_attack_on = now + Duration::seconds(1);
+        }
+
+        let target_id = *context.player_ids.choose(&mut rng).unwrap();
+
+        let event = SimulatorEvent::SkillDamage { 
+            is_critical: false,
+            damage: 1,
+            skill_id: 100000,
+            current_hp: 0,
+            max_hp: 0,
+            source_id: id,
+            target_id,
+        };
+
+        sender.send(event).unwrap();
     }
 }

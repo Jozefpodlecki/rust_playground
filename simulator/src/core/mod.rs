@@ -6,7 +6,7 @@ pub mod utils;
 pub mod bard;
 pub mod boss;
 
-use std::sync::{Arc, Barrier, RwLock};
+use std::{collections::HashMap, sync::{Arc, Barrier, RwLock}};
 
 use crossbeam::channel::unbounded;
 
@@ -16,12 +16,17 @@ use rand::{rng, Rng};
 use crate::core::{bard::BardSimulatorPlayer, boss::SimulatorBoss, event::SimulatorEvent, player::*, types::*};
 
 pub struct Simulator {
+    boss: Option<SimulatorBoss>,
+    player_ids: Vec<u64>,
+    party_map: HashMap<u32, Vec<u64>>,
     parties: Vec<SimulatorParty>
 }
 
 impl Simulator {
     pub fn new(template: EncounterTemplate) -> Self {
         let mut parties = vec![];
+        let mut player_ids = vec![];
+        let mut party_map = HashMap::new();
 
         for party in template.parties {
             let mut simulator_party = SimulatorParty {
@@ -33,14 +38,22 @@ impl Simulator {
 
                 let args = SimulatorPlayerArgs {
                     id: member.id,
-                    name: member.name
+                    name: member.name,
+                    attack_power: member.attack_power,
+                    cooldown_reduction: member.cooldown_reduction,
+                    crit_damage: member.crit_damage,
+                    crit_rate: member.crit_rate,
+                    party_id: party.id
                 };
+
+                player_ids.push(member.id);
 
                 let player: Box<dyn SimulatorPlayer> = match member.class_id {
                     player::Class::Bard => Box::new(BardSimulatorPlayer::new(args)),
                     player::Class::Berserk => Box::new(BerserkerSimulatorPlayer::new(args)),
                     player::Class::Sorceress => Box::new(SorceressSimulatorPlayer::new(args)),
                     player::Class::Gunslinger => Box::new(GunslingerSimulatorPlayer::new(args)),
+                    _ => panic!("Unknown class")
                 };
                 simulator_party.members.push(player);
             }
@@ -48,7 +61,12 @@ impl Simulator {
             parties.push(simulator_party);
         }
 
+        let boss = SimulatorBoss::new(template.boss);
+
         Self {
+            boss: Some(boss),
+            player_ids,
+            party_map,
             parties
         }
     }
@@ -60,15 +78,23 @@ impl Simulator {
     pub fn run(mut self) {
         let (tx, rx) = unbounded::<SimulatorEvent>();
 
-        let boss = SimulatorBoss::new();
+        info!("Preparing boss...");
+        let boss = self.boss.unwrap();
+
+        let event = SimulatorEvent::NewBoss { id: boss.id };
+
+        tx.send(event).unwrap();
 
         let context = SimulatorContext {
-            player_ids: vec![],
-            barrier: Arc::new(Barrier::new(5)),
+            party_map: self.party_map,
+            player_ids: self.player_ids,
+            barrier: Arc::new(Barrier::new(6)),
             current_boss: RwLock::new(boss)
         };
 
         let context = Arc::new(context);
+
+        info!("Preparing parties...");
 
         for party in self.parties.iter_mut() {
 
@@ -88,7 +114,7 @@ impl Simulator {
 
                 tx.send(event).unwrap();
 
-                player.run(context.clone(), tx.clone());
+                player.run(context.clone(), rx.clone(), tx.clone());
             }
 
             let event = SimulatorEvent::NewParty { 
@@ -99,10 +125,14 @@ impl Simulator {
             tx.send(event).unwrap();
         }
 
-        context.clone().current_boss.write().unwrap().run(context, rx.clone(), tx.clone());
+        let cloned = context.clone();
+        cloned.current_boss.write().unwrap().run(context, rx.clone(), tx.clone());
+
+        info!("Starting...");
+        cloned.barrier.wait();
 
         while let Ok(event) = rx.recv() {
-           info!("{event:?}");
+           info!("Received: {event:?}");
         }
     }
 }

@@ -1,4 +1,5 @@
 use anyhow::*;
+use flexi_logger::Logger;
 
 use crate::core::{template::template_3dps_1support, Simulator};
 
@@ -6,7 +7,7 @@ mod core;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    flexi_logger::Logger::try_with_env().unwrap().start().unwrap();
+    Logger::try_with_str("info")?.start()?;
 
     let template = template_3dps_1support();
     
