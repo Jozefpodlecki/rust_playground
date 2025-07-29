@@ -33,6 +33,7 @@ impl Simulator {
                 id: party.id,
                 members: vec![]
             };
+            let member_ids: &mut Vec<u64> = party_map.entry(party.id).or_default();
 
             for member in party.members.clone() {
 
@@ -47,6 +48,7 @@ impl Simulator {
                 };
 
                 player_ids.push(member.id);
+                member_ids.push(member.id);
 
                 let player: Box<dyn SimulatorPlayer> = match member.class_id {
                     player::Class::Bard => Box::new(BardSimulatorPlayer::new(args)),

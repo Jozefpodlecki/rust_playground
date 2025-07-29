@@ -85,6 +85,7 @@ impl SimulatorBoss {
     #[inline(always)]
     pub fn tick(context: &Arc<SimulatorContext>, receiver: &Receiver<SimulatorEvent>, sender: &Sender<SimulatorEvent>) {
         let id = context.current_boss.read().unwrap().id;
+        let player_ids = context.player_ids.clone();
         let mut rng = rng();
         let now = Utc::now();
         let hp_bars;
@@ -102,6 +103,7 @@ impl SimulatorBoss {
 
                     let buff =  SimulatorPlayerSkillBuff {
                         id,
+                        buff_type,
                         expires_on: now + duration
                     };
 
@@ -111,44 +113,75 @@ impl SimulatorBoss {
                     damage,
                     target_id,
                     .. } => {
-                    if target_id != id {
-                        return;
+                    if target_id == id {
+                        let mut context = context.current_boss.write().unwrap();
+
+                        if context.current_hp == 0 {
+                            return;
+                        }
+
+                        if context.current_hp > damage {
+                            context.current_hp -= damage;
+                        }
+                        else {
+                            context.current_hp = 0;
+                        }
+
+                        hp_bars = context.current_hp as f32 * context.bar_per_hp;
+                        context.hp_bars = hp_bars as u16;
                     }
 
                     let mut context = context.current_boss.write().unwrap();
+                    for summon in context.summons.iter_mut() {
+                        if summon.id == target_id && summon.is_active {
+                            summon.current_hp = (summon.current_hp - damage).max(0);
+                            
+                            if summon.current_hp == 0 {
+                                summon.is_active = false;
 
-                    if context.current_hp > damage {
-                        context.current_hp -= damage;
+                                let event = SimulatorEvent::EntityDied { id: summon.id };
+                                sender.send(event).unwrap();
+                            }
+                            break;
+                        }
                     }
-                    else {
-                        context.current_hp = 0;
-                    }
-
-                    hp_bars = context.current_hp as f32 * context.bar_per_hp;
-                    context.hp_bars = hp_bars as u16;
                 },
                 _ => {}
             }
-        }                
+        }
 
         {
+            let (hp_bars, current_hp) = {
+                let context = context.current_boss.read().unwrap();
+                (context.hp_bars, context.current_hp)
+            };
             let mut context = context.current_boss.write().unwrap();
 
             for summon in context.summons.iter_mut() {
                 match (summon.is_active, summon.condition) {
                     (true, _) => {
-                        
-                    },
-                    (true, _) => {
+                        if now > summon.next_attack_on {
+                            let target_id = *player_ids.choose(&mut rng).unwrap();
+                            let event = SimulatorEvent::SkillDamage {
+                                source_id: summon.id,
+                                skill_id: 10001,
+                                current_hp: summon.current_hp,
+                                max_hp: summon.max_hp,
+                                is_critical: false,
+                                damage: 1,
+                                target_id 
+                            };
 
+                            sender.send(event).unwrap();
+                        }
                     },
                     (false, EncounterTemplateBossSummonConditon::HpBars(bars)) => {
-                        if context.hp_bars <= bars {
+                        if hp_bars <= bars {
                             summon.is_active = true;
                         }
                     },
                     (false, EncounterTemplateBossSummonConditon::Death) => {
-                        if context.current_hp == 0 {
+                        if current_hp == 0 {
                             summon.is_active = true;
                         }
                     },
@@ -173,7 +206,7 @@ impl SimulatorBoss {
             context.next_attack_on = now + Duration::seconds(1);
         }
 
-        let target_id = *context.player_ids.choose(&mut rng).unwrap();
+        let target_id = *player_ids.choose(&mut rng).unwrap();
 
         let event = SimulatorEvent::SkillDamage { 
             is_critical: false,

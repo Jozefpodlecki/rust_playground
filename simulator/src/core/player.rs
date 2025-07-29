@@ -73,6 +73,7 @@ pub struct SimulatorPlayerSkill {
 #[derive(Debug, Copy, Clone)]
 pub struct SimulatorPlayerSkillBuff {
     pub id: u32,
+    pub buff_type: SimulatorPlayerSkillBuffType,
     pub expires_on: DateTime<Utc>
 }
 
