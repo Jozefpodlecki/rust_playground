@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::Arc, thread};
 
 use chrono::{DateTime, Duration, Utc};
 use crossbeam::channel::{Receiver, Sender};
+use log::info;
 use rand::{rng, seq::IndexedRandom, RngCore};
 
 use crate::core::{event::SimulatorEvent, player::SimulatorPlayerSkillBuff, types::{EncounterTemplateBoss, EncounterTemplateBossSummonConditon, SimulatorContext}};
@@ -121,6 +122,7 @@ impl SimulatorBoss {
                         }
 
                         if context.current_hp > damage {
+                            info!("boss hp");
                             context.current_hp -= damage;
                         }
                         else {

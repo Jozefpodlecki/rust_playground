@@ -1,49 +1,27 @@
-   // println!("{cipher_key:?}");
-    // let mut blowfish = Blowfishv2::new(&cipher_key);
-    // // let mut blowfish = Blowfish::new(&cipher_key);
-    // let decrypted = blowfish.decrypt_ecb(&entry_bytes);
+use anyhow::*;
+use std::path::Path;
 
-    // let formatted = decrypted[..20].iter()
-    //     .map(|b| format!("{:02X}", b))
-    //     .collect::<Vec<_>>()
-    //     .join("-");
-    // println!("{}", formatted);
 
-    // println!("{}", decrypted.len());
+pub fn get_db_key(file_name: &str, xor_key: &[u8]) -> Result<[u8; 16]> {
+    let file_stem = Path::new(file_name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap();
 
-        //  var offset = entriesSize + 8;
-//     MaxLength = reader.ReadInt32();
-// Length = reader.ReadInt32();
-// ContentType = GetContentType(FileName);
-// StorageType = reader.ReadInt32() == 0 ? LpkEntryStorageType.Encrypted : LpkEntryStorageType.Compressed;
-// Offset = offset;
+    let prefix_end_index = file_stem.find('_').map(|i| i + 1).unwrap_or(0);
+    let remaining = &file_stem[prefix_end_index..];
 
-    // println!("Relative path length: {}, File name: {}", relative_file_path_length, file_name);
-    // let cipher = Ecb::<Blowfish, NoPadding>::new_from_slices(&cipher_key, &[]).unwrap();
+    let bytes = remaining.as_bytes();
 
-    // let blowfish = Blowfish::new_varkey(b"your_blowfish_key").unwrap();
-    // let decrypted_bytes = blowfish.decrypt_ecb(&entry_bytes);
+    let key_bytes  = md5::compute(bytes);
+    let mut key_bytes   = key_bytes .0;
 
-    // // 3) Create a stream + reader for decrypted bytes
-    // let mut stream = Cursor::new(decrypted_bytes);
+    for i in 0..key_bytes.len() {
+        let xor_index = 15 - i;
+        key_bytes[i] ^= xor_key[xor_index];
+    }
 
-    // // 4) Setup AES cryptographic object (key/iv can be placeholder for now)
-    // let key = [0u8; 32]; // 256 bits
-    // let iv = [0u8; 16];  // 128 bits
-    // let aes = Arc::new(Aes256::new_from_slice(&key).unwrap());
-    // let crypto_object = Arc::new(Cbc::<Aes256, NoPadding>::new_from_slices(&key, &iv).unwrap());
+    key_bytes.reverse();
 
-    // // 5) Track offset
-    // let offset = entries_size as u64 + 8;
-
-    // let mut entry = LpkEntry::new(
-    //         Arc::clone(&aes),
-    //         Arc::new(blowfish.clone()),
-    //         File::open("your_input_file.lpk")?,
-    //         &mut stream,
-    //         offset,
-    //         i,
-    //     )?;
-
-    // let entry = LpkEntry::new(
-    //     cryptographic_object, blowfish, lpk_reader, reader, offset, file_order)
+    Ok(key_bytes)
+}
