@@ -13,9 +13,9 @@ pub struct RunArgs {
     pub aes_xor_key: Vec<u8>,
     pub lpk_dir: String,
     pub output_path: String,
+    pub exe_path: String,
+    pub exe_args: Vec<String>,
 }
-
-
 
 #[derive(Debug)]
 pub struct LpkInfo {
