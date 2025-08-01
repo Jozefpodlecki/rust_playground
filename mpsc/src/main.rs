@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use etherparse::{Ipv4Header, PacketBuilder, PacketHeaders, TcpHeader};
 use flexi_logger::{Duplicate, Logger};
 use log::*;

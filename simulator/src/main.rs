@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use anyhow::*;
 use flexi_logger::Logger;
 

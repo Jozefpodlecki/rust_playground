@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 use specs::prelude::*;
 
 mod components;
