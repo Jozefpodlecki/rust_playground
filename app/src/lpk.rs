@@ -5,6 +5,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use cipher::{block_padding::NoPadding, BlockDecryptMut, KeyInit, KeyIvInit};
 use flate2::bufread::ZlibDecoder;
 use sha2::{Digest, Sha256};
+use strum::{AsRefStr, EnumString};
 
 use crate::{lpk, types::RunArgs};
 
@@ -39,10 +40,23 @@ pub struct LpkEntry<'a> {
     pub metadata: &'a EntryMetadata
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, AsRefStr, EnumString)]
 pub enum LpkEntryContentType {
     Unknown,
-    Database
+    #[strum(serialize = "db")]
+    Database,
+    #[strum(serialize = "xml")]
+    Xml,
+    #[strum(serialize = "enc")]
+    Enc,
+    #[strum(serialize = "loa")]
+    Loa,
+    #[strum(serialize = "ttf")]
+    Ttf,
+    #[strum(serialize = "epf")]
+    Epf,
+    #[strum(serialize = "bin")]
+    Bin
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +157,12 @@ impl<'a> LpkInfo<'a> {
 
         let content_type = match extension.as_str() {
             "db" => LpkEntryContentType::Database,
+            "xml" => LpkEntryContentType::Xml,
+            "loa" => LpkEntryContentType::Loa,
+            "ttf" => LpkEntryContentType::Ttf,
+            "enc" => LpkEntryContentType::Enc,
+            // "bin" => LpkEntryContentType::Bin,
+            "bin" => LpkEntryContentType::Bin,
             _ => LpkEntryContentType::Unknown
         };
 

@@ -19,6 +19,8 @@ use windows::Win32::System::Memory::{VirtualQuery, VirtualQueryEx, MEMORY_BASIC_
 use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 use widestring::U16CString;
 use bincode::{Decode, Encode};
+use windows::core::PCSTR;
+use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOEXW, OSVERSIONINFOW};
 
 use crate::types::RunArgs;
 
@@ -39,6 +41,21 @@ pub struct MemoryBlock {
     pub protect: u32,
     pub data: Vec<u8>,
     pub module: Option<ProcessModule>
+}
+
+pub unsafe fn get_windows_version() -> Result<String> {
+    let mut os_info = OSVERSIONINFOW::default();
+    os_info.dwOSVersionInfoSize = std::mem::size_of::<OSVERSIONINFOW>() as u32;
+
+    GetVersionExW(&mut os_info as *mut _ as *mut OSVERSIONINFOW)?;
+    let version = format!(
+        "{}.{}.{}",
+        os_info.dwMajorVersion,
+        os_info.dwMinorVersion,
+        os_info.dwBuildNumber
+    );
+
+    Ok(version)
 }
 
 fn match_module<'a>(

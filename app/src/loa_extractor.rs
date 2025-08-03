@@ -1,231 +1,250 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
+use serde_json::{json, Value};
+use walkdir::WalkDir;
 use crate::{lpk::LpkInfo, types::RunArgs};
 
-pub fn save_pretty_hex_dump<P: AsRef<Path>>(input_path: P, output_path: P, bytes_per_line: usize) -> Result<()> {
-    let data = fs::read(&input_path)
-        .with_context(|| format!("Failed to read file {:?}", input_path.as_ref()))?;
-
-    let mut writer = BufWriter::new(File::create(&output_path)
-        .with_context(|| format!("Failed to create file {:?}", output_path.as_ref()))?);
-
-    for chunk in data.chunks(bytes_per_line) {
-        // Print hex part
-        for (i, byte) in chunk.iter().enumerate() {
-            write!(writer, "{:02X}", byte)?;
-            if i < chunk.len() - 1 {
-                write!(writer, " ")?;
-            }
-        }
-
-        // Pad if line is shorter than bytes_per_line
-        let pad = bytes_per_line.saturating_sub(chunk.len());
-        if pad > 0 {
-            let pad_spaces = pad * 3 - 1;
-            write!(writer, "{:width$}", "", width = pad_spaces)?;
-        }
-
-        // Add space before ASCII
-        write!(writer, "  |")?;
-
-        // Print ASCII part
-        for byte in chunk {
-            let c = *byte as char;
-            if c.is_ascii_graphic() || c == ' ' {
-                write!(writer, "{}", c)?;
-            } else {
-                write!(writer, ".")?;
-            }
-        }
-
-        writeln!(writer, "|")?;
-    }
-
-    Ok(())
+#[derive(Debug)]
+pub struct LoaFile {
+    pub id: i32,
+    pub relative_path: String,
+    pub name: String,
+    pub keywords: Vec<String>,
 }
 
-pub fn guess_it_is_a_field(cursor: &mut Cursor<Vec<u8>>, name: &str) -> bool {
+pub fn collect_loa_files(base_path: &Path) -> Result<Vec<LoaFile>> {
+    let mut result = Vec::new();
+    let mut id = 1;
 
-    let original_pos = cursor.position();
+    for entry in WalkDir::new(base_path)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+    {
+        let path = entry.path();
 
-      if let std::result::Result::Ok(len) = cursor.read_u32::<LittleEndian>() {
-        if len > 0 && len < 1000 {
-            let mut buffer = vec![0u8; len as usize];
-            if cursor.read_exact(&mut buffer).is_ok() && std::str::from_utf8(&buffer).is_ok() {
-                cursor.set_position(original_pos);
-                return true;
-            }
-        }
+        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+            if file_name.ends_with(".loa") {
+                let relative_path = path.strip_prefix(base_path)?.to_string_lossy().to_string();
+                let (name, object_id, keywords) = parse_loa_data(&path)?;
 
-        cursor.set_position(original_pos);
-        if cursor.seek(std::io::SeekFrom::Current(4)).is_ok() {
-            if let std::result::Result::Ok(len2) = cursor.read_u32::<LittleEndian>() {
-                if len2 > 0 && len2 < 1000 {
-                    let mut buffer = vec![0u8; len2 as usize];
-                    if cursor.read_exact(&mut buffer).is_ok() && std::str::from_utf8(&buffer).is_ok() {
-                        cursor.set_position(original_pos);
-                        return true;
-                    }
-                }
+                result.push(LoaFile {
+                    id,
+                    relative_path,
+                    name,
+                    keywords,
+                });
+                id += 1;
             }
         }
     }
 
-    cursor.set_position(original_pos);
-    false
+    Ok(result)
 }
 
-pub fn parse_ue3_object_1(args: RunArgs) -> Result<()> {
+fn read_string(cursor: &mut Cursor<Vec<u8>>) -> Result<String> {
 
-      let RunArgs {
-        output_path,
-        ..
-    } = args;
+    let len= cursor.read_u32::<LittleEndian>()? as usize;
+    let mut buffer = vec![0u8; len];
+    cursor.read_exact(&mut buffer)?;
+    let mut value: String = String::from_utf8_lossy(&buffer).into();
+    value = value.trim_end_matches('\0').to_string();
+    Ok(value)
+}
 
-    // let path = Path::new(&output_path).join("data1").join("998.loa");
-    // let pretty_hex_path = Path::new("998_hex.txt").to_owned();
-    // save_pretty_hex_dump(&path, &pretty_hex_path, 32)?;
+fn read_struct(cursor: &mut Cursor<Vec<u8>>) -> Result<String> {
+    let name = read_string(cursor)?;
+    println!("struct: {}", name);
+    Ok(name)
+}
 
-    let path = Path::new(&output_path).join("data3").join("10001.loa");
-    let pretty_hex_path = Path::new("10001_hex.txt").to_owned();
-    save_pretty_hex_dump(&path, &pretty_hex_path, 32)?;
+fn read_field(cursor: &mut Cursor<Vec<u8>>) -> Result<(String, Vec<u8>)> {
+    let name = read_string(cursor)?;
+    let mut buffer = vec![0u8; 4];
+    cursor.read_exact(&mut buffer)?;
+    println!("field: {} {:?}", name, buffer);
+    Ok((name, buffer))
+}
 
-    let mut file = File::open(&path)?;
+fn read_field_until(cursor: &mut Cursor<Vec<u8>>, until: u8) -> Result<(String, Vec<u8>)> {
+    let name = read_string(cursor)?;
+    let mut buffer = vec![0u8; 4];
+    cursor.read_exact(&mut buffer)?;
+    
+    let mut buffer = Vec::new();
+    let mut byte = [0u8; 1];
+
+    while let std::result::Result::Ok(_) = cursor.read_exact(&mut byte) {
+        if byte[0] == until {
+            break;
+        }
+        buffer.push(byte[0]);
+    }
+    buffer.truncate(buffer.len().saturating_sub(5));
+    cursor.set_position(cursor.position() - 5);
+    println!("field: {} {:?}", name, buffer);
+    Ok((name, buffer))
+}
+
+fn read_field_n(cursor: &mut Cursor<Vec<u8>>, length: usize) -> Result<(String, Vec<u8>)> {
+    let name = read_string(cursor)?;
+    let mut buffer = vec![0u8; length];
+    cursor.read_exact(&mut buffer)?;
+    println!("field: {} {:?}", name, buffer);
+    Ok((name, buffer))
+}
+
+pub fn parse_loa_data_test(path: &Path) -> Result<(String, String)> {
+    let mut file = File::open(path)?;
     let mut data = Vec::new();
     file.read_to_end(&mut data)?;
-
     let mut cursor: Cursor<Vec<u8>> = Cursor::new(data);
-
-    let float_val = cursor.read_f32::<LittleEndian>()?;
-    println!("Version: {}", float_val);
-
-    let field_count = cursor.read_u32::<LittleEndian>()?;
-    println!("Field count: {}", field_count);
-
-    let object_id = cursor.read_u32::<LittleEndian>()?;
-    println!("Object Id: {}", object_id);
-
-    let len = cursor.read_u32::<LittleEndian>()?;
-    let mut buffer = vec![0u8; len as usize];
-    cursor.read_exact(&mut buffer)?;
-    let mut struct_name = String::from_utf8_lossy(&buffer).to_string();
     
-    let mut has_read = false;
-    let mut len = 0;
-    let mut previous_struct_name: String = "".into();
-    let mut property_name: String = "".into();
-    let mut is_field = false;
-    let mut it = 0;
-    let total_len = cursor.get_ref().len();
+    let version = cursor.read_f32::<LittleEndian>()?;
+    cursor.read_u32::<LittleEndian>()?;
+    let object_id = cursor.read_u32::<LittleEndian>()?;
+    let root_name = read_string(&mut cursor)?;
 
-    loop {
-        if !can_read(&cursor, 4) {
-            break;
-        }
+    let mut map: HashMap<String, String> = HashMap::new();
 
-        let len = cursor.read_u32::<LittleEndian>()?;
+    let json_value: Value = serde_json::to_value(&map).unwrap();
+    let json_str = json_value.to_string();
 
-        if len == 0 || len > 200 {
-            println!("Skipping invalid length: {}", len);
-            break;
-        }
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field_n(&mut cursor, 14)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field_until(&mut cursor, b'e')?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    // let (name, value) = read_field_until(&mut cursor, b'V')?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let struct_name = read_struct(&mut cursor)?;
+    let (name, value) = read_field(&mut cursor)?;
 
-        if !can_read(&cursor, len as usize) {
-            println!("Not enough bytes to read name of length {}", len);
-            break;
-        }
-
-        let mut buffer = vec![0u8; len as usize];
-        cursor.read_exact(&mut buffer)?;
-        let string_candidate = String::from_utf8_lossy(&buffer);
-
-        if string_candidate == "ArrayValue" {
-            println!("Field: ArrayValue in Struct: {}", struct_name);
-            continue;
-        }
-
-        if string_candidate.chars().all(|c| c.is_ascii_graphic() || c == '\0') {
-
-            if guess_it_is_a_field(&mut cursor, &string_candidate) {
-                let value = cursor.read_u32::<LittleEndian>()?;
-                println!("Field: {} {}", string_candidate, value);
-            }
-            else {
-                previous_struct_name = struct_name;
-                struct_name = string_candidate.to_string();
-                println!("Struct: {}", struct_name);
-            }
-            // previous_struct_name = struct_name.clone();
-            // struct_name = string_candidate.to_string();
-            
-        } else {
-            println!("Unknown or binary data, len: {}, bytes: {:?}", len, &buffer);
-            break;
-        }
-
-    }
-
-    // loop {
-    //     is_field = false;
-
-    //     if !has_read {
-    //         len = cursor.read_u32::<LittleEndian>()?;
-    //     }
-
-    //     has_read = false;
-
-    //     if len > 1 && len < 200 {
-    //         let current_pos = cursor.position() as usize;
-    //         let mut buffer = vec![0u8; len as usize];
-
-    //         if current_pos + len as usize <= total_len {
-    //             cursor.read_exact(&mut buffer)?;
-    //         }
-    //         else {
-    //             println!("{}", len);
-    //             return Ok(());
-    //         }
-
-    //         previous_struct_name = struct_name;
-    //         struct_name = match String::from_utf8(buffer) {
-    //             std::result::Result::Ok(value) => value,
-    //             Err(_) => {
-    //                 println!("err");
-    //                 return Ok(());
-    //             },
-    //         };
-    //     }
-
-    //     if cursor.position() as usize == total_len {
-    //         break;
-    //     }
-
-    //     len = cursor.read_u32::<LittleEndian>()?;
-    //     has_read = true;
-
-    //     if len == 0 || len == 1 || len > 200 {
-    //         property_name = struct_name;
-    //         struct_name = previous_struct_name.clone();
-    //         is_field = true;
-    //     }
-
-    //     if is_field {
-    //         println!("Struct {} Field {}", struct_name, property_name);
-    //     }
-    //     else {
-    //         println!("Struct {}", struct_name);
-    //     }
-
-    //     it += 1;
-    // }
-
-
-    Ok(())
+    Ok((root_name, json_str))
 }
 
-fn can_read(cursor: &Cursor<Vec<u8>>, bytes: usize) -> bool {
-    (cursor.position() as usize + bytes) <= cursor.get_ref().len()
+fn parse_loa_data(path: &Path) -> Result<(String, u32, Vec<String>)> {
+
+    let mut file = File::open(path)?;
+    let mut data = Vec::new();
+    file.read_to_end(&mut data)?;
+    let data_length = data.len();
+    let mut cursor: Cursor<Vec<u8>> = Cursor::new(data);
+    
+    let version = cursor.read_f32::<LittleEndian>()?;
+    cursor.read_u32::<LittleEndian>()?;
+    let object_id = cursor.read_u32::<LittleEndian>()?;
+    let root_name = read_string(&mut cursor)?;
+
+    let mut results = Vec::new();
+
+    while let std::result::Result::Ok(pos) = cursor.seek(SeekFrom::Current(0)) {
+
+        if (cursor.position() as usize + 5) > data_length {
+            break;
+        }
+
+        let mut buf = [0u8; 5];
+        if cursor.read_exact(&mut buf).is_err() {
+            break;
+        }
+
+        let str_len = buf[0] as usize;
+
+        if str_len >= 2 && buf[1] == 0 && buf[2] == 0 && buf[3] == 0 && is_ascii(buf[4]) {
+            cursor.seek(SeekFrom::Current(-1)).unwrap();
+
+            if (cursor.position() as usize + str_len) > data_length {
+                break;
+            }
+
+            let mut str_buf = vec![0u8; str_len];
+            if cursor.read_exact(&mut str_buf).is_ok() {
+                if let std::result::Result::Ok(s) = String::from_utf8(str_buf.clone()) {
+                    results.push(s.trim_end_matches('\0').to_string());
+                }
+            }
+        } else {
+            cursor.seek(SeekFrom::Start(pos + 1)).unwrap();
+        }
+    }
+
+    Ok((root_name, object_id, results))
+}
+
+fn is_ascii(byte: u8) -> bool {
+    byte.is_ascii_graphic() || byte == b' '
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_loa_data() {
+        let output_path = std::env::current_dir().unwrap();
+        let output_path = output_path.join(r"target\debug");
+        let file_path = output_path.join(r"data1\Common_Extra\XMLData\NPCFunction\10008.loa");
+
+        let files = collect_loa_files(&output_path).unwrap();
+        
+        // let (name, object_id, data) = parse_loa_data(&file_path).map_err(|err| println!("{err}")).unwrap();
+
+        // println!("{} {} {:?}", name, object_id, data);
+    }
 }

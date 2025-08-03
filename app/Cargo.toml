@@ -32,6 +32,9 @@ rusqlite = { version = "0.37.0", features = ["bundled"] }
 ntapi = "0.4.1"
 widestring = "1.0"
 bincode = "2.0.1"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+quick-xml = "0.38.0"
 
 [dependencies.windows]
 version = "0.61.3"

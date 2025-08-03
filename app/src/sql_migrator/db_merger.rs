@@ -1,17 +1,32 @@
 use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
-
+use strum_macros::{VariantArray, VariantNames};
+use strum_macros::{AsRefStr, EnumString};
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use duckdb::{Connection as DuckConnection, Statement};
+use duckdb::{params, Connection as DuckConnection, Statement};
 use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
 use rusqlite::{Connection, OptionalExtension};
-use crate::{lpk::LpkInfo, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, utils::*}, types::RunArgs};
+use walkdir::WalkDir;
+use crate::{loa_extractor::{collect_loa_files}, lpk::{self, LpkInfo}, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, utils::*}, types::RunArgs};
 
 pub enum MergeDirectoryFilter<'a> {
     None,
     Include(Vec<&'a str>),
     Exclude(Vec<&'a str>)
+}
+
+#[derive(Default)]
+pub enum TransformationStrategy {
+    #[default]
+    AttachSqlite,
+    BatchInsert
+}
+
+pub struct DbFileEntry {
+    pub file_path: PathBuf,
+    pub file_name: String,
+    pub strategy: TransformationStrategy,
 }
 
 pub struct DbMerger {
@@ -22,6 +37,7 @@ pub struct DbMerger {
 impl DbMerger {
     pub fn new(duckdb_path: &Path, batch_size: usize) -> Result<Self> {
         let connection = DuckConnection::open(duckdb_path)?;
+        connection.execute("SET default_block_size = 32768;", [])?;
 
         Ok(Self {
             connection,
@@ -36,42 +52,189 @@ impl DbMerger {
     }
 
     pub fn post_work(&self) -> Result<()> {
-        self.connection.execute_batch(POST_WORK_SQL)?;
+        
+        // let file_path = "post_migration.sql";
+        // let query = fs::read_to_string(file_path)?;
+        // self.connection.execute_batch(&query)?;
+
+        self.connection.execute_batch("VACUUM;")?;
         
         Ok(())
     }
 
-    pub fn merge_directory(&self, dir: &Path, schema_name: &str, filter: &MergeDirectoryFilter) -> Result<()> {
+    pub fn merge(&self, entries: HashMap<String, DbFileEntry>, schema_name: &str) -> Result<()> {
 
-        for entry in std::fs::read_dir(dir)? {
-            let entry = entry?;
-            let file_path = entry.path();
-            let file_name = file_path.file_name().unwrap().to_string_lossy();
+        for (_, entry) in entries {
+         
+            let file_path = entry.file_path;
+            info!("Merging {}", entry.file_name);
 
-            if file_path.extension().and_then(|s| s.to_str()) != Some("db") {
-                continue;
-            }
-
-            let predicate = match filter {
-                MergeDirectoryFilter::None => false,
-                MergeDirectoryFilter::Include(items) => items.iter()
-                    .find(|&&pr| file_name.contains(pr)).is_none(),
-                MergeDirectoryFilter::Exclude(items) => items.iter()
-                    .find(|&&pr| file_name.contains(pr)).is_some(),
+            match entry.strategy {
+                TransformationStrategy::AttachSqlite => self.transfer_sqlite_to_duckdb_by_attach(&file_path, schema_name)?,
+                TransformationStrategy::BatchInsert => self.transfer_sqlite_to_duckdb_by_insert(&file_path, schema_name)?,
             };
-
-            if predicate {
-                continue;
-            }
-            
-            info!("Merging {}", file_name);
-            self.transfer_sqlite_to_duckdb_new(&file_path, schema_name)?;
-            // self.transfer_sqlite_to_duckdb(&file_path, schema_name)?;
         }
+
         Ok(())
     }
 
-    fn transfer_sqlite_to_duckdb_new(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
+    pub fn insert_lpk_metadata(&self, lpks: Vec<LpkInfo>) -> Result<()> {
+
+
+        for lpk in lpks {
+
+            let full_table_name = lpk.name.clone();
+
+            let query = format!(r"
+                CREATE TABLE lpk.{}
+                (
+                    Id INT NOT NULL PRIMARY KEY,
+                    Name VARCHAR(50) NOT NULL,
+                    FilePath VARCHAR(100) NOT NULL,
+                    Extension VARCHAR(4) NOT NULL,
+                    Size INT NOT NULL
+                );
+            ", &full_table_name);
+
+            info!("Creating table {}", full_table_name);
+            self.connection.execute_batch(&query)?;
+
+            for chunk in lpk.get_summary().chunks(1000) {
+                
+                 let placeholders = std::iter::repeat("(?, ?, ?, ?, ?)")
+                    .take(chunk.len())
+                    .collect::<Vec<_>>()
+                    .join(",\n");
+
+                let insert_sql = format!(
+                    r#"
+                    INSERT INTO lpk."{}" (Id, Name, FilePath, Extension, Size)
+                    VALUES
+                    {};
+                    "#,
+                    full_table_name,
+                    placeholders
+                );
+
+                let mut params = Vec::with_capacity(chunk.len() * 5);
+                for entry in chunk {
+                    params.extend([
+                        duckdb::types::Value::Int(entry.order as i32),
+                        duckdb::types::Value::Text(entry.file_name.clone()),
+                        duckdb::types::Value::Text(entry.file_path.clone()),
+                        duckdb::types::Value::Text(entry.content_type.as_ref().to_string()),
+                        duckdb::types::Value::Int(entry.max_length as i32),
+                    ]);
+                }
+
+                self.connection.execute(&insert_sql, duckdb::params_from_iter(params))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn insert_loa_data(&self, output_path: &Path) -> Result<()> {
+        const TABLE_NAME: &str = "lpk.LoaFiles";
+
+        let query = r"
+        CREATE TABLE lpk.LoaFiles
+        (
+            Id INT NOT NULL PRIMARY KEY,
+            FilePath VARCHAR(100) NOT NULL,
+            Name VARCHAR(100) NOT NULL,
+            Data JSON NOT NULL
+        );";
+
+        self.connection.execute_batch(query)?;
+        let mut buffer = Vec::with_capacity(self.batch_size * 2);
+        let mut count = 0;
+        let files = collect_loa_files(output_path)?;
+
+        for entry in files {
+            info!("Extracting data from {}", entry.relative_path);
+
+            buffer.push(duckdb::types::Value::Int(entry.id));
+            buffer.push(duckdb::types::Value::Text(entry.relative_path));
+            buffer.push(duckdb::types::Value::Text(entry.name));
+            let keywords: Vec<_> = entry.keywords.into_iter().map(|pr| duckdb::types::Value::Text(pr)).collect();
+            buffer.push(duckdb::types::Value::List(keywords));
+
+            count += 1;
+
+            if count % self.batch_size == 0 {
+                let placeholders = std::iter::repeat("(?, ?, ?, ?)")
+                    .take(self.batch_size)
+                    .collect::<Vec<_>>()
+                    .join(",\n");
+
+                let insert_sql = format!(
+                    "INSERT INTO {} (Id, FilePath, Name, Data)\nVALUES\n{};",
+                    TABLE_NAME, placeholders
+                );
+
+                self.connection.execute(&insert_sql, duckdb::params_from_iter(&buffer))?;
+                buffer.clear();
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn create_enums(&self, enums: HashMap<String, HashMap<u32, String>>, schema_name: &str) -> Result<()> {
+        for (enum_name, entries) in enums {
+            let table_name = enum_name;
+            let full_table_name = format!("{}.{}", schema_name, table_name);
+
+            let max_id = *entries.keys().max().unwrap_or(&0);
+            let id_type = get_duckdb_int_type_for_enum_keys(max_id);
+
+            let create_sql = format!(
+                "CREATE TABLE IF NOT EXISTS {} (
+                    Id {} PRIMARY KEY,
+                    Name VARCHAR(20)
+                );",
+                full_table_name, id_type
+            );
+
+            info!("Creating table {}", full_table_name);
+            self.connection.execute_batch(&create_sql)?;
+
+            let index_sql = format!("CREATE INDEX IF NOT EXISTS IX_ENUM_{}_Name ON {} (Name);", table_name, full_table_name);
+            self.connection.execute_batch(&index_sql)?;
+
+            let mut buffer = Vec::with_capacity(self.batch_size * 2);
+            let mut count = 0;
+
+            for (id, name) in entries {
+                buffer.push(duckdb::types::Value::Int(id as i32));
+                buffer.push(duckdb::types::Value::Text(name.clone()));
+
+                count += 1;
+
+                if count % self.batch_size == 0 {
+                    self.insert_enum_batch(&full_table_name, &buffer)?;
+                    buffer.clear();
+                }
+            }
+
+            if !buffer.is_empty() {
+                self.insert_enum_batch(&full_table_name, &buffer)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn insert_enum_batch(&self, table_name: &str, buffer: &[duckdb::types::Value]) -> Result<()> {
+        let num_rows = buffer.len() / 2;
+        let placeholders = std::iter::repeat("(?, ?)").take(num_rows).collect::<Vec<_>>().join(",\n");
+        let insert_sql = format!("INSERT INTO {} (Id, Name) VALUES\n{};", table_name, placeholders);
+        self.connection.execute(&insert_sql, duckdb::params_from_iter(buffer.iter().cloned()))?;
+        Ok(())
+    }
+
+    fn transfer_sqlite_to_duckdb_by_attach(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
         let file_name = sqlite_path.file_stem().unwrap().to_string_lossy();
         let sqlite_path_str = sqlite_path.to_string_lossy().to_string();
         let connection = SqliteDb::new(sqlite_path)?;
@@ -89,7 +252,7 @@ impl DbMerger {
         Ok(())
     }
 
-    fn transfer_sqlite_to_duckdb(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
+    fn transfer_sqlite_to_duckdb_by_insert(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
         let connection = SqliteDb::new(sqlite_path)?;
         let table_names = connection.get_table_names()?;
 
@@ -108,7 +271,6 @@ impl DbMerger {
             
             let mut row_count = 0;
             let mut row_count_it = 0;
-            // let mut batch_query_cache = HashMap::new();
             let columns_length = columns.len();
 
             let query = &format!("SELECT * FROM {}", table_name);
@@ -169,29 +331,44 @@ impl DbMerger {
 
         Ok(())
     }
+}
 
-    // fn get_cached_insert_sql<'a>(
-    //     batch_query_cache: &'a mut HashMap<usize, String>,
-    //     schema_name: &str,
-    //     table_name: &str,
-    //     columns_length: usize,
-    //     row_count: usize) -> &'a str {
-    //     let insert_sql = batch_query_cache.entry(row_count)
-    //         .or_insert_with(|| {
-    //             let placeholders = std::iter::repeat(format!("({})", vec!["?"; columns_length].join(",")))
-    //                 .take(row_count)
-    //                 .collect::<Vec<_>>()
-    //                 .join(",\n");
+pub fn collect_db_file_entries(
+    dir: &Path,
+    filter: &MergeDirectoryFilter
+) -> Result<HashMap<String, DbFileEntry>> {
+    let mut entries = HashMap::new();
 
-    //             let insert_sql = format!(
-    //                 "INSERT INTO {}.{} VALUES\n{}",
-    //                 schema_name, table_name, placeholders
-    //             );
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let file_path = entry.path();
 
-    //             insert_sql
-    //         });
-            
+        if file_path.extension().and_then(|s| s.to_str()) != Some("db") {
+            continue;
+        }
 
-    //     insert_sql
-    // }
+        let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
+        let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
+
+        let skip = match filter {
+            MergeDirectoryFilter::None => false,
+            MergeDirectoryFilter::Include(items) => !items.iter().any(|&pr| file_name.contains(pr)),
+            MergeDirectoryFilter::Exclude(items) => items.iter().any(|&pr| file_name.contains(pr)),
+        };
+
+        if skip {
+            continue;
+        }
+
+        entries.insert(
+            file_stem.to_string(),
+            DbFileEntry {
+                file_path: file_path,
+                file_name: file_name,
+                strategy: TransformationStrategy::AttachSqlite,
+            },
+        );
+    }
+
+    Ok(entries)
 }
