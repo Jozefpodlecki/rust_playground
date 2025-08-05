@@ -8,21 +8,17 @@ use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
 use rusqlite::{Connection, OptionalExtension};
 use walkdir::WalkDir;
-use crate::{loa_extractor::{collect_loa_files}, lpk::{self, LpkInfo}, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, utils::*}, types::RunArgs};
+use crate::{loa_extractor::collect_loa_files, lpk::{self, LpkInfo}, process_dumper::ProcessDumpResult, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, utils::*}, types::RunArgs};
+use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 
-pub enum MergeDirectoryFilter<'a> {
-    None,
-    Include(Vec<&'a str>),
-    Exclude(Vec<&'a str>)
-}
-
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub enum TransformationStrategy {
     #[default]
     AttachSqlite,
     BatchInsert
 }
 
+#[derive(Debug)]
 pub struct DbFileEntry {
     pub file_path: PathBuf,
     pub file_name: String,
@@ -134,6 +130,52 @@ impl DbMerger {
         Ok(())
     }
 
+    // pub fn insert_assembly(&self, result: ProcessDumpResult) -> Result<()> {
+
+    //     let mut cs = Capstone::new()
+    //         .x86()
+    //         .mode(arch::x86::ArchMode::Mode64)
+    //         .syntax(arch::x86::ArchSyntax::Intel)
+    //         .build()?;
+
+    //     cs.set_skipdata(true)?;
+    //     cs.set_detail(true)?;
+
+    //     for block in result.blocks {
+    //         let table_name = block.module.map(|pr| pr.file_name)
+    //             .unwrap_or_else(|| block.base.to_string());
+
+    //         if block.is_executable {
+
+    //             let table_name = format!("assembly.{}_text", table_name);
+    //             let query: String = format!(r"
+    //                 CREATE TABLE {}
+    //                 (
+    //                     Id BIGINT NOT NULL PRIMARY KEY, 
+    //                     mnemonic VARCHAR(20),
+    //                     op_str TEXT
+
+    //                 );", table_name);
+
+    //             let query = format!("INSERT INTO {} (address, mnemonic, op_str) VALUES (?, ?, ?)", table_name);
+    //             let mut statement = self.connection.prepare(&query)?;
+
+    //             let instructions = cs.disasm_all(&block.data, 0)?;
+
+    //             for instruction in instructions.into_iter() {
+    //                 let address = instruction.address() as i64;
+    //                 let mnemonic = instruction.mnemonic().unwrap_or("");
+    //                 let op_str = instruction.op_str().unwrap_or("");
+
+    //                 statement.execute(params![address, mnemonic, op_str])?;
+    //             }
+    //         }
+
+    //     }
+
+    //     Ok(())
+    // }
+
     pub fn insert_loa_data(&self, output_path: &Path) -> Result<()> {
         const TABLE_NAME: &str = "lpk.LoaFiles";
 
@@ -143,7 +185,7 @@ impl DbMerger {
             Id INT NOT NULL PRIMARY KEY,
             FilePath VARCHAR(100) NOT NULL,
             Name VARCHAR(100) NOT NULL,
-            Data JSON NOT NULL
+            Data VARCHAR(MAX) NOT NULL
         );";
 
         self.connection.execute_batch(query)?;
@@ -157,8 +199,8 @@ impl DbMerger {
             buffer.push(duckdb::types::Value::Int(entry.id));
             buffer.push(duckdb::types::Value::Text(entry.relative_path));
             buffer.push(duckdb::types::Value::Text(entry.name));
-            let keywords: Vec<_> = entry.keywords.into_iter().map(|pr| duckdb::types::Value::Text(pr)).collect();
-            buffer.push(duckdb::types::Value::List(keywords));
+            let keywords: String = entry.keywords.join(",");
+            buffer.push(duckdb::types::Value::Text(keywords));
 
             count += 1;
 
@@ -183,7 +225,7 @@ impl DbMerger {
 
     pub fn create_enums(&self, enums: HashMap<String, HashMap<u32, String>>, schema_name: &str) -> Result<()> {
         for (enum_name, entries) in enums {
-            let table_name = enum_name;
+            let table_name = enum_name.replace("_", "");
             let full_table_name = format!("{}.{}", schema_name, table_name);
 
             let max_id = *entries.keys().max().unwrap_or(&0);
@@ -192,7 +234,7 @@ impl DbMerger {
             let create_sql = format!(
                 "CREATE TABLE IF NOT EXISTS {} (
                     Id {} PRIMARY KEY,
-                    Name VARCHAR(20)
+                    Name VARCHAR(20) NOT NULL
                 );",
                 full_table_name, id_type
             );
@@ -305,7 +347,6 @@ impl DbMerger {
                 row_count += 1;
 
                 if row_count_it >= self.batch_size {
-                    print!("\r{} / {}{:10}", row_count, total_row_count, "");
              
                     statement.execute(duckdb::params_from_iter(&buffer))?;
                     buffer.clear();
@@ -333,10 +374,7 @@ impl DbMerger {
     }
 }
 
-pub fn collect_db_file_entries(
-    dir: &Path,
-    filter: &MergeDirectoryFilter
-) -> Result<HashMap<String, DbFileEntry>> {
+pub fn collect_db_file_entries(dir: &Path) -> Result<HashMap<String, DbFileEntry>> {
     let mut entries = HashMap::new();
 
     for entry in fs::read_dir(dir)? {
@@ -349,16 +387,6 @@ pub fn collect_db_file_entries(
 
         let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
         let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
-
-        let skip = match filter {
-            MergeDirectoryFilter::None => false,
-            MergeDirectoryFilter::Include(items) => !items.iter().any(|&pr| file_name.contains(pr)),
-            MergeDirectoryFilter::Exclude(items) => items.iter().any(|&pr| file_name.contains(pr)),
-        };
-
-        if skip {
-            continue;
-        }
 
         entries.insert(
             file_stem.to_string(),

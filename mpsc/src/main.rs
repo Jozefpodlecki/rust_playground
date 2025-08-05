@@ -41,23 +41,23 @@ fn main() {
     spawn(move || {
         let mut rng = rng();
         let now = Instant::now();
+        sleep(Duration::from_secs(10));
 
         loop {
-            sleep(Duration::from_secs(5));
 
             if now.elapsed() > Duration::from_secs(60) {
                 info!("Exiting");
                 exit(0)
             }
             
-            TARGET_BYTE.store(69, Ordering::SeqCst);
+            TARGET_BYTE.store(rng.random(), Ordering::SeqCst);
 
             let action: Action = rng.random();
             let size = rng.random_range(1..=10);
             let data: Vec<u8> = (0..size).map(|_| rng.random()).collect();
 
             tx.send((action, data)).unwrap();
-            sleep(Duration::from_secs(5));
+            sleep(Duration::from_secs(1));
         }
     });
 

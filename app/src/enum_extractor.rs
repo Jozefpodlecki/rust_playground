@@ -34,7 +34,7 @@ pub static WORDS_MAP: Lazy<HashSet<&str>> = Lazy::new(|| {
         "option", "fx", "flag", "community", "name", "change", "trade", "enter", "rotation",
         "island", "auction", "trophy", "leave", "reason", "collecting", "puzzle", "unlock",
         "period", "team", "match", "lobby", "troop", "wallpaper", "auction", "trophy", "remove",
-        "gamepad", "vibration", "skill", "constraint", "voyage", "continent", "quest", "status",
+        "gamepad", "vibration", "skill", "constraint", "voyage", "continent", "quest", "branch",
         "feature", "apply", "target", "coop", "competition", "reward", "member", "monitoring",
         "zone", "item", "durability", "ability", "buddy", "penalty", "excess", "property",
         "ref", "table", "projectile", "trace", "idle", "move", "aossu", "event", "condition",
@@ -74,14 +74,18 @@ pub static WORDS_MAP: Lazy<HashSet<&str>> = Lazy::new(|| {
         "unsummon", "jumping", "auto", "register", "abuse", "class", "polymorph", "neutralize", "business",
         "expedition", "instrument", "announce", "instant", "recall", "pet", "newbie", "quick",
         "profession", "invoke", "tooltip", "restrict", "superarmor", "distributed", "serial", "number",
-        "spot", "have", "status", "abort", "victory", "crest", "book", "ore", "sign", "mini", "confront",
+        "spot", "have", "align", "abort", "victory", "crest", "book", "ore", "sign", "mini", "confront",
         "invite", "track", "record", "rule", "mark", "stance", "phase", "banner", "finish", "purchase",
         "install", "attach", "template", "end", "exit", "sub", "visit", "audit", "bounds", "to", "entry",
         "entrance", "collection", "platinum", "selection", "error", "asset", "immune", "abnormal", "building",
         "multi", "stock", "config", "paralyzation", "guide", "mask", "regress", "loot", "owner", "ship", "main",
         "off", "tendency", "price", "calc", "create", "int", "attr", "online", "override", "gold", "pick",
         "lock", "count", "element", "hint", "kill", "range", "title", "strength", "Msg", "bonus", "per", "search",
-        "jump", "distribution", "elixir", "present", "milestone", "basic", "offset", "tribe", "border"
+        "jump", "distribution", "elixir", "present", "milestone", "basic", "offset", "tribe", "border",
+        "text", "completion", "acquisition", "carrying", "notify", "msg", "cache", "control", "contient",
+        "tag", "player", "transfer", "congestion", "sub", "buff", "enhance", "key", "base", "merdiem", "provider",
+        "widget", "disband", "cmd", "task", "donation", "heart", "site", "exchange",
+        "accessory", "dictionary", "inherit", "polish", "proximity", "stack", "recovery", "produce"
     ].into_iter().collect()
 });
 

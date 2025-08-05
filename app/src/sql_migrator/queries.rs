@@ -8,11 +8,7 @@ pub const SETUP_SQL: &str = r#"
     CREATE SCHEMA lpk;
     CREATE SCHEMA assembly;
 
-    CREATE TABLE assembly.LOSTARK
-    (
-        Address INT NOT NULL,
-        Opcode VARCHAR(3) NOT NULL
-    );
+   
 "#;
 
 pub const SELECT_TOP_1_TABLE_NAME: &str = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name LIMIT 1";

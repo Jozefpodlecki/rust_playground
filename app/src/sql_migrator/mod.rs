@@ -6,3 +6,4 @@ mod db_merger;
 mod duck_db;
 
 pub use db_merger::*;
+pub use duck_db::DuckDb;
