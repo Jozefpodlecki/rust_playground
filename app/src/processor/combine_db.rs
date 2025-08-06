@@ -43,7 +43,7 @@ impl ProcessorStep for CombineDbStep {
         merger.setup();
 
         for exe_info in exe_paths {
-            merger.insert_assembly(exe_info.path, &output_path);
+            merger.insert_assembly(exe_info.path, &output_path)?;
         }
 
         

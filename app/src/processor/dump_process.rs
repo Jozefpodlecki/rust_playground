@@ -2,11 +2,12 @@ use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, pat
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::info;
+use log::*;
 use crate::{lpk::{get_lpks, LpkInfo}, process_dumper::{self, ProcessDumper}, processor::ProcessorStep, types::{LaunchMethod}};
 
 pub struct DumpProcessStep {
     exe_path: PathBuf,
+    output_bin_path: PathBuf,
     dest_path: PathBuf,
     exe_args: Vec<String>,
     launch_ethod: LaunchMethod
@@ -22,7 +23,11 @@ impl ProcessorStep for DumpProcessStep {
             return false
         }
 
-        if self.dest_path.exists() {
+        if !self.dest_path.exists() {
+            return false
+        }
+
+        if self.output_bin_path.exists() {
             return false
         }
 
@@ -31,9 +36,13 @@ impl ProcessorStep for DumpProcessStep {
 
     fn execute(self: Box<Self>) -> Result<()> {
 
-        let mut process_dumper = ProcessDumper::new(&self.exe_path, &self.dest_path)?;
+        let mut process_dumper = ProcessDumper::new(&self.exe_path, &self.output_bin_path)?;
 
-        process_dumper.run(&self.exe_args, self.launch_ethod)?;
+        let dump = process_dumper.run(&self.exe_args, self.launch_ethod)?;
+
+        // for block in dump.blocks.iter().filter(|pr| pr.block.is_executable) {
+        //     info!("Executable 0x{:X}", block.block.base);
+        // }
 
         Ok(())
     }
@@ -46,8 +55,11 @@ impl DumpProcessStep {
         exe_args: Vec<String>,
         launch_ethod: LaunchMethod
     ) -> Self {
+        let output_bin_path = ProcessDumper::get_bin_path(&exe_path, &dest_path);
+
         Self {
             exe_path,
+            output_bin_path,
             dest_path,
             exe_args,
             launch_ethod

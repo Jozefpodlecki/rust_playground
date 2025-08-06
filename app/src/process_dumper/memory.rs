@@ -197,8 +197,12 @@ impl Iterator for MemoryRegionIterator {
 
             let mut buffer = Vec::new();
 
+            debug!("State: {:?}, Protect: {:?}, (Protect & readable_flags): {:?} size: {}", 
+                self.mbi.State, self.mbi.Protect, self.mbi.Protect & readable_flags, size);
+
             if is_readable {
                 buffer = Vec::with_capacity(size);
+                buffer.set_len(size);
                 let mut bytes_read = 0usize;
 
                 let success = ReadProcessMemory(
@@ -210,6 +214,7 @@ impl Iterator for MemoryRegionIterator {
                 );
 
                 if success.is_err() {
+                    info!("error?");
                     return Some(Err(anyhow!(
                         "ReadProcessMemory failed at 0x{:X}: {:?}",
                         base,
@@ -221,11 +226,11 @@ impl Iterator for MemoryRegionIterator {
             }
 
             let protect = self.mbi.Protect;
-            let is_readable_flag = protect & readable_flags != PAGE_PROTECTION_FLAGS(0);
-            let is_executable_flag = protect & (PAGE_EXECUTE
+            let is_readable_flag = (protect & readable_flags) != PAGE_PROTECTION_FLAGS(0);
+            let is_executable_flag = (protect & (PAGE_EXECUTE
                 | PAGE_EXECUTE_READ
                 | PAGE_EXECUTE_READWRITE
-                | PAGE_EXECUTE_WRITECOPY) != PAGE_PROTECTION_FLAGS(0);
+                | PAGE_EXECUTE_WRITECOPY)) != PAGE_PROTECTION_FLAGS(0);
 
             let block = MemoryBlock {
                 base: base as u64,

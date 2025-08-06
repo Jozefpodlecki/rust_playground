@@ -22,9 +22,8 @@ mod utils;
 mod models;
 
 fn main() -> Result<()> {
-    Logger::try_with_str("info")?.start()?;
-
     let args = AppConfig::new()?;
+    Logger::try_with_str(&args.log_level)?.start()?;
     
     let mut processor = Processor::new();
 

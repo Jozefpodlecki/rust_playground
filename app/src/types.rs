@@ -13,6 +13,8 @@ use serde::{Deserialize, Deserializer};
 // }
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
+    pub log_level: String,
+
     #[serde(deserialize_with = "deserialize_str_to_vec")]
     pub cipher_key: Vec<u8>,
 

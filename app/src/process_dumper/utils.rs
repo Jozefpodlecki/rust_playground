@@ -2,6 +2,7 @@ use std::{collections::HashMap, io::{Read, Write}};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
+use log::debug;
 use object::Object;
 use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
 
@@ -64,7 +65,8 @@ pub fn collect_exports(modules: &[ProcessModule]) -> Result<HashMap<String, Vec<
         let data = std::fs::read(&module.file_path)?;
         let obj_file = object::File::parse(&*data)?;
         let module_exports: &mut Vec<ProcessModuleExport> = exports.entry(module.file_name.clone()).or_default();
-
+        
+        debug!("Finding module exports for {}", module.file_path.to_str().unwrap());
         for export in obj_file.exports()? {
             let name_bytes = export.name();
             let address = export.address();
@@ -73,6 +75,7 @@ pub fn collect_exports(modules: &[ProcessModule]) -> Result<HashMap<String, Vec<
                 Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
             };
 
+            debug!("Module export {}:address", name);
             module_exports.push(ProcessModuleExport { name, address });
         }
     }

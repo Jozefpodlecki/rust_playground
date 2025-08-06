@@ -229,7 +229,8 @@ impl DbMerger {
         dest_path: &Path
     ) -> Result<()> {
 
-        let mut process_dumper = ProcessDumper::new(&exe_path, dest_path)?;
+        let mut output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
+        let mut process_dumper = ProcessDumper::new(&exe_path, &output_bin_path)?;
 
         let mut cs = Capstone::new()
             .x86()
@@ -242,16 +243,23 @@ impl DbMerger {
 
         let dump = process_dumper.get_cached()?;
 
+        info!("Blocks: {}, Modules: {}, Exports: {}", dump.blocks.len(), dump.modules.len(), dump.exports.len());
+
         for block in dump.blocks {
 
             let module = block.block.module_name.as_ref();
             let mut data = vec![];
 
             let module_name = match module {
-                Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
-                Some(_) => continue,
+                Some(name) => name,
                 None => continue,
             };
+
+            // let module_name = match module {
+            //     Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
+            //     Some(_) => continue,
+            //     None => continue,
+            // };
 
             data = process_dumper.read_block_data(&block)?;
 
