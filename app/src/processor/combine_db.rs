@@ -4,13 +4,10 @@ use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::Local;
 use log::info;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep, sql_migrator::{collect_db_file_entries, DbMerger, TransformationStrategy}, types::{RunArgs, WaitStrategy}};
+use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep, sql_migrator::*, types::AppConfig};
 
 pub struct CombineDbStep {
-    cipher_key: Vec<u8>,
-    aes_xor_key: Vec<u8>,
-    dest_path: PathBuf,
-    exe_path: PathBuf
+    config: AppConfig
 }
 
 impl ProcessorStep for CombineDbStep {
@@ -19,7 +16,7 @@ impl ProcessorStep for CombineDbStep {
     }
 
     fn can_execute(&self) -> bool {
-        if !self.dest_path.exists() {
+        if !self.config.output_path.exists() {
             return false
         }
 
@@ -27,15 +24,29 @@ impl ProcessorStep for CombineDbStep {
     }
 
     fn execute(self: Box<Self>) -> Result<()> {
-        let lpk_path = self.dest_path.join("lpk");
+
+        let AppConfig {
+            aes_xor_key,
+            cipher_key,
+            exe_paths,
+            output_path,
+            ..
+        } = self.config;
+
+        let lpk_path = output_path.join("lpk");
         let sqlite_dir = lpk_path.join(r"data2\EFGame_Extra\ClientData\TableData");
         let jss_sqlite_dir = lpk_path.join(r"data2\EFGame_Extra\ClientData\TableData\jss");
        
-        let duckdb_path = create_new_db_file(&self.dest_path);
+        let duckdb_path = create_new_db_file(&output_path);
 
         let merger = DbMerger::new(&duckdb_path, 1000)?;
         merger.setup();
-        merger.insert_assembly(self.exe_path, &self.dest_path);
+
+        for exe_info in exe_paths {
+            merger.insert_assembly(exe_info.path, &output_path);
+        }
+
+        
         // merger.create_enums(&lpk_path)?;
         // merger.merge_data(sqlite_dir)?;
         // merger.merge_jss(jss_sqlite_dir)?;
@@ -53,16 +64,10 @@ impl ProcessorStep for CombineDbStep {
 }
 
 impl CombineDbStep {
-    pub fn new(
-        dest_path: PathBuf,
-        cipher_key: Vec<u8>,
-        aes_xor_key: Vec<u8>,
-        exe_path: PathBuf) -> Self {
+    pub fn new(config: AppConfig) -> Self {
+
         Self {
-            dest_path,
-            cipher_key,
-            aes_xor_key,
-            exe_path
+            config
         }
     }
 }

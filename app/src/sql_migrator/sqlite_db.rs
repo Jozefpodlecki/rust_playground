@@ -6,7 +6,7 @@ use duckdb::{Connection as DuckConnection};
 use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
 use rusqlite::{Connection, OptionalExtension};
-use crate::{lpk::LpkInfo, sql_migrator::queries::*, types::RunArgs};
+use crate::{lpk::LpkInfo, sql_migrator::queries::*};
 
 pub struct SqliteDb(pub SqliteConnection);
 

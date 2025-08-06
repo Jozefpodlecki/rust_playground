@@ -5,7 +5,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
 use serde_json::{json, Value};
 use walkdir::WalkDir;
-use crate::{lpk::LpkInfo, types::RunArgs};
+use crate::{lpk::LpkInfo};
 
 #[derive(Debug)]
 pub struct LoaFile {

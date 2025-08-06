@@ -8,7 +8,7 @@ use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
 use rusqlite::{Connection, OptionalExtension};
 use walkdir::WalkDir;
-use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::{self, get_lpks, LpkInfo}, process_dumper::ProcessDumper, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}, types::{RunArgs, WaitStrategy}};
+use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::{self, get_lpks, LpkInfo}, process_dumper::ProcessDumper, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
 use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 
 #[derive(Debug, Default)]
@@ -240,24 +240,25 @@ impl DbMerger {
         cs.set_skipdata(true)?;
         cs.set_detail(true)?;
 
-        let blocks = process_dumper.get_cached()?;
+        let dump = process_dumper.get_cached()?;
 
-        for block in blocks {
+        for block in dump.blocks {
 
-            let module = block.block.module.as_ref();
+            let module = block.block.module_name.as_ref();
             let mut data = vec![];
 
-            if (module.filter(|pr| pr.file_name == "LOSTARK.exe").is_none()
-                && module.filter(|pr| pr.file_name == "EFEngine.dll").is_none()) {
-                continue;
-            } else {
-                data = process_dumper.read_block_data(&block)?;
-            }
+            let module_name = match module {
+                Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
+                Some(_) => continue,
+                None => continue,
+            };
 
-            let block = block.block;
+            data = process_dumper.read_block_data(&block)?;
 
-            let table_name = block.module.map(|pr| format!("{}_0x{:X}", pr.file_name, block.base))
-                .unwrap_or_else(|| format!("{}_0x{:X}", "unknown", block.base))
+            let block = &block.block;
+            let module = dump.modules.get(module_name).unwrap();
+
+            let table_name = format!("{}_0x{:X}", module_name, block.base)
                 .replace(".", "_");
 
             if block.is_executable {

@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension};
 use std::result::Result::Ok;
 use log::*;
 
-use crate::{enum_extractor::*, process_dumper::*, processor::*, sql_migrator::{collect_db_file_entries, DbMerger, DuckDb, TransformationStrategy}, types::RunArgs, utils::{save_pretty_hex_dump, save_pretty_hex_dump_from_slice}};
+use crate::{enum_extractor::*, process_dumper::*, processor::*, sql_migrator::*, types::AppConfig};
 
 mod types;
 mod process_dumper;
@@ -23,9 +23,8 @@ mod models;
 
 fn main() -> Result<()> {
     Logger::try_with_str("info")?.start()?;
-    dotenvy::dotenv()?;
 
-    let args = RunArgs::new()?;
+    let args = AppConfig::new()?;
     
     let mut processor = Processor::new();
 
@@ -40,7 +39,7 @@ fn main() -> Result<()> {
         "upk",
         true)));
     processor.add_step(Box::new(CopyFileStep::new(
-        args.game_path,
+        args.game_path.clone(),
         args.output_path.join("ipk"),
         "ipk",
         true)));
@@ -52,19 +51,18 @@ fn main() -> Result<()> {
     )));
     processor.add_step(Box::new(DecryptUpkStep::new(
         args.output_path.join("upk"),
-        args.output_path.join("upk_decrypted")
     )));
-    processor.add_step(Box::new(DumpProcessStep::new(
-        args.exe_path.clone(),
-        args.output_path.clone(),
-        args.exe_args,
-        args.strategy,
-    )));
-    processor.add_step(Box::new(CombineDbStep::new(
-        args.output_path,
-        args.cipher_key,
-        args.aes_xor_key,
-        args.exe_path)));
+
+    for exe_info in args.exe_paths.clone() {
+        processor.add_step(Box::new(DumpProcessStep::new(
+            exe_info.path,
+            args.output_path.clone(),
+            exe_info.args,
+            exe_info.launch_method,
+        )));
+    }
+
+    processor.add_step(Box::new(CombineDbStep::new(args)));
 
     processor.run()?;
 

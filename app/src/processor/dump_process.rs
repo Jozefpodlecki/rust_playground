@@ -3,13 +3,13 @@ use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, pat
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
-use crate::{lpk::{get_lpks, LpkInfo}, process_dumper::{self, ProcessDumper}, processor::ProcessorStep, types::{RunArgs, WaitStrategy}};
+use crate::{lpk::{get_lpks, LpkInfo}, process_dumper::{self, ProcessDumper}, processor::ProcessorStep, types::{LaunchMethod}};
 
 pub struct DumpProcessStep {
     exe_path: PathBuf,
     dest_path: PathBuf,
     exe_args: Vec<String>,
-    strategy: WaitStrategy
+    launch_ethod: LaunchMethod
 }
 
 impl ProcessorStep for DumpProcessStep {
@@ -22,7 +22,7 @@ impl ProcessorStep for DumpProcessStep {
             return false
         }
 
-        if !self.dest_path.exists() {
+        if self.dest_path.exists() {
             return false
         }
 
@@ -33,7 +33,7 @@ impl ProcessorStep for DumpProcessStep {
 
         let mut process_dumper = ProcessDumper::new(&self.exe_path, &self.dest_path)?;
 
-        process_dumper.run_or_get_cached(&self.exe_args, self.strategy);
+        process_dumper.run(&self.exe_args, self.launch_ethod)?;
 
         Ok(())
     }
@@ -44,13 +44,13 @@ impl DumpProcessStep {
         exe_path: PathBuf,
         dest_path: PathBuf,
         exe_args: Vec<String>,
-        strategy: WaitStrategy
+        launch_ethod: LaunchMethod
     ) -> Self {
         Self {
             exe_path,
             dest_path,
             exe_args,
-            strategy
+            launch_ethod
         }
     }
 }

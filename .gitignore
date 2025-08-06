@@ -3,5 +3,5 @@ target/
 .env
 *-shm
 *-wal
-
+env.json
 .env

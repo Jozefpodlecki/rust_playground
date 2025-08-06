@@ -1,10 +1,11 @@
-use std::io::{Read, Write};
+use std::{collections::HashMap, io::{Read, Write}};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
+use object::Object;
 use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
 
-use crate::process_dumper::types::ProcessModule;
+use crate::process_dumper::types::{ProcessModule, ProcessModuleExport};
 
 pub unsafe fn get_windows_version() -> Result<String> {
     let mut info = OSVERSIONINFOW::default();
@@ -50,4 +51,31 @@ pub fn read_bool<R: Read>(reader: &mut R) -> Result<bool> {
         1 => Ok(true),
         _ => Err(anyhow!("Invalid boolean value: {}", byte)),
     }
+}
+
+pub fn collect_exports(modules: &[ProcessModule]) -> Result<HashMap<String, Vec<ProcessModuleExport>>> {
+    let mut exports = HashMap::new();
+
+    for module in modules {
+        if !module.is_dll {
+            continue;
+        }
+
+        let data = std::fs::read(&module.file_path)?;
+        let obj_file = object::File::parse(&*data)?;
+        let module_exports: &mut Vec<ProcessModuleExport> = exports.entry(module.file_name.clone()).or_default();
+
+        for export in obj_file.exports()? {
+            let name_bytes = export.name();
+            let address = export.address();
+            let name = match std::str::from_utf8(name_bytes) {
+                std::result::Result::Ok(s) => s.to_string(),
+                Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
+            };
+
+            module_exports.push(ProcessModuleExport { name, address });
+        }
+    }
+
+    Ok(exports)
 }

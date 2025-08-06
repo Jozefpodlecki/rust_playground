@@ -232,7 +232,7 @@ impl Iterator for MemoryRegionIterator {
                 size: size as u64,
                 state: self.mbi.State.0,
                 protect: self.mbi.Protect.0,
-                module: None,
+                module_name: None,
                 is_readable: is_readable_flag,
                 is_executable: is_executable_flag,
             };

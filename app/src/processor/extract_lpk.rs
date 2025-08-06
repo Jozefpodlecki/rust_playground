@@ -3,7 +3,7 @@ use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, R
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep, types::RunArgs};
+use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep};
 
 pub struct ExtractLpkStep {
     cipher_key: Vec<u8>,

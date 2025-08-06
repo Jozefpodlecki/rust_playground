@@ -14,7 +14,6 @@ tokio = { version = "1.46.1", features = ["full"] }
 block-modes = "0.9.1"
 sha2 = "0.10.9"
 hex-literal = "1.0.0"
-dotenvy = "0.15.7"
 cipher = "0.4.4"
 ecb = "0.1.2"
 hex = "0.4.3"

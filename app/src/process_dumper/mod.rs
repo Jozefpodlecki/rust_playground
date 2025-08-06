@@ -1,5 +1,6 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 
+use std::collections::HashMap;
 use std::ffi::{c_void, OsString};
 use std::fmt;
 use std::fs::{self, File};
@@ -17,15 +18,14 @@ mod process;
 mod memory;
 mod types;
 
+use object::Object;
 use windows::Win32::Foundation::HANDLE;
 
 use crate::process_dumper::memory::*;
 use crate::process_dumper::process::*;
-use crate::process_dumper::types::{MemoryBlock, ProcessModule, SerializedMemoryBlock};
-use crate::process_dumper::utils::{get_windows_version, match_module};
-use crate::types::{RunArgs, WaitStrategy};
-
-
+use crate::process_dumper::types::*;
+use crate::process_dumper::utils::*;
+use crate::types::{AppConfig, LaunchMethod};
 
 pub struct ProcessDumper {
     exists: bool,
@@ -56,27 +56,22 @@ impl ProcessDumper {
         })
     }
 
-    pub fn get_cached(&mut self) -> Result<Vec<SerializedMemoryBlock>> {
-        let data = self.read_memory_blocks()?;
-        Ok(data)
+    pub fn get_cached(&mut self) -> Result<ProcessDump> {
+        let mut reader = BufReader::new(&mut self.file);
+
+        let dump = ProcessDump::decode(&mut reader)?;
+
+        Ok(dump)
     }
 
-    pub fn run_or_get_cached(
-        &mut self,
-        exe_args: &[String],
-        strategy: WaitStrategy) -> Result<Vec<SerializedMemoryBlock>> {
+    pub fn run(&mut self, exe_args: &[String], strategy: LaunchMethod) -> Result<ProcessDump> {
        
-        if self.exists {
-            let data = self.read_memory_blocks()?;
-            return Ok(data);
-        };
-        
         let result = unsafe { self.run_inner(exe_args, strategy)? };
 
         Ok(result)
     }
 
-    unsafe fn run_inner(&mut self, exe_args: &[String], strategy: WaitStrategy) -> Result<Vec<SerializedMemoryBlock>> {
+    unsafe fn run_inner(&mut self, exe_args: &[String], strategy: LaunchMethod) -> Result<ProcessDump> {
 
         let handle = spawn_process(exe_args)?;
 
@@ -85,12 +80,12 @@ impl ProcessDumper {
         let main_module = get_main_module(handle)?.unwrap();
 
         match strategy {
-            WaitStrategy::None => {},
-            WaitStrategy::Sleep(duration) => {
+            LaunchMethod::Wait { wait: duration } => {
                 info!("Sleeping for {} seconds", duration.as_secs());
                 sleep(duration);
             },
-            WaitStrategy::MonitorOffset(mut addr_offset, duration) => {
+            LaunchMethod::Monitor { monitor: addr_offset } => {
+                info!("Monitoring address 0x{:X}", addr_offset);
                 let address = main_module.base + addr_offset;
                 let wait_interval = Duration::from_secs(1);
                 monitor_address(handle, address, wait_interval)?;
@@ -115,33 +110,56 @@ impl ProcessDumper {
         Ok(data)
     }
 
-    fn write_to_file(&mut self, handle: HANDLE) -> Result<Vec<SerializedMemoryBlock>> {
+    fn write_to_file(&mut self, handle: HANDLE) -> Result<ProcessDump> {
 
-        let mut count = 0u32;
         let mut writer = BufWriter::new(&mut self.file);
-        writer.write_all(&count.to_le_bytes())?;
 
         let win_version = unsafe { get_windows_version()? };
         let modules = unsafe { enumerate_modules(handle)? };
         let mut block_iter = MemoryRegionIterator::new(handle);
         let mut blocks = vec![];
+        let mut exports = collect_exports(&modules)?;
+        let module_map: HashMap<String, ProcessModule> = modules
+            .clone()
+            .into_iter()
+            .map(|m| (m.file_name.clone(), m))
+            .collect();
 
-        for module in modules.iter() {
-            if !module.is_dll {
-                continue;
-            }
+        write_string(&mut writer, &win_version)?;
 
-            let data = fs::read(&module.file_path)?;
-            let obj_file = object::File::parse(&*data)?;
+        writer.write_all(&(module_map.len() as u32).to_le_bytes())?;
+        for (name, module) in &module_map {
+            write_string(&mut writer, &name)?;
+            writer.write_all(&module.order.to_le_bytes())?;
+            writer.write_all(&[module.is_dll as u8])?;
+            write_string(&mut writer, &module.file_path.to_string_lossy())?;
+            write_string(&mut writer, &module.file_name)?;
+            writer.write_all(&module.entry_point.to_le_bytes())?;
+            writer.write_all(&module.size.to_le_bytes())?;
+            writer.write_all(&module.base.to_le_bytes())?;
         }
-        
 
+        writer.write_all(&(exports.len() as u32).to_le_bytes())?;
+        for (module_name, exports) in &exports {
+            write_string(&mut writer, module_name)?;
+
+            writer.write_all(&(exports.len() as u32).to_le_bytes())?;
+            for export in exports {
+                write_string(&mut writer, &export.name)?;
+                writer.write_all(&export.address.to_le_bytes())?;
+            }
+        }
+
+        let mut count = 0u32;
+        writer.write_all(&count.to_le_bytes())?;
+       
         for block in block_iter {
             count += 1;
             
             let (mut block, data) = block?;
 
-            block.module = match_module(block.base, &modules).cloned();
+            block.module_name = match_module(block.base, &modules)
+                .map(|pr| &pr.file_name).cloned();
 
             let mut serialized = SerializedMemoryBlock {
                 data_offset: 0,
@@ -159,7 +177,14 @@ impl ProcessDumper {
         writer.seek(SeekFrom::Start(0))?;
         writer.write_all(&count.to_le_bytes())?;
 
-        Ok(blocks)
+        let dump = ProcessDump {
+            win_version,
+            exports,
+            modules: module_map,
+            blocks
+        };
+
+        Ok(dump)
     }
 
     fn read_memory_blocks(&mut self) -> Result<Vec<SerializedMemoryBlock>> {

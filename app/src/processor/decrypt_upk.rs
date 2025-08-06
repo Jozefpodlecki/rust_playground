@@ -4,7 +4,7 @@ use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
 use walkdir::WalkDir;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep, types::RunArgs};
+use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep};
 
 const SUBST_TABLE: &[(char, [&'static str; 4])] = &[
     ('Q', ["QP", "QD", "QW", "Q4"]),
@@ -44,32 +44,33 @@ const SUBST_TABLE_REV: &[(&'static str, char, usize)] = &[
 ];
 
 pub struct DecryptUpkStep {
-    src_path: PathBuf,
-    dest_path: PathBuf,
+    path: PathBuf,
+    decrypted_map_path: PathBuf,
 }
 
 impl ProcessorStep for DecryptUpkStep {
     fn name(&self) -> String {
-        format!("Decrypt Upk in {:?}", self.src_path)
+        format!("Decrypt Upk in {:?}", self.path)
     }
 
     fn can_execute(&self) -> bool {
-        if !self.src_path.exists() {
+        if !self.path.exists() {
             return false
         }
 
-        fs::read_dir(&self.src_path)
-            .map(|mut entries| entries.next().is_some())
-            .unwrap_or(false)
+        if self.decrypted_map_path.exists() {
+            return false
+        }
+
+        true
     }
 
     fn execute(self: Box<Self>) -> Result<()> {
 
-        let path = self.dest_path.join("decrypted.json");
-        let writer = File::create(path)?;
+        let writer = File::create(self.decrypted_map_path)?;
         let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
-        let file_paths = WalkDir::new(&self.src_path)
+        let file_paths = WalkDir::new(&self.path)
             .into_iter()
             .filter_map(Result::ok)
             .filter(|e| e.file_type().is_file()
@@ -96,10 +97,12 @@ impl ProcessorStep for DecryptUpkStep {
 }
 
 impl DecryptUpkStep {
-    pub fn new(src_path: PathBuf, dest_path: PathBuf) -> Self {
+    pub fn new(path: PathBuf) -> Self {
+        let decrypted_map_path = path.join("decrypted.json");
+
         Self {
-            src_path,
-            dest_path
+            path,
+            decrypted_map_path
         }
     }
 }
