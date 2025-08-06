@@ -1,15 +1,26 @@
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, time::Duration};
 use anyhow::*;
 
 #[derive(Debug, Clone)]
 pub struct RunArgs {
     pub cipher_key: Vec<u8>,
     pub aes_xor_key: Vec<u8>,
-    pub lpk_dir: String,
+    pub game_path: PathBuf,
     pub output_path: PathBuf,
-    pub exe_path: String,
+    pub exe_path: PathBuf,
     pub exe_args: Vec<String>,
-    pub addr_offset: Option<u64>
+    pub strategy: WaitStrategy
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum WaitStrategy {
+    None,
+
+    /// Sleep unconditionally for the given duration
+    Sleep(Duration),
+
+    /// Wait until an address (main_module.base + offset) is readable or changed
+    MonitorOffset(u64, Duration),
 }
 
 impl RunArgs {
@@ -19,29 +30,56 @@ impl RunArgs {
         let aes_xor_key = std::env::var("AES_XOR_KEY")?;
         let aes_xor_key = hex::decode(aes_xor_key)?;
 
-        let lpk_dir = std::env::var("LPK_PATH")?;
-        let exe_path = std::env::var("EXE_PATH")?;
-        // let output_path = env::current_dir()?.to_str().unwrap().to_string();
-        let output_path = env::current_exe().unwrap().parent().unwrap().to_owned();
+        let exe_path = PathBuf::from(std::env::var("EXE_PATH")?);
+        let game_path = PathBuf::from(std::env::var("GAME_PATH")?);
+        let output_path = env::current_exe().unwrap().parent().unwrap().to_owned().join("output");
         
         let args_str = env::var("EXE_ARGS").unwrap_or_default();
-        let mut exe_args: Vec<String> = vec![exe_path.clone()];
+        let mut exe_args: Vec<String> = vec![exe_path.to_string_lossy().to_string()];
         exe_args.extend(args_str.split(',').map(|s| s.to_string()));
 
-        let addr_offset = std::env::var("ADDR_OFFSET")?;
-        let addr_offset  = (!addr_offset.is_empty()).then(|| {
-            let addr_offset = addr_offset.trim_start_matches("0x");
-            u64::from_str_radix(addr_offset, 16).ok()
-        }).flatten();
+        let strategy = get_wait_strategy_from_env()?;
 
         Ok(Self {
             cipher_key,
             aes_xor_key,
-            lpk_dir,
             output_path,
             exe_path,
             exe_args,
-            addr_offset
+            game_path,
+            strategy
         })
+    }
+}
+
+pub fn get_wait_strategy_from_env() -> Result<WaitStrategy> {
+    let strategy = env::var("WAIT_STRATEGY").unwrap_or_else(|_| "NONE".to_string());
+
+    match strategy.to_uppercase().as_str() {
+        "NONE" => Ok(WaitStrategy::None),
+
+        "SLEEP" => {
+            let secs: u64 = env::var("WAIT_DURATION")
+                .context("WAIT_DURATION is required for SLEEP")?
+                .parse()
+                .context("WAIT_DURATION must be a valid integer")?;
+            Ok(WaitStrategy::Sleep(Duration::from_secs(secs)))
+        }
+
+        "MONITOR" => {
+            let offset_str = env::var("WAIT_OFFSET")
+                .context("WAIT_OFFSET is required for MONITOR")?;
+            let offset = u64::from_str_radix(offset_str.trim_start_matches("0x"), 16)
+                .context("WAIT_OFFSET must be a valid hex number")?;
+
+            let secs: u64 = env::var("WAIT_DURATION")
+                .context("WAIT_DURATION is required for MONITOR")?
+                .parse()
+                .context("WAIT_DURATION must be a valid integer")?;
+
+            Ok(WaitStrategy::MonitorOffset(offset, Duration::from_secs(secs)))
+        }
+
+        _ => Err(anyhow::anyhow!("Unknown WAIT_STRATEGY: {}", strategy)),
     }
 }

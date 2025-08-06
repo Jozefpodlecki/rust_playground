@@ -9,7 +9,7 @@ use rusqlite::{Connection, OptionalExtension};
 use std::result::Result::Ok;
 use log::*;
 
-use crate::{enum_extractor::*, lpk::{get_lpks_dict, LpkInfo}, process_dumper::*, processor::*, sql_migrator::{collect_db_file_entries, DbMerger, DuckDb, TransformationStrategy}, types::RunArgs, utils::{save_pretty_hex_dump, save_pretty_hex_dump_from_slice}};
+use crate::{enum_extractor::*, process_dumper::*, processor::*, sql_migrator::{collect_db_file_entries, DbMerger, DuckDb, TransformationStrategy}, types::RunArgs, utils::{save_pretty_hex_dump, save_pretty_hex_dump_from_slice}};
 
 mod types;
 mod process_dumper;
@@ -19,49 +19,69 @@ mod sql_migrator;
 mod loa_extractor;
 mod enum_extractor;
 mod utils;
+mod models;
 
 fn main() -> Result<()> {
     Logger::try_with_str("info")?.start()?;
     dotenvy::dotenv()?;
 
     let args = RunArgs::new()?;
-    let sqlite_dir = args.output_path.join("../debug").join(r"data2\EFGame_Extra\ClientData\TableData");
-    let jss_sqlite_dir = args.output_path.join("../debug").join(r"data2\EFGame_Extra\ClientData\TableData\jss");
-    let enum_path = args.output_path.join(r"data1\Common\StringData\EFGameMsg_Enums.xml");
     
+    let mut processor = Processor::new();
+
+    processor.add_step(Box::new(CopyFileStep::new(
+        args.game_path.clone(),
+        args.output_path.join("lpk"),
+        "lpk",
+        false)));
+    processor.add_step(Box::new(CopyFileStep::new(
+        args.game_path.clone(),
+        args.output_path.join("upk"),
+        "upk",
+        true)));
+    processor.add_step(Box::new(CopyFileStep::new(
+        args.game_path,
+        args.output_path.join("ipk"),
+        "ipk",
+        true)));
+    processor.add_step(Box::new(ExtractLpkStep::new(
+        args.cipher_key.clone(),
+        args.aes_xor_key.clone(),
+        args.output_path.join("lpk"),
+        args.output_path.join("lpk")    
+    )));
+    processor.add_step(Box::new(DecryptUpkStep::new(
+        args.output_path.join("upk"),
+        args.output_path.join("upk_decrypted")
+    )));
+    processor.add_step(Box::new(DumpProcessStep::new(
+        args.exe_path.clone(),
+        args.output_path.clone(),
+        args.exe_args,
+        args.strategy,
+    )));
+    processor.add_step(Box::new(CombineDbStep::new(
+        args.output_path,
+        args.cipher_key,
+        args.aes_xor_key,
+        args.exe_path)));
+
+    processor.run()?;
+
     {
-        let file_name = "output_20250805_172138_071.duckdb";
-        let duckdb_path = args.output_path.join(file_name);
-
-        let duck_db = DuckDb::new(&duckdb_path)?;
-
-        let script_path = args.output_path.join("refactor.sql");;
-        duck_db.prepare_post_work_script(&script_path);
-    }
-
-    {
-        // let timestamp = Local::now().format("%Y%m%d_%H%M%S_%3f").to_string();
-        // let file_name = format!("output_{}.duckdb", timestamp);
+        // let file_name = "output_20250805_172138_071.duckdb";
         // let duckdb_path = args.output_path.join(file_name);
 
         // let merger = DbMerger::new(&duckdb_path, 1000)?;
-        // merger.setup();
-        
-        // let enums = extract_enum_maps_from_xml(&enum_path)?;
+        // merger.insert_loa_data(&args.output_path)?;
 
-        // merger.create_enums(enums, "enum")?;
-        // // merger.insert_loa_data(&args.output_path)?;
+        // let mut process_dumper = ProcessDumper::new(&args.exe_path, &args.output_path)?;
+        // merger.insert_assembly(process_dumper, &args)?;
 
-        // let mut entries = collect_db_file_entries(&sqlite_dir)?;
+        // let duck_db = DuckDb::new(&duckdb_path)?;
 
-        // let entry = entries.get_mut("EFTable_LanguageGrams").unwrap();
-        // entry.strategy = TransformationStrategy::BatchInsert;
-        
-        // merger.merge(entries, "data")?;
-
-        // let mut entries = collect_db_file_entries(&jss_sqlite_dir)?;
-
-        // merger.merge(entries, "jss")?;
+        // let script_path = args.output_path.join("refactor.sql");;
+        // duck_db.prepare_post_work_script(&script_path);
     }
     
     Ok(())

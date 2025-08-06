@@ -4,6 +4,7 @@ mod table_schema;
 mod utils;
 mod db_merger;
 mod duck_db;
+mod types;
 
 pub use db_merger::*;
 pub use duck_db::DuckDb;

@@ -1,0 +1,10 @@
+INSTALL sqlite;
+LOAD sqlite;
+
+CREATE SCHEMA data;
+CREATE SCHEMA enum;
+CREATE SCHEMA jss;
+CREATE SCHEMA lpk;
+CREATE SCHEMA assembly;
+
+   

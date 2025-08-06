@@ -71,19 +71,23 @@ pub struct EntryMetadata {
     pub is_blowfish: bool,
 }
 
-pub fn get_lpks<'a>(args: &'a RunArgs) -> Result<Vec<LpkInfo<'a>>> {
-    let RunArgs {
-        lpk_dir,
-        cipher_key,
-        aes_xor_key,
-        output_path,
-        ..
-    } = args;
+pub fn get_lpks<'a>(
+    path: &'a Path,
+    cipher_key: &'a [u8],
+    aes_xor_key: &'a [u8]
+) -> Result<Vec<LpkInfo<'a>>> {
+    // pub cipher_key: Vec<u8>,
+    // pub aes_xor_key: Vec<u8>,
+    // pub lpk_dir: String,
+    // pub game_path: PathBuf,
+    // pub output_path: PathBuf,
+    // pub exe_path: String,
+    // pub exe_args: Vec<String>,
+    // pub strategy: WaitStrategy
 
-    let output_path = Path::new(&output_path);
     let mut items = vec![];
 
-    for entry in fs::read_dir(&lpk_dir)? {
+    for entry in fs::read_dir(&path)? {
         let entry = entry?;
         let file_path = entry.path();
 
@@ -98,14 +102,14 @@ pub fn get_lpks<'a>(args: &'a RunArgs) -> Result<Vec<LpkInfo<'a>>> {
     Ok(items)
 }
 
-pub fn get_lpks_dict<'a>(args: &'a RunArgs) -> Result<HashMap<String, LpkInfo<'a>>> {
-    let lpks = get_lpks(args)?;
-    let map = lpks
-        .into_iter()
-        .map(|lpk| (lpk.name.to_string(), lpk))
-        .collect();
-    Ok(map)
-}
+// pub fn get_lpks_dict<'a>(args: &'a RunArgs) -> Result<HashMap<String, LpkInfo<'a>>> {
+//     let lpks = get_lpks(args)?;
+//     let map = lpks
+//         .into_iter()
+//         .map(|lpk| (lpk.name.to_string(), lpk))
+//         .collect();
+//     Ok(map)
+// }
 
 impl<'a> LpkInfo<'a> {
     fn read_file_to_buffer(file_path: &Path) -> Result<Vec<u8>> {
@@ -161,8 +165,8 @@ impl<'a> LpkInfo<'a> {
             "loa" => LpkEntryContentType::Loa,
             "ttf" => LpkEntryContentType::Ttf,
             "enc" => LpkEntryContentType::Enc,
-            // "bin" => LpkEntryContentType::Bin,
             "bin" => LpkEntryContentType::Bin,
+            "epf" => LpkEntryContentType::Epf,
             _ => LpkEntryContentType::Unknown
         };
 

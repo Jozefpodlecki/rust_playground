@@ -46,3 +46,51 @@ pub fn get_duckdb_int_type_for_enum_keys(max_id: u32) -> &'static str {
         "BIGINT"
     }
 }
+
+pub fn to_snake_case(s: &str) -> String {
+    let mut result = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if ch.is_uppercase() && i != 0 {
+            result.push('_');
+        }
+        result.push(ch.to_ascii_lowercase());
+    }
+    result
+}
+
+pub fn to_camel_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize = true;
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            result.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            result.push(ch);
+        }
+    }
+    result
+}
+
+pub fn format_bytes(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    const TB: f64 = GB * 1024.0;
+
+    let bytes_f64 = bytes as f64;
+
+    if bytes_f64 >= TB {
+        format!("{:.2} TB", bytes_f64 / TB)
+    } else if bytes_f64 >= GB {
+        format!("{:.2} GB", bytes_f64 / GB)
+    } else if bytes_f64 >= MB {
+        format!("{:.2} MB", bytes_f64 / MB)
+    } else if bytes_f64 >= KB {
+        format!("{:.2} KB", bytes_f64 / KB)
+    } else {
+        format!("{} B", bytes)
+    }
+}

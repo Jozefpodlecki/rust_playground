@@ -43,16 +43,21 @@ pub unsafe fn get_main_module(process_handle: HANDLE) -> Result<Option<ProcessMo
         return Ok(None);
     }
 
-    let file_path = OsString::from_wide(&filename_buf[..len as usize])
+    let file_path_str = OsString::from_wide(&filename_buf[..len as usize])
         .to_string_lossy()
         .to_string();
 
+    let file_path = PathBuf::from(&file_path_str);
     let file_name = Path::new(&file_path)
         .file_name()
         .map(|os_str| os_str.to_string_lossy().to_string())
         .unwrap_or_default();
 
+    let is_dll = file_path.extension().filter(|&pr| pr == "dll").is_some();
+
     let module = ProcessModule {
+        order: 0,
+        is_dll,
         file_path,
         file_name,
         entry_point: mod_info.EntryPoint as usize as u64,
@@ -80,33 +85,45 @@ pub unsafe fn enumerate_modules(process_handle: HANDLE) -> Result<Vec<ProcessMod
 
     let count = (cb_needed as usize) / std::mem::size_of::<HMODULE>();
     let module_handles = &module_handles[..count];
-
+    let module_info_size = std::mem::size_of::<MODULEINFO>() as u32;
+    
     let mut modules = Vec::with_capacity(count);
     info!("Fetching {} modules", count);
 
-    for &module_handle in module_handles {
+    for (order, &module_handle) in module_handles.into_iter().enumerate() {
         let mut mod_info = MODULEINFO::default();
-        let size = std::mem::size_of::<MODULEINFO>() as u32;
 
-        GetModuleInformation(process_handle, module_handle, &mut mod_info, size)
+        GetModuleInformation(
+            process_handle,
+            module_handle,
+            &mut mod_info,
+            module_info_size)
             .map_err(|e| anyhow!("GetModuleInformation failed: {:?}", e))?;
 
         let mut filename_buf = [0u16; 260];
-        let len = GetModuleFileNameExW(Some(process_handle), Some(module_handle), &mut filename_buf);
+        let len = GetModuleFileNameExW(
+            Some(process_handle),
+            Some(module_handle),
+            &mut filename_buf);
         if len == 0 {
             continue;
         }
 
-        let file_path = OsString::from_wide(&filename_buf[..len as usize])
+        let file_path_str = OsString::from_wide(&filename_buf[..len as usize])
             .to_string_lossy()
             .to_string();
 
+        let file_path = PathBuf::from(&file_path_str);
         let file_name = Path::new(&file_path)
             .file_name()
             .map(|os_str| os_str.to_string_lossy().to_string())
             .unwrap_or_default();
 
+        let is_dll = file_path.extension().filter(|&pr| pr == "dll").is_some();
+
         let module = ProcessModule {
+            order: order as u16,
+            is_dll,
             file_path,
             file_name,
             entry_point: mod_info.EntryPoint as usize as u64,
@@ -128,117 +145,99 @@ pub unsafe fn enumerate_modules(process_handle: HANDLE) -> Result<Vec<ProcessMod
     Ok(modules)
 }
 
-/// Dumps memory regions of the process by querying virtual memory regions,
-/// reading committed, readable pages, and collecting them into blocks.
-pub unsafe fn dump_memory_regions(process_handle: HANDLE) -> Result<Vec<MemoryBlock>> {
-    let mut blocks = Vec::new();
-    let mut address = 0usize;
-    let mbi_size = std::mem::size_of::<MEMORY_BASIC_INFORMATION>();
-
-    loop {
-        let mut mbi = MEMORY_BASIC_INFORMATION::default();
-
-        if VirtualQueryEx(
-            process_handle,
-            Some(address as *const _),
-            &mut mbi,
-            mbi_size,
-        ) == 0
-        {
-            break;
-        }
-
-        address = (mbi.BaseAddress as usize).saturating_add(mbi.RegionSize);
-
-        debug!(
-            "Queried region: base=0x{:X}, size=0x{:X}, state=0x{:X}, protect=0x{:X}",
-            mbi.BaseAddress as usize,
-            mbi.RegionSize,
-            mbi.State.0,
-            mbi.Protect.0
-        );
-
-        let readable_flags = PAGE_READONLY
-            | PAGE_READWRITE
-            | PAGE_WRITECOPY
-            | PAGE_EXECUTE_READ
-            | PAGE_EXECUTE_READWRITE
-            | PAGE_EXECUTE_WRITECOPY;
-
-        let is_readable = mbi.State == MEM_COMMIT
-            && !mbi.Protect.contains(PAGE_NOACCESS)
-            && !mbi.Protect.contains(PAGE_GUARD)
-            && (mbi.Protect & readable_flags != PAGE_PROTECTION_FLAGS(0));
-
-        let mut buffer = Vec::new();
-
-        if is_readable {
-            debug!("Reading memory at 0x{:X}", mbi.BaseAddress as usize);
-            buffer.resize(mbi.RegionSize, 0);
-            let mut bytes_read = 0usize;
-
-            ReadProcessMemory(
-                process_handle,
-                mbi.BaseAddress,
-                buffer.as_mut_ptr() as *mut c_void,
-                mbi.RegionSize,
-                Some(&mut bytes_read as *mut usize),
-            )
-            .map_err(|e| anyhow!("ReadProcessMemory failed at 0x{:X}: {:?}", mbi.BaseAddress as usize, e))?;
-
-            buffer.truncate(bytes_read);
-        }
-
-        let protect = mbi.Protect;
-        let is_readable_flag = protect & (PAGE_READONLY
-            | PAGE_READWRITE
-            | PAGE_WRITECOPY
-            | PAGE_EXECUTE_READ
-            | PAGE_EXECUTE_READWRITE
-            | PAGE_EXECUTE_WRITECOPY) != PAGE_PROTECTION_FLAGS(0);
-
-        let is_executable_flag = protect & (PAGE_EXECUTE
-            | PAGE_EXECUTE_READ
-            | PAGE_EXECUTE_READWRITE
-            | PAGE_EXECUTE_WRITECOPY) != PAGE_PROTECTION_FLAGS(0);
-
-        let base = mbi.BaseAddress as usize as u64;
-
-        let block = MemoryBlock {
-            base,
-            size: mbi.RegionSize as u64,
-            state: mbi.State.0,
-            protect: mbi.Protect.0,
-            // data: buffer,
-            module: None,
-            is_readable: is_readable_flag,
-            is_executable: is_executable_flag,
-        };
-
-        blocks.push(block);
-    }
-
-    Ok(blocks)
+pub struct MemoryRegionIterator {
+    handle: HANDLE,
+    address: usize,
+    mbi: MEMORY_BASIC_INFORMATION,
+    mbi_size: usize,
 }
 
-// pub fn search_value_in_memory(blocks: &[&[u8]], target: u32) -> Vec<u64> {
-//     let mut matches = Vec::new();
-//     let target_bytes = target.to_le_bytes();
-//     info!("Searching {:?}", target_bytes);
+impl MemoryRegionIterator {
+    pub fn new(handle: HANDLE) -> Self {
+        Self {
+            handle,
+            address: 0,
+            mbi: MEMORY_BASIC_INFORMATION::default(),
+            mbi_size: std::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
+        }
+    }
+}
 
-//     for block in blocks {
+impl Iterator for MemoryRegionIterator {
+    type Item = Result<(MemoryBlock, Vec<u8>)>;
 
-//         if block.len() < 4 {
-//             continue;
-//         }
+    fn next(&mut self) -> Option<Self::Item> {
+        unsafe {
+            if VirtualQueryEx(
+                self.handle,
+                Some(self.address as *const _),
+                &mut self.mbi,
+                self.mbi_size,
+            ) == 0
+            {
+                return None;
+            }
 
-//         for i in 0..=(block.len() - 4) {
-//             if block[i..i + 4] == target_bytes {
-//                 let addr = block.base + i as u64;
-//                 matches.push(addr);
-//             }
-//         }
-//     }
+            let base = self.mbi.BaseAddress as usize;
+            let size = self.mbi.RegionSize;
 
-//     matches
-// }
+            self.address = base.saturating_add(size);
+
+            let readable_flags = PAGE_READONLY
+                | PAGE_READWRITE
+                | PAGE_WRITECOPY
+                | PAGE_EXECUTE_READ
+                | PAGE_EXECUTE_READWRITE
+                | PAGE_EXECUTE_WRITECOPY;
+
+            let is_readable = self.mbi.State == MEM_COMMIT
+                && !self.mbi.Protect.contains(PAGE_NOACCESS)
+                && !self.mbi.Protect.contains(PAGE_GUARD)
+                && (self.mbi.Protect & readable_flags != PAGE_PROTECTION_FLAGS(0));
+
+            let mut buffer = Vec::new();
+
+            if is_readable {
+                buffer = Vec::with_capacity(size);
+                let mut bytes_read = 0usize;
+
+                let success = ReadProcessMemory(
+                    self.handle,
+                    self.mbi.BaseAddress,
+                    buffer.as_mut_ptr() as *mut c_void,
+                    size,
+                    Some(&mut bytes_read as *mut usize),
+                );
+
+                if success.is_err() {
+                    return Some(Err(anyhow!(
+                        "ReadProcessMemory failed at 0x{:X}: {:?}",
+                        base,
+                        success.unwrap_err()
+                    )));
+                }
+
+                buffer.truncate(bytes_read);
+            }
+
+            let protect = self.mbi.Protect;
+            let is_readable_flag = protect & readable_flags != PAGE_PROTECTION_FLAGS(0);
+            let is_executable_flag = protect & (PAGE_EXECUTE
+                | PAGE_EXECUTE_READ
+                | PAGE_EXECUTE_READWRITE
+                | PAGE_EXECUTE_WRITECOPY) != PAGE_PROTECTION_FLAGS(0);
+
+            let block = MemoryBlock {
+                base: base as u64,
+                size: size as u64,
+                state: self.mbi.State.0,
+                protect: self.mbi.Protect.0,
+                module: None,
+                is_readable: is_readable_flag,
+                is_executable: is_executable_flag,
+            };
+
+            Some(Ok((block, buffer)))
+        }
+    }
+}

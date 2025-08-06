@@ -8,7 +8,7 @@ use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
 use rusqlite::{Connection, OptionalExtension};
 use walkdir::WalkDir;
-use crate::{loa_extractor::collect_loa_files, lpk::{self, LpkInfo}, process_dumper::ProcessDumpResult, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, utils::*}, types::RunArgs};
+use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::{self, get_lpks, LpkInfo}, process_dumper::ProcessDumper, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}, types::{RunArgs, WaitStrategy}};
 use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 
 #[derive(Debug, Default)]
@@ -26,14 +26,14 @@ pub struct DbFileEntry {
 }
 
 pub struct DbMerger {
-    connection: DuckConnection,
+    connection: DuckDb,
     batch_size: usize,
 }
 
 impl DbMerger {
     pub fn new(duckdb_path: &Path, batch_size: usize) -> Result<Self> {
-        let connection = DuckConnection::open(duckdb_path)?;
-        connection.execute("SET default_block_size = 32768;", [])?;
+        let connection = DuckDb::new(duckdb_path)?;
+        // connection.execute("SET default_block_size = 32768;", [])?;
 
         Ok(Self {
             connection,
@@ -42,19 +42,104 @@ impl DbMerger {
     }
 
     pub fn setup(&self) -> Result<()> {
-        self.connection.execute_batch(SETUP_SQL)?;
+        let script = include_str!("./scripts/before_migration.sql");
+        self.connection.execute_batch(script);
         
         Ok(())
     }
 
-    pub fn post_work(&self) -> Result<()> {
-        
-        // let file_path = "post_migration.sql";
-        // let query = fs::read_to_string(file_path)?;
-        // self.connection.execute_batch(&query)?;
+    pub fn post_work(&self) -> Result<String> {
+        let script = include_str!("./scripts/post_migration.sql");
+        self.connection.execute_batch(script);
 
-        self.connection.execute_batch("VACUUM;")?;
+        let mut result = String::from("");
+
+        info!("generate_update_localization_script");
+        let script = &self.connection.generate_update_localization_script()?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        let test = self.connection.generate_rust_struct("data", "Ability")?;
+        let mut file = File::create("models.rs")?;
+        file.write_all(test.as_bytes())?;
+
+        let script = include_str!("./scripts/post_migration.sql");
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("generate_drop_empty_columns");
+        let comment_column_map = self.connection.get_column_values("Comment")?;
+        let script = &self.connection.generate_drop_empty_columns_script("Comment", comment_column_map);
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("drop_empty_tables");
+        let script = &self.connection.generate_drop_empty_tables_script()?;
+        self.connection.execute_batch(script);
+        result += script;
         
+        info!("drop_unused_secondary_keys");
+        let script = &self.connection.generate_drop_unused_secondary_keys_script("SecondaryKey")?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("rename PrimaryKey");
+        let script = &self.connection.generate_column_script("PrimaryKey", ColumnAction::Rename("Id".to_string()))?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("rename SecondaryKey");
+        let script = &self.connection.generate_column_script("SecondaryKey", ColumnAction::Rename("SubId".to_string()))?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("rename Desc");
+        let script = &self.connection.generate_column_script("Desc", ColumnAction::Rename("Description".to_string()))?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("drop Milestone");
+        let script = &self.connection.generate_column_script("Milestone", ColumnAction::Drop)?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("drop SourceRow");
+        let script = &self.connection.generate_column_script("SourceRow", ColumnAction::Drop)?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("integer_downgrade");
+        let script = &self.connection.generate_integer_downgrade_script()?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("primary_keys");
+        let script = &self.connection.generate_primary_keys_script()?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        info!("primary_keys");
+        let script = &self.connection.generate_global_search_view()?;
+        self.connection.execute_batch(script);
+        result += script;
+
+        self.connection.execute_batch("CHECKPOINT;")?;
+        
+        Ok(result)
+    }
+
+    pub fn merge_data(&self, sqlite_dir: PathBuf) -> Result<()> {
+        let mut entries = collect_db_file_entries(&sqlite_dir)?;
+        let entry = entries.get_mut("EFTable_LanguageGrams").unwrap();
+        entry.strategy = TransformationStrategy::BatchInsert;
+        self.merge(entries, "data");
+        Ok(())
+    }
+
+    pub fn merge_jss(&self, sqlite_dir: PathBuf) -> Result<()> {
+        let mut entries: HashMap<String, DbFileEntry> = collect_db_file_entries(&sqlite_dir)?;
+        self.merge(entries, "jss");
+
         Ok(())
     }
 
@@ -74,8 +159,16 @@ impl DbMerger {
         Ok(())
     }
 
-    pub fn insert_lpk_metadata(&self, lpks: Vec<LpkInfo>) -> Result<()> {
+    pub fn insert_lpk_metadata(&self,
+        lpk_path: &Path,
+        cipher_key: Vec<u8>,
+        aes_xor_key: Vec<u8>,
+    ) -> Result<()> {
 
+        let lpks = get_lpks(
+            &lpk_path,
+            &cipher_key,
+            &aes_xor_key)?;
 
         for lpk in lpks {
 
@@ -130,51 +223,75 @@ impl DbMerger {
         Ok(())
     }
 
-    // pub fn insert_assembly(&self, result: ProcessDumpResult) -> Result<()> {
+    pub fn insert_assembly(
+        &self,
+        exe_path: PathBuf,
+        dest_path: &Path
+    ) -> Result<()> {
 
-    //     let mut cs = Capstone::new()
-    //         .x86()
-    //         .mode(arch::x86::ArchMode::Mode64)
-    //         .syntax(arch::x86::ArchSyntax::Intel)
-    //         .build()?;
+        let mut process_dumper = ProcessDumper::new(&exe_path, dest_path)?;
 
-    //     cs.set_skipdata(true)?;
-    //     cs.set_detail(true)?;
+        let mut cs = Capstone::new()
+            .x86()
+            .mode(arch::x86::ArchMode::Mode64)
+            .syntax(arch::x86::ArchSyntax::Intel)
+            .build()?;
 
-    //     for block in result.blocks {
-    //         let table_name = block.module.map(|pr| pr.file_name)
-    //             .unwrap_or_else(|| block.base.to_string());
+        cs.set_skipdata(true)?;
+        cs.set_detail(true)?;
 
-    //         if block.is_executable {
+        let blocks = process_dumper.get_cached()?;
 
-    //             let table_name = format!("assembly.{}_text", table_name);
-    //             let query: String = format!(r"
-    //                 CREATE TABLE {}
-    //                 (
-    //                     Id BIGINT NOT NULL PRIMARY KEY, 
-    //                     mnemonic VARCHAR(20),
-    //                     op_str TEXT
+        for block in blocks {
 
-    //                 );", table_name);
+            let module = block.block.module.as_ref();
+            let mut data = vec![];
 
-    //             let query = format!("INSERT INTO {} (address, mnemonic, op_str) VALUES (?, ?, ?)", table_name);
-    //             let mut statement = self.connection.prepare(&query)?;
+            if (module.filter(|pr| pr.file_name == "LOSTARK.exe").is_none()
+                && module.filter(|pr| pr.file_name == "EFEngine.dll").is_none()) {
+                continue;
+            } else {
+                data = process_dumper.read_block_data(&block)?;
+            }
 
-    //             let instructions = cs.disasm_all(&block.data, 0)?;
+            let block = block.block;
 
-    //             for instruction in instructions.into_iter() {
-    //                 let address = instruction.address() as i64;
-    //                 let mnemonic = instruction.mnemonic().unwrap_or("");
-    //                 let op_str = instruction.op_str().unwrap_or("");
+            let table_name = block.module.map(|pr| format!("{}_0x{:X}", pr.file_name, block.base))
+                .unwrap_or_else(|| format!("{}_0x{:X}", "unknown", block.base))
+                .replace(".", "_");
 
-    //                 statement.execute(params![address, mnemonic, op_str])?;
-    //             }
-    //         }
+            if block.is_executable {
+                let table_name = format!("assembly.{}_text", table_name);
+                info!("Creating {}", table_name);
+                let query: String = format!(r"
+                    CREATE TABLE {}
+                    (
+                        Id BIGINT NOT NULL PRIMARY KEY, 
+                        Mnemonic VARCHAR(20) NOT NULL,
+                        OpStr VARCHAR NOT NULL
 
-    //     }
+                    );", table_name);
 
-    //     Ok(())
-    // }
+                self.connection.execute_batch(&query)?;
+                let query = format!("INSERT INTO {} (Id, Mnemonic, OpStr) VALUES (?, ?, ?)", table_name);
+                let mut statement = self.connection.prepare(&query)?;
+
+                let instructions = cs.disasm_all(&data, 0)?;
+
+                for instruction in instructions.into_iter() {
+                    let address = instruction.address() as i64;
+                    let mnemonic = instruction.mnemonic().unwrap_or("");
+                    let op_str = instruction.op_str().unwrap_or("");
+
+
+                    statement.execute(params![address, mnemonic, op_str])?;
+                }
+            }
+
+        }
+
+        Ok(())
+    }
 
     pub fn insert_loa_data(&self, output_path: &Path) -> Result<()> {
         const TABLE_NAME: &str = "lpk.LoaFiles";
@@ -185,7 +302,7 @@ impl DbMerger {
             Id INT NOT NULL PRIMARY KEY,
             FilePath VARCHAR(100) NOT NULL,
             Name VARCHAR(100) NOT NULL,
-            Data VARCHAR(MAX) NOT NULL
+            Data VARCHAR NOT NULL
         );";
 
         self.connection.execute_batch(query)?;
@@ -223,7 +340,17 @@ impl DbMerger {
         Ok(())
     }
 
-    pub fn create_enums(&self, enums: HashMap<String, HashMap<u32, String>>, schema_name: &str) -> Result<()> {
+    pub fn create_enums(&self, lpk_path: &Path) -> Result<()> {
+        let schema_name = "enums";
+        
+        if self.connection.tables_exists(schema_name)? {
+            info!("Skipping creating enums");
+            return Ok(());
+        }
+        
+        let enum_path = lpk_path.join(r"data1\Common\StringData\EFGameMsg_Enums.xml");
+        let enums = extract_enum_maps_from_xml(&enum_path)?;
+
         for (enum_name, entries) in enums {
             let table_name = enum_name.replace("_", "");
             let full_table_name = format!("{}.{}", schema_name, table_name);
@@ -288,7 +415,7 @@ impl DbMerger {
                 schema_name, &table_name, file_name, &table_name);
         }
         
-        query += &format!("DETACH {}", file_name);
+        query += &format!("DETACH {};", file_name);
         self.connection.execute_batch(&query)?;
 
         Ok(())

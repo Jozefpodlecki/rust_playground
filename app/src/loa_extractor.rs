@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}};
+use std::{collections::{HashMap, HashSet}, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -13,6 +13,30 @@ pub struct LoaFile {
     pub relative_path: String,
     pub name: String,
     pub keywords: Vec<String>,
+}
+
+pub struct LoaFileIterator {
+    id: i32,
+    base_path: PathBuf,
+    entries: walkdir::IntoIter,
+}
+
+impl LoaFileIterator {
+    pub fn new(base_path: &Path) -> Self {
+        Self {
+            id: 1,
+            base_path: base_path.to_path_buf(),
+            entries: WalkDir::new(base_path).into_iter(),
+        }
+    }
+}
+
+impl Iterator for LoaFileIterator {
+    type Item = Result<LoaFile>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
 }
 
 pub fn collect_loa_files(base_path: &Path) -> Result<Vec<LoaFile>> {
@@ -35,7 +59,7 @@ pub fn collect_loa_files(base_path: &Path) -> Result<Vec<LoaFile>> {
                     id,
                     relative_path,
                     name,
-                    keywords,
+                    keywords: keywords.into_iter().collect(),
                 });
                 id += 1;
             }
@@ -55,7 +79,7 @@ fn read_string(cursor: &mut Cursor<Vec<u8>>) -> Result<String> {
     Ok(value)
 }
 
-fn parse_loa_data(path: &Path) -> Result<(String, u32, Vec<String>)> {
+fn parse_loa_data(path: &Path) -> Result<(String, u32, HashSet<String>)> {
 
     let mut file = File::open(path)?;
     let mut data = Vec::new();
@@ -68,7 +92,7 @@ fn parse_loa_data(path: &Path) -> Result<(String, u32, Vec<String>)> {
     let object_id = cursor.read_u32::<LittleEndian>()?;
     let root_name = read_string(&mut cursor)?;
 
-    let mut results = Vec::new();
+    let mut results = HashSet::new();
 
     while let std::result::Result::Ok(pos) = cursor.seek(SeekFrom::Current(0)) {
 
@@ -93,7 +117,8 @@ fn parse_loa_data(path: &Path) -> Result<(String, u32, Vec<String>)> {
             let mut str_buf = vec![0u8; str_len];
             if cursor.read_exact(&mut str_buf).is_ok() {
                 if let std::result::Result::Ok(s) = String::from_utf8(str_buf.clone()) {
-                    results.push(s.trim_end_matches('\0').to_string());
+                    results.insert(s.trim_end_matches('\0').to_string());
+
                 }
             }
         } else {
@@ -118,11 +143,13 @@ mod tests {
         let output_path = std::env::current_dir().unwrap();
         let output_path = output_path.join(r"target\debug");
         let file_path = output_path.join(r"data1\Common_Extra\XMLData\NPCFunction\10008.loa");
-
-        let files = collect_loa_files(&output_path).unwrap();
+        let file_path = output_path.join(r"data4\EFGame_Extra\ClientData\XmlData\LookInfo\Human\EFDLChar_250621.whk_F1.loa");
         
-        // let (name, object_id, data) = parse_loa_data(&file_path).map_err(|err| println!("{err}")).unwrap();
+        // let files = collect_loa_files(&output_path).unwrap();
+        
 
-        // println!("{} {} {:?}", name, object_id, data);
+        let (name, object_id, data) = parse_loa_data(&file_path).map_err(|err| println!("{err}")).unwrap();
+
+        println!("{} {} {:?}", name, object_id, data);
     }
 }
