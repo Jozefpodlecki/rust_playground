@@ -1,9 +1,8 @@
-use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::{self, File}, io::Write, path::{Path, PathBuf}};
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
 use log::info;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep};
+use crate::{lpk::get_lpks, processor::ProcessorStep};
 
 pub struct ExtractLpkStep {
     cipher_key: Vec<u8>,

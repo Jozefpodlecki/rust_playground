@@ -1,7 +1,6 @@
-use std::{collections::HashMap, fs::{self, File}, io::Write, path::Path};
+use std::{collections::HashMap, path::Path};
 use anyhow::*;
-use duckdb::{params, CachedStatement, Connection as DuckConnection, Params, Statement};
-use log::info;
+use duckdb::{CachedStatement, Connection as DuckConnection, Params};
 
 use crate::sql_migrator::{types::ColumnAction, utils::{to_camel_case, to_snake_case}};
 
@@ -28,7 +27,7 @@ impl DuckDb {
     pub fn process_skill(&self) -> Result<String> {
         let query = r"SELECT * FROM data.Skill";
 
-        let mut script = "".into();
+        let script = "".into();
 
         let mut statement = self.0.prepare(query)?;
         let column_names: Vec<(usize, String)> = statement

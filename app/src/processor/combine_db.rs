@@ -1,10 +1,8 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::path::{Path, PathBuf};
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
 use chrono::Local;
-use log::info;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep, sql_migrator::*, types::AppConfig};
+use crate::{processor::ProcessorStep, sql_migrator::*, types::AppConfig};
 
 pub struct CombineDbStep {
     config: AppConfig
@@ -26,9 +24,9 @@ impl ProcessorStep for CombineDbStep {
     fn execute(self: Box<Self>) -> Result<()> {
 
         let AppConfig {
-            aes_xor_key,
-            cipher_key,
-            exe_paths,
+            
+            
+            
             output_path,
             ..
         } = self.config;

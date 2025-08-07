@@ -6,7 +6,7 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
 use windows::Win32::System::Threading::{CreateProcessW, IsWow64Process, OpenProcess, TerminateProcess, PROCESS_ALL_ACCESS, PROCESS_INFORMATION, STARTF_USESHOWWINDOW, STARTUPINFOW};
 use widestring::U16CString;
-use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOW};
+use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
 use std::thread::sleep;
 use std::time::Duration;
 

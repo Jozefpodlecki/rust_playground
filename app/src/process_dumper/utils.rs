@@ -30,8 +30,8 @@ pub fn match_module<'a>(
     })
 }
 
-pub fn write_string<W: Write>(writer: &mut W, s: &str) -> Result<()> {
-    let bytes = s.as_bytes();
+pub fn write_string<W: Write>(writer: &mut W, str: &str) -> Result<()> {
+    let bytes = str.as_bytes();
     writer.write_all(&(bytes.len() as u32).to_le_bytes())?;
     writer.write_all(bytes)?;
     Ok(())

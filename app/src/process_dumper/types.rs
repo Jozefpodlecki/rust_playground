@@ -1,10 +1,10 @@
 use std::{collections::HashMap, io::{Read, Seek, SeekFrom, Write}, path::PathBuf};
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use chrono::DateTime;
+use log::*;
 use windows::Win32::System::Diagnostics::Debug::CONTEXT;
 
-use crate::process_dumper::utils::*;
+use crate::process_dumper::{memory::MemoryRegionIterator, utils::*};
 
 #[derive(Debug)]
 pub struct ProcessDump {
@@ -202,59 +202,38 @@ impl ThreadContext {
 }
 
 impl ProcessDump {
-    pub fn decode<R: Read + Seek>(mut reader: &mut R) -> Result<Self> {
+    pub fn new_with_encode<W: Write + Seek>(
+        writer: &mut W,
+        win_version: String,
+        threads: Vec<ThreadContext>,
+        modules: HashMap<String, ProcessModule>,
+        exports: HashMap<String, Vec<ProcessModuleExport>>,
+        block_iter: MemoryRegionIterator,
+        modules_vec: &[ProcessModule]
+    ) -> Result<Self> {
+        write_string(writer, &win_version)?;
+        write_threads(writer, &threads)?;
+        write_modules(writer, &modules)?;
+        write_module_exports(writer, &exports)?;
+       
+        info!("Extracting memory regions");
+        let blocks = write_memory_blocks(writer, block_iter, modules_vec)?;
+
+        Ok(Self {
+            blocks,
+            exports,
+            modules,
+            threads,
+            win_version
+        })
+    }
+
+    pub fn decode<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let win_version = read_string(reader)?;
-
-        let module_count = reader.read_u32::<LittleEndian>()?;
-        let mut modules = HashMap::with_capacity(module_count as usize);
-        for _ in 0..module_count {
-            let name = read_string(reader)?;
-            let order = reader.read_u16::<LittleEndian>()?;
-            let is_dll = read_bool(reader)?;
-            let file_path = PathBuf::from(read_string(reader)?);
-            let file_name = read_string(reader)?;
-            let entry_point = reader.read_u64::<LittleEndian>()?;
-            let size = reader.read_u32::<LittleEndian>()?;
-            let base = reader.read_u64::<LittleEndian>()?;
-
-            modules.insert(name.clone(), ProcessModule {
-                order,
-                is_dll,
-                file_path,
-                file_name,
-                entry_point,
-                size,
-                base,
-            });
-        }
-
-        let export_count = reader.read_u32::<LittleEndian>()?;
-        let mut exports = HashMap::with_capacity(export_count as usize);
-        for _ in 0..export_count {
-            let module_name = read_string(reader)?;
-            let entry_count = reader.read_u32::<LittleEndian>()?;
-
-            let mut export_list = Vec::with_capacity(entry_count as usize);
-            for _ in 0..entry_count {
-                let name = read_string(reader)?;
-                let address = reader.read_u64::<LittleEndian>()?;
-                export_list.push(ProcessModuleExport { name, address });
-            }
-
-            exports.insert(module_name, export_list);
-        }
-
-        let block_count = reader.read_u32::<LittleEndian>()?;
-        let mut blocks = Vec::with_capacity(block_count as usize);
-        for _ in 0..block_count {
-            blocks.push(SerializedMemoryBlock::decode(reader)?);
-        }
-
-        let thread_count = reader.read_u32::<LittleEndian>()?;
-        let mut threads = Vec::with_capacity(block_count as usize);
-        for _ in 0..thread_count {
-            threads.push(ThreadContext::decode(reader)?);
-        }
+        let threads = read_threads(reader)?;
+        let modules = read_modules(reader)?;
+        let exports = read_module_exports(reader)?;
+        let blocks = read_memory_blocks(reader)?;
 
         Ok(Self {
             win_version,
@@ -269,7 +248,31 @@ impl ProcessDump {
 }
 
 impl SerializedMemoryBlock {
-    pub fn decode<R: Read + Seek>(mut reader: &mut R) -> Result<Self> {
+    pub fn encode<W: Write + Seek>(&self, writer: &mut W, data: Vec<u8>) -> Result<u64> {
+        let block = &self.block;
+            
+        writer.write_all(&block.size.to_le_bytes())?;
+        writer.write_all(&block.base.to_le_bytes())?;
+        writer.write_all(&block.state.to_le_bytes())?;
+        writer.write_all(&block.protect.to_le_bytes())?;
+
+        writer.write_all(&[block.is_readable as u8])?;
+        writer.write_all(&[block.is_executable as u8])?;
+
+        writer.write_all(&[block.module_name.is_some() as u8])?;
+        if let Some(module_name) = &block.module_name {
+            write_string(writer, module_name)?;
+        }
+
+        let data_offset = writer.stream_position()?;
+        debug!("Writing block at offset {} with size {}", data_offset, data.len());
+        writer.write_all(&(data.len() as u64).to_le_bytes())?;
+        writer.write_all(&data)?;
+
+        Ok(data_offset)
+    }
+
+    pub fn decode<R: Read + Seek>(reader: &mut R) -> Result<Self> {
         let size = reader.read_u64::<LittleEndian>()?;
         let base = reader.read_u64::<LittleEndian>()?;
         let state = reader.read_u32::<LittleEndian>()?;
@@ -286,7 +289,7 @@ impl SerializedMemoryBlock {
         };
 
         let data_offset = reader.stream_position()? as u64;
-        let data_len = reader.read_u32::<LittleEndian>()? as usize;
+        let data_len = reader.read_u64::<LittleEndian>()?;
         reader.seek(SeekFrom::Current(data_len as i64))?;
 
         let block = MemoryBlock {
@@ -304,23 +307,145 @@ impl SerializedMemoryBlock {
             block,
         })
     }
+}
 
-    pub fn encode<W: Write + Seek>(&self, writer: &mut W) -> Result<()> {
-        let block = &self.block;
-         
-        writer.write_all(&block.size.to_le_bytes())?;
-        writer.write_all(&block.base.to_le_bytes())?;
-        writer.write_all(&block.state.to_le_bytes())?;
-        writer.write_all(&block.protect.to_le_bytes())?;
+fn read_threads<R: Read>(reader: &mut R) -> Result<Vec<ThreadContext>> {
+    let thread_count: u32 = reader.read_u32::<LittleEndian>()?;
+    let mut threads: Vec<ThreadContext> = Vec::with_capacity(thread_count as usize);
+    for _ in 0..thread_count {
+        threads.push(ThreadContext::decode(reader)?);
+    }
 
-        writer.write_all(&[block.is_readable as u8])?;
-        writer.write_all(&[block.is_executable as u8])?;
+    Ok(threads)
+}
 
-        writer.write_all(&[block.module_name.is_some() as u8])?;
-        if let Some(module_name) = &block.module_name {
-            write_string(writer, module_name)?;
+fn write_threads<W: Write>(writer: &mut W, threads: &Vec<ThreadContext>) -> Result<()> {
+    writer.write_u32::<LittleEndian>(threads.len() as u32)?;
+    for thread in threads.iter() {
+        thread.encode(writer)?;
+    }
+
+    Ok(())
+}
+
+fn read_modules<R: Read>(reader: &mut R) -> Result<HashMap<String, ProcessModule>> {
+    let module_count = reader.read_u32::<LittleEndian>()?;
+    debug!("Reading Modules: {module_count}");
+    let mut modules: HashMap<String, ProcessModule> = HashMap::with_capacity(module_count as usize);
+    for _ in 0..module_count {
+        let name = read_string(reader)?;
+        let order = reader.read_u16::<LittleEndian>()?;
+        let is_dll = read_bool(reader)?;
+        let file_path = PathBuf::from(read_string(reader)?);
+        let file_name = read_string(reader)?;
+        let entry_point = reader.read_u64::<LittleEndian>()?;
+        let size = reader.read_u32::<LittleEndian>()?;
+        let base = reader.read_u64::<LittleEndian>()?;
+
+        modules.insert(name.clone(), ProcessModule {
+            order,
+            is_dll,
+            file_path,
+            file_name,
+            entry_point,
+            size,
+            base,
+        });
+    }
+
+    Ok(modules)
+}
+
+fn write_modules<W: Write>(writer: &mut W, modules: &HashMap<String, ProcessModule>) -> Result<()> {
+    writer.write_all(&(modules.len() as u32).to_le_bytes())?;
+    for (name, module) in modules {
+        write_string(writer, name)?;
+        writer.write_all(&module.order.to_le_bytes())?;
+        writer.write_all(&[module.is_dll as u8])?;
+        write_string(writer, &module.file_path.to_string_lossy())?;
+        write_string(writer, &module.file_name)?;
+        writer.write_all(&module.entry_point.to_le_bytes())?;
+        writer.write_all(&module.size.to_le_bytes())?;
+        writer.write_all(&module.base.to_le_bytes())?;
+    }
+    Ok(())
+}
+
+pub fn read_module_exports<R: Read>(reader: &mut R) -> Result<HashMap<String, Vec<ProcessModuleExport>>> {
+    let export_count = reader.read_u32::<LittleEndian>()?;
+    let mut exports = HashMap::with_capacity(export_count as usize);
+
+    for _ in 0..export_count {
+        let module_name = read_string(reader)?;
+        let entry_count = reader.read_u32::<LittleEndian>()?;
+        let mut export_list = Vec::with_capacity(entry_count as usize);
+        for _ in 0..entry_count {
+            let name = read_string(reader)?;
+            let address = reader.read_u64::<LittleEndian>()?;
+            export_list.push(ProcessModuleExport { name, address });
         }
 
-        Ok(())
+        exports.insert(module_name, export_list);
     }
+
+    Ok(exports)
+}
+
+fn write_module_exports<W: Write>(writer: &mut W, exports: &HashMap<String, Vec<ProcessModuleExport>>) -> Result<()> {
+    writer.write_all(&(exports.len() as u32).to_le_bytes())?;
+    for (module_name, export_list) in exports {
+        write_string(writer, module_name)?;
+        writer.write_all(&(export_list.len() as u32).to_le_bytes())?;
+
+        for export in export_list {
+            write_string(writer, &export.name)?;
+            writer.write_all(&export.address.to_le_bytes())?;
+        }
+    }
+    Ok(())
+}
+
+fn read_memory_blocks<R: Read + Seek>(reader: &mut R) -> Result<Vec<SerializedMemoryBlock>> {
+    let block_count = reader.read_u32::<LittleEndian>()?;
+    debug!("Reading blocks: {block_count}");
+    let mut blocks: Vec<SerializedMemoryBlock> = Vec::with_capacity(block_count as usize);
+    for _ in 0..block_count {
+        blocks.push(SerializedMemoryBlock::decode(reader)?);
+    }
+    
+    Ok(blocks)
+}
+
+fn write_memory_blocks<W: Write + Seek>(
+    writer: &mut W,
+    block_iter: MemoryRegionIterator,
+    modules: &[ProcessModule],
+) -> Result<Vec<SerializedMemoryBlock>> {
+    let mut blocks = Vec::new();
+    let mut count = 0u32;
+
+    let count_pos = writer.stream_position()?;
+    writer.write_all(&count.to_le_bytes())?;
+
+    for block in block_iter {
+        let (mut block, data) = block?;
+        count += 1;
+
+        block.module_name = match_module(block.base, modules).map(|m| m.file_name.clone());
+
+        let mut serialized = SerializedMemoryBlock {
+            data_offset: 0,
+            block,
+        };
+
+        let data_offset = serialized.encode(writer, data)?;
+        serialized.data_offset = data_offset;
+
+        blocks.push(serialized);
+    }
+
+    writer.seek(SeekFrom::Start(count_pos))?;
+    writer.write_all(&count.to_le_bytes())?;
+
+    Ok(blocks)
 }

@@ -1,4 +1,5 @@
-use std::{ffi::c_void, os::windows::ffi::OsStringExt, path::Path, time::Duration};
+use std::collections::HashMap;
+use std::{ffi::c_void, os::windows::ffi::OsStringExt, path::Path};
 use anyhow::*;
 use log::*;
 use windows::Win32::Foundation::{HANDLE, HMODULE};
@@ -11,7 +12,6 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use crate::process_dumper::types::{MemoryBlock, ProcessModule};
-use crate::process_dumper::utils::match_module;
 
 pub unsafe fn get_main_module(process_handle: HANDLE) -> Result<Option<ProcessModule>> {
     let mut module_handles: [HMODULE; 1] = [HMODULE::default()];
@@ -70,7 +70,7 @@ pub unsafe fn get_main_module(process_handle: HANDLE) -> Result<Option<ProcessMo
 
 
 /// Enumerate modules in the target process and collect information about them.
-pub unsafe fn enumerate_modules(process_handle: HANDLE) -> Result<Vec<ProcessModule>> {
+pub unsafe fn get_modules_map(process_handle: HANDLE) -> Result<HashMap<String, ProcessModule>> {
     let mut module_handles: [HMODULE; 256] = [HMODULE::default(); 256];
     let mut cb_needed = 0u32;
 
@@ -87,7 +87,7 @@ pub unsafe fn enumerate_modules(process_handle: HANDLE) -> Result<Vec<ProcessMod
     let module_handles = &module_handles[..count];
     let module_info_size = std::mem::size_of::<MODULEINFO>() as u32;
     
-    let mut modules = Vec::with_capacity(count);
+    let mut modules = HashMap::new();
     info!("Fetching {} modules", count);
 
     for (order, &module_handle) in module_handles.into_iter().enumerate() {
@@ -139,7 +139,7 @@ pub unsafe fn enumerate_modules(process_handle: HANDLE) -> Result<Vec<ProcessMod
             module.entry_point
         );
 
-        modules.push(module);
+        modules.insert(module.file_name.clone(), module);
     }
 
     Ok(modules)

@@ -1,12 +1,6 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use duckdb::{Connection as DuckConnection, Statement};
-use rusqlite::{Connection as SqliteConnection, types::Value};
-use log::info;
-use rusqlite::{Connection, OptionalExtension};
-use crate::{lpk::LpkInfo, sql_migrator::{queries::*, utils::*}};
+use crate::sql_migrator::utils::*;
 
 #[derive(Debug)]
 pub struct TableColumn {
@@ -55,7 +49,7 @@ impl TableSchema {
     }
 
     pub fn to_create_table_sql(&self, schema: &str) -> String {
-        let mut defs: Vec<String> = self.columns.iter().map(|col| {
+        let defs: Vec<String> = self.columns.iter().map(|col| {
             let col_name = rename_column(&col.name);
             format!("{} {}", col_name, col.mapped_type)
         }).collect();

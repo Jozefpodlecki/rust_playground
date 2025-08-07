@@ -1,4 +1,4 @@
-use std::{collections::HashSet, env, fs, path::PathBuf, time::Duration};
+use std::{collections::HashSet, env, path::PathBuf, time::Duration};
 use serde::{Deserialize, Deserializer};
 
 // #[derive(Debug, Clone)]
@@ -28,18 +28,34 @@ pub struct AppConfig {
     pub output_path: PathBuf,
     pub exe_paths: Vec<ExeInfo>,
 
+    pub process_dumper: ProcessDumperConfig,
     pub disassembler: DisassemblerConfig,
-    pub cleanup: Vec<String>
+    pub cleanup: CleanupConfig
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ProcessDumperConfig {
+    pub is_enabled: bool,
+    pub exe_paths: Vec<ExeInfo>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct DisassemblerConfig {
-    filter: HashSet<String>
+    pub is_enabled: bool,
+    pub filter: HashSet<String>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CleanupConfig {
+    pub is_enabled: bool,
+    pub folders: HashSet<String>,
+    pub files: HashSet<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct ExeInfo {
     pub is_enabled: bool,
+    #[serde(deserialize_with = "deserialize_pathbuf_with_env")]
     pub path: PathBuf,
     pub args: Vec<String>,
     pub launch_method: LaunchMethod,
@@ -66,7 +82,10 @@ impl AppConfig {
             config.output_path = absolute.canonicalize()?;
         }
       
-        config.exe_paths.retain(|pr| pr.is_enabled);
+        config.exe_paths.retain_mut(|pr| {
+
+            pr.is_enabled
+        });
 
         Ok(config)
     }
@@ -112,7 +131,7 @@ fn deserialize_str_to_vec<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    use serde::de::Error;
+    
 
     let value: &str = Deserialize::deserialize(deserializer)?;
     Ok(value.as_bytes().to_vec())

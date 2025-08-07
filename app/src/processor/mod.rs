@@ -12,7 +12,6 @@ pub use copy_files::CopyFileStep;
 pub use extract_lpk::ExtractLpkStep;
 pub use decrypt_upk::DecryptUpkStep;
 pub use dump_process::DumpProcessStep;
-pub use combine_db::CombineDbStep;
 pub use disassemble_process::DisassembleProcessStep;
 pub use cleanup_directory::CleanupDirectoryStep;
 use log::info;
@@ -38,7 +37,7 @@ impl Processor {
         self.steps.push(step);
     }
 
-    pub fn run(mut self) -> Result<()> {
+    pub fn run(self) -> Result<()> {
         for step in self.steps {
             
             if step.can_execute() {

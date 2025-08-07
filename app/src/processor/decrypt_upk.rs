@@ -1,10 +1,8 @@
-use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use log::info;
 use walkdir::WalkDir;
-use crate::{lpk::{get_lpks, LpkInfo}, processor::ProcessorStep};
+use crate::processor::ProcessorStep;
 
 const SUBST_TABLE: &[(char, [&'static str; 4])] = &[
     ('Q', ["QP", "QD", "QW", "Q4"]),

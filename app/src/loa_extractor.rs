@@ -1,11 +1,8 @@
-use std::{collections::{HashMap, HashSet}, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}};
+use std::{collections::HashSet, fs::File, io::{Cursor, Read, Seek, SeekFrom}, path::{Path, PathBuf}};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::info;
-use serde_json::{json, Value};
 use walkdir::WalkDir;
-use crate::{lpk::LpkInfo};
 
 #[derive(Debug)]
 pub struct LoaFile {

@@ -1,9 +1,6 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::{fs::{self, File}, io::{BufWriter, Write}, path::Path};
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use log::info;
-use serde_json::{json, Value};
 
 pub fn save_pretty_hex_dump_from_slice<P: AsRef<Path>>(data: Vec<u8>, output_path: P, bytes_per_line: usize) -> Result<()> {
     

@@ -1,9 +1,7 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::path::PathBuf;
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use log::*;
-use crate::{lpk::{get_lpks, LpkInfo}, process_dumper::{self, ProcessDumper}, processor::ProcessorStep, types::{LaunchMethod}};
+use crate::{process_dumper::ProcessDumper, processor::ProcessorStep, types::{LaunchMethod}};
 
 pub struct DumpProcessStep {
     exe_path: PathBuf,

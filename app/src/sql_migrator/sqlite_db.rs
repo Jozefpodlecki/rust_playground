@@ -1,12 +1,9 @@
-use std::{env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
+use std::path::Path;
 
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use duckdb::{Connection as DuckConnection};
-use rusqlite::{Connection as SqliteConnection, types::Value};
-use log::info;
-use rusqlite::{Connection, OptionalExtension};
-use crate::{lpk::LpkInfo, sql_migrator::queries::*};
+use rusqlite::Connection as SqliteConnection;
+use rusqlite::Connection;
+use crate::sql_migrator::queries::*;
 
 pub struct SqliteDb(pub SqliteConnection);
 
@@ -59,7 +56,7 @@ impl SqliteDb {
 
     pub fn column_count(&self, table_name: &str) -> Result<usize> {
         let query = &format!("SELECT * FROM {} LIMIT 1", table_name);
-        let mut statement = self.0.prepare(query)?;
+        let statement = self.0.prepare(query)?;
         Ok(statement.column_count())
     }
 }

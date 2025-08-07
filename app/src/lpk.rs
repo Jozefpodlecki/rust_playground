@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, fs::{self, File}, io::{Cursor, Read, Seek, SeekFrom}, path::{Path, PathBuf}};
+use std::{borrow::Cow, fs::{self, File}, io::{Cursor, Read, Seek, SeekFrom}, path::{Path, PathBuf}};
 use anyhow::*;
 use ::blowfish::BlowfishLE;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -187,7 +187,7 @@ impl<'a> LpkInfo<'a> {
 
         for order in 1..=file_count {
           
-            let mut entry = Self::read_entry_metadata(&mut cursor, order, offset)?;
+            let entry = Self::read_entry_metadata(&mut cursor, order, offset)?;
             offset += entry.length;
             entries_metadata.push(entry);
         }

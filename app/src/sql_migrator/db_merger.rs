@@ -1,15 +1,8 @@
-use std::{collections::HashMap, env, fs::{self, File}, io::{BufWriter, Cursor, Read, Seek, Write}, path::{Path, PathBuf}};
-use strum_macros::{VariantArray, VariantNames};
-use strum_macros::{AsRefStr, EnumString};
+use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::{Path, PathBuf}};
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
-use duckdb::{params, Connection as DuckConnection, Statement};
-use rusqlite::{Connection as SqliteConnection, types::Value};
 use log::info;
-use rusqlite::{Connection, OptionalExtension};
-use walkdir::WalkDir;
-use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::{self, get_lpks, LpkInfo}, process_dumper::ProcessDumper, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
-use capstone::{arch::{self, x86::{X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, RegId};
+use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::get_lpks, process_dumper::ProcessDumper, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
+use capstone::{arch::{self, x86::{X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone};
 
 #[derive(Debug, Default)]
 pub enum TransformationStrategy {
@@ -137,7 +130,7 @@ impl DbMerger {
     }
 
     pub fn merge_jss(&self, sqlite_dir: PathBuf) -> Result<()> {
-        let mut entries: HashMap<String, DbFileEntry> = collect_db_file_entries(&sqlite_dir)?;
+        let entries: HashMap<String, DbFileEntry> = collect_db_file_entries(&sqlite_dir)?;
         self.merge(entries, "jss");
 
         Ok(())
@@ -229,7 +222,7 @@ impl DbMerger {
         dest_path: &Path
     ) -> Result<()> {
 
-        let mut output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
+        let output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
         let mut process_dumper = ProcessDumper::new(&exe_path, &output_bin_path)?;
 
         let mut cs = Capstone::new()
@@ -284,7 +277,7 @@ impl DbMerger {
 
                 self.connection.execute_batch(&query)?;
                 let query = format!("INSERT INTO {} (Id, Mnemonic, OpStr) VALUES (?, ?, ?)", table_name);
-                let mut statement = self.connection.prepare(&query)?;
+                let statement = self.connection.prepare(&query)?;
 
                 let instructions = cs.disasm_all(&data, 0)?;
 
