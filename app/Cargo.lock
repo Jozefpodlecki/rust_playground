@@ -121,6 +121,7 @@ dependencies = [
  "tokio",
  "walkdir",
  "widestring",
+ "winapi",
  "windows",
 ]
 

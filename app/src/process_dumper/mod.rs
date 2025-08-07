@@ -12,6 +12,16 @@ use std::time::Duration;
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
 use log::*;
+use winapi::um::winnt::CONTEXT_ALL;
+use windows::Win32::System::Diagnostics::Debug::{GetThreadContext, CONTEXT, CONTEXT_FLAGS};
+use windows::Win32::System::Threading::{OpenThread, SuspendThread, THREAD_GET_CONTEXT, THREAD_SUSPEND_RESUME};
+use windows::{
+    Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Thread32First, Thread32Next, THREADENTRY32,
+        TH32CS_SNAPTHREAD,
+    }
+};
+
 
 mod utils;
 mod process;
@@ -19,7 +29,7 @@ mod memory;
 mod types;
 
 use object::Object;
-use windows::Win32::Foundation::HANDLE;
+use windows::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE};
 
 use crate::process_dumper::memory::*;
 use crate::process_dumper::process::*;
@@ -83,7 +93,7 @@ impl ProcessDumper {
         let mut exe_args = exe_args.to_vec();
         exe_args.insert(0, self.exe_path.to_string_lossy().to_string());
         debug!("Spawning process with args {:?}", exe_args);
-        let handle = spawn_process(&exe_args)?;
+        let (process_id, handle) = spawn_process(&exe_args)?;
 
         sleep(Duration::from_secs(1));
 
@@ -105,7 +115,7 @@ impl ProcessDumper {
         debug!("Suspending process");
         suspend_process(handle)?;
 
-        let result = self.write_to_file(handle)?;
+        let result = self.write_to_file(process_id, handle)?;
 
         debug!("Cleanup");
         resume_process(handle)?;
@@ -113,6 +123,53 @@ impl ProcessDumper {
         close_handle(handle)?;
 
         Ok(result)
+    }
+
+    fn get_threads(process_id: u32) -> Result<Vec<ThreadContext>> {
+        unsafe {
+            let mut threads = vec![];
+            let snapshot: HANDLE = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, process_id)?;
+
+            if snapshot == INVALID_HANDLE_VALUE {
+                error!("Failed to create snapshot.");
+                return Ok(threads);
+            }
+
+            let mut thread_entry = THREADENTRY32 {
+                dwSize: std::mem::size_of::<THREADENTRY32>() as u32,
+                ..Default::default()
+            };
+
+            Thread32First(snapshot, &mut thread_entry)?;
+
+            let mut thread_id = thread_entry.th32ThreadID;
+            
+            loop {
+                let h_thread = OpenThread(
+                    THREAD_GET_CONTEXT | THREAD_SUSPEND_RESUME,
+                    false, thread_id)?;
+
+                SuspendThread(h_thread);
+                let mut context = std::mem::zeroed::<CONTEXT>();
+                context.ContextFlags = CONTEXT_FLAGS(CONTEXT_ALL);
+
+                if GetThreadContext(h_thread, &mut context).ok().is_some() {
+                    let thread = ThreadContext::new(context);
+                    threads.push(thread);
+                } else {
+                }
+
+                close_handle(h_thread);
+
+                if Thread32Next(snapshot, &mut thread_entry).is_err() {
+                    break;
+                }
+            }
+        
+            close_handle(snapshot)?;
+
+            Ok(threads)
+        }
     }
 
     pub fn read_block_data(&mut self, block: &SerializedMemoryBlock) -> Result<Vec<u8>> {
@@ -127,13 +184,24 @@ impl ProcessDumper {
         Ok(data)
     }
 
-    fn write_to_file(&mut self, handle: HANDLE) -> Result<ProcessDump> {
+    fn write_to_file(&mut self, process_id: u32, handle: HANDLE) -> Result<ProcessDump> {
 
         let mut writer = BufWriter::new(&mut self.file);
 
         info!("Extracting modules");
         let modules = unsafe { enumerate_modules(handle)? };
-        let mut block_iter = MemoryRegionIterator::new(handle);
+        
+        info!("Extracting active threads");
+        let threads = match Self::get_threads(process_id) {
+            std::result::Result::Ok(threads) => {
+                threads
+            },
+            Err(err) => {
+                error!("{:?}", err);
+                vec![]
+            },
+        };
+        
         info!("Extracting module exports");
         let mut exports = collect_exports(&modules)?;
         let module_map: HashMap<String, ProcessModule> = modules
@@ -151,11 +219,17 @@ impl ProcessDumper {
         let block_iter = MemoryRegionIterator::new(handle);
         let blocks = Self::write_memory_blocks(&mut writer, block_iter, &modules)?;
 
+        writer.write_all(&threads.len().to_le_bytes())?;
+        for thread in threads.iter() {
+            thread.encode(&mut writer)?;
+        }
+
         let dump = ProcessDump {
             win_version,
             exports,
             modules: module_map,
-            blocks
+            blocks,
+            threads
         };
 
         Ok(dump)
@@ -214,7 +288,7 @@ impl ProcessDumper {
 
             serialized.encode(writer)?;
             serialized.data_offset = writer.stream_position()?;
-            info!("Writing block at offset {} with size {}", serialized.data_offset, data.len());
+            debug!("Writing block at offset {} with size {}", serialized.data_offset, data.len());
             writer.write_all(&(data.len() as u32).to_le_bytes())?;
             writer.write_all(&data)?;
 

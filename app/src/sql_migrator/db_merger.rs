@@ -9,7 +9,7 @@ use log::info;
 use rusqlite::{Connection, OptionalExtension};
 use walkdir::WalkDir;
 use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::{self, get_lpks, LpkInfo}, process_dumper::ProcessDumper, sql_migrator::{queries::*, sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
-use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
+use capstone::{arch::{self, x86::{X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, RegId};
 
 #[derive(Debug, Default)]
 pub enum TransformationStrategy {
@@ -277,7 +277,8 @@ impl DbMerger {
                     (
                         Id BIGINT NOT NULL PRIMARY KEY, 
                         Mnemonic VARCHAR(20) NOT NULL,
-                        OpStr VARCHAR NOT NULL
+                        OpStr VARCHAR NOT NULL,
+                        RipRelativeAddress BIGINT NULL,
 
                     );", table_name);
 
@@ -291,9 +292,22 @@ impl DbMerger {
                     let address = instruction.address() as i64;
                     let mnemonic = instruction.mnemonic().unwrap_or("");
                     let op_str = instruction.op_str().unwrap_or("");
+                    let instr_size = instruction.len() as u64;
 
+                    let detail = cs.insn_detail(instruction)?;
+                    let arch_detail = detail.arch_detail();
+                    let x86_detail = arch_detail.x86().unwrap();
 
-                    statement.execute(params![address, mnemonic, op_str])?;
+                    for op in x86_detail.operands() {
+                        if let X86OperandType::Mem(mem) = op.op_type {
+                            if mem.base().0 as u32 == X86Reg::X86_REG_RIP {
+                                let rip_target = instruction.address() + instr_size + mem.disp() as u64;
+                                println!("RIP-relative target: 0x{:x}", rip_target);
+                            }
+                        }
+                    }
+
+                    // statement.execute(params![address, mnemonic, op_str])?;
                 }
             }
 

@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf, time::Duration};
+use std::{collections::HashSet, env, fs, path::PathBuf, time::Duration};
 use serde::{Deserialize, Deserializer};
 
 // #[derive(Debug, Clone)]
@@ -27,6 +27,14 @@ pub struct AppConfig {
     #[serde(deserialize_with = "deserialize_pathbuf_with_env")]
     pub output_path: PathBuf,
     pub exe_paths: Vec<ExeInfo>,
+
+    pub disassembler: DisassemblerConfig,
+    pub cleanup: Vec<String>
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct DisassemblerConfig {
+    filter: HashSet<String>
 }
 
 #[derive(Debug, Deserialize, Clone)]

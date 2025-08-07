@@ -5,12 +5,16 @@ mod extract_lpk;
 mod decrypt_upk;
 mod dump_process;
 mod combine_db;
+mod disassemble_process;
+mod cleanup_directory;
 
 pub use copy_files::CopyFileStep;
 pub use extract_lpk::ExtractLpkStep;
 pub use decrypt_upk::DecryptUpkStep;
 pub use dump_process::DumpProcessStep;
 pub use combine_db::CombineDbStep;
+pub use disassemble_process::DisassembleProcessStep;
+pub use cleanup_directory::CleanupDirectoryStep;
 use log::info;
 
 pub trait ProcessorStep {
@@ -39,7 +43,7 @@ impl Processor {
             
             if step.can_execute() {
                 info!("Executing step: {}", step.name());
-                step.execute();
+                step.execute()?;
             }
             else {
                 info!("Skipping step: {}", step.name());

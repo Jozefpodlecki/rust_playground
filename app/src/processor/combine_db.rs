@@ -42,9 +42,9 @@ impl ProcessorStep for CombineDbStep {
         let merger = DbMerger::new(&duckdb_path, 1000)?;
         merger.setup();
 
-        for exe_info in exe_paths {
-            merger.insert_assembly(exe_info.path, &output_path)?;
-        }
+        // for exe_info in exe_paths {
+        //     merger.insert_assembly(exe_info.path, &output_path)?;
+        // }
 
         
         // merger.create_enums(&lpk_path)?;

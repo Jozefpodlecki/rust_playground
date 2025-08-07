@@ -10,7 +10,7 @@ use windows::Win32::UI::WindowsAndMessaging::{SW_HIDE, SW_SHOW};
 use std::thread::sleep;
 use std::time::Duration;
 
-pub unsafe fn spawn_process(exe_args: &[String]) -> Result<HANDLE> {
+pub unsafe fn spawn_process(exe_args: &[String]) -> Result<(u32, HANDLE)> {
     let startup_info = STARTUPINFOW {
         dwFlags: STARTF_USESHOWWINDOW,
         wShowWindow: SW_SHOW.0 as u16,
@@ -36,7 +36,7 @@ pub unsafe fn spawn_process(exe_args: &[String]) -> Result<HANDLE> {
     )?;
     
     let handle = OpenProcess(PROCESS_ALL_ACCESS, false, process_info.dwProcessId)?;
-    Ok(handle)
+    Ok((process_info.dwProcessId, handle))
 }
 
 /// Suspends the entire process.
@@ -81,8 +81,8 @@ pub unsafe fn terminate_process(process_handle: HANDLE) -> Result<()> {
     Ok(())
 }
 
-pub unsafe fn close_handle(process_handle: HANDLE) -> Result<()> {
-    CloseHandle(process_handle)?;
+pub unsafe fn close_handle(handle: HANDLE) -> Result<()> {
+    CloseHandle(handle)?;
     Ok(())
 }
 
