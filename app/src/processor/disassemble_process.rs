@@ -40,12 +40,14 @@ impl ProcessorStep for DisassembleProcessStep {
 
             if block.block.is_executable {
                
-                let file_name = format!("{}_{}.csv", module_name, block.block.base);
+                let file_name = format!("{}_{}.txt", module_name, block.block.base);
+                // let file_name = format!("{}_{}.csv", module_name, block.block.base);
                 let file_path = output_path.join(file_name);
-                let data = process_dumper.read_block_data(&block)?;
+                let reader = process_dumper.read_block_as_reader(&block)?;
                 let mut cursor = 0;
 
-                disassembler.export_to_csv(block.block.base, &data, &file_path)?;
+                disassembler.export_to_txt(block.block.base, reader, &file_path)?;
+                // disassembler.export_to_csv(block.block.base, &data, &file_path)?;
             }
 
             if block.block.is_readable {

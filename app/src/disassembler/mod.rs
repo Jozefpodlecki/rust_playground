@@ -1,5 +1,5 @@
-use std::{fs::File, io::{BufWriter, Write}, path::Path};
-use anyhow::*;
+use std::{fs::File, io::{BufWriter, Read, Write}, path::Path};
+use anyhow::Result;
 use capstone::{
     arch::{
         self, x86::{X86OperandIterator, X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn
@@ -8,6 +8,11 @@ use capstone::{
 use capstone::arch::x86::X86Insn::{X86_INS_INT3, X86_INS_NOP};
 use log::*;
 use serde::de;
+
+use crate::disassembler::stream::DisasmStream;
+
+mod types;
+mod stream;
 
 pub struct Disassembler {
     cs: Capstone,
@@ -25,6 +30,21 @@ impl Disassembler {
         cs.set_detail(true)?;
 
         Ok(Self { cs })
+    }
+
+    pub fn export_to_txt(&self, base_addr: u64, reader: impl Read, file_path: &Path) -> Result<()> {
+
+        let mut file = File::create(file_path)?;
+        let mut writer = BufWriter::new(file);
+
+        let buf_size = 10000;
+        let mut stream = DisasmStream::new(reader, buf_size)?;
+
+        while let Ok(batch) = stream.next_batch() {
+
+        }
+
+        Ok(())
     }
 
     pub fn export_to_csv(&self, base_addr: u64, data: &[u8], file_path: &Path) -> Result<()> {

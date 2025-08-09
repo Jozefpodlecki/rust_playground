@@ -124,6 +124,19 @@ impl ProcessDumper {
         Ok(data)
     }
 
+    pub fn read_block_as_reader<'a>(&'a mut self, block: &SerializedMemoryBlock) -> Result<impl Read + 'a> {
+        self.file.seek(SeekFrom::Start(block.data_offset))?;
+        
+        let data_len = self.file.read_u64::<LittleEndian>()?;
+
+        debug!("Reading block at offset {} with size {}", block.data_offset, data_len);
+
+        let take_reader = std::io::Read::by_ref(&mut self.file).take(data_len);
+        let reader = BufReader::new(take_reader);
+        
+        Ok(reader)
+    }
+
     fn write_to_file(&mut self, process_id: u32, handle: HANDLE) -> Result<ProcessDump> {
 
         let mut writer = BufWriter::new(&mut self.file);
