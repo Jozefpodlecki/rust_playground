@@ -34,6 +34,7 @@ impl Processor {
     }
 
     pub fn add_step(&mut self, step: Box<dyn ProcessorStep>) {
+        info!("added step {}", step.name());
         self.steps.push(step);
     }
 

@@ -58,6 +58,11 @@ impl<R: Read> DisasmStream<R> {
         let mut consumed = 0;
 
         for instr in items.into_iter() {
+
+            if instr.id().0 == 0 {
+                continue;
+            }
+
             consumed += instr.len();
             self.addr += instr.len() as u64;
             self.total_instr_len += instr.len() as u64;

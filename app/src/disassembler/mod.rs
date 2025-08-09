@@ -41,8 +41,10 @@ impl Disassembler {
         let mut stream = DisasmStream::new(reader, buf_size)?;
 
         while let Ok(batch) = stream.next_batch() {
-
-        }
+            for instr in batch {
+                writeln!(writer, "{}", instr)?;
+            }
+        };
 
         Ok(())
     }

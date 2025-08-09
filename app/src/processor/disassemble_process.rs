@@ -12,7 +12,7 @@ pub struct DisassembleProcessStep {
 
 impl ProcessorStep for DisassembleProcessStep {
     fn name(&self) -> String {
-        format!("Disassemble process {:?}", self.exe_path.file_name().unwrap())
+        format!("Disassemble {:?}", self.exe_path.file_name().unwrap())
     }
 
     fn can_execute(&self) -> bool {
@@ -40,7 +40,7 @@ impl ProcessorStep for DisassembleProcessStep {
 
             if block.block.is_executable {
                
-                let file_name = format!("{}_{}.txt", module_name, block.block.base);
+                let file_name = format!("{}_{}_exec.txt", module_name, block.block.base);
                 // let file_name = format!("{}_{}.csv", module_name, block.block.base);
                 let file_path = output_path.join(file_name);
                 let reader = process_dumper.read_block_as_reader(&block)?;
@@ -51,7 +51,7 @@ impl ProcessorStep for DisassembleProcessStep {
             }
 
             if block.block.is_readable {
-                let file_name = format!("{}_{}.txt", module_name, block.block.base);
+                let file_name = format!("{}_{}_read.txt", module_name, block.block.base);
                 let file_path = output_path.join(file_name);
                 let data = process_dumper.read_block_data(&block)?;
                 save_pretty_hex_dump_from_slice(data, file_path, 32)?;

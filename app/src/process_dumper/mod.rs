@@ -129,7 +129,7 @@ impl ProcessDumper {
         
         let data_len = self.file.read_u64::<LittleEndian>()?;
 
-        debug!("Reading block at offset {} with size {}", block.data_offset, data_len);
+        info!("offset {} with size {}", block.data_offset, data_len);
 
         let take_reader = std::io::Read::by_ref(&mut self.file).take(data_len);
         let reader = BufReader::new(take_reader);

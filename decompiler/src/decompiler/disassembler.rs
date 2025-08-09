@@ -40,8 +40,8 @@ impl Disassembler {
 
         let instructions = self.cs.disasm_all(data, 0)?;
 
-        for i in instructions.iter() {
-            writeln!(writer, "{}", i)?;
+        for instr in instructions.iter() {
+            writeln!(writer, "{}", instr)?;
         }
 
         Ok(())

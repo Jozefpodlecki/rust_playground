@@ -1,6 +1,7 @@
 use std::{env::var, io::{self, BufReader, Read}, vec};
 use capstone::{arch::{self, x86::{X86Insn, X86Operand, X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, Insn, InsnGroupType::CS_GRP_JUMP, InsnId, Instructions};
 use anyhow::*;
+use log::*;
 
 use crate::disassembler::types::Instruction;
 
@@ -59,6 +60,12 @@ impl<R: Read> DisasmStream<R> {
         let mut consumed = 0;
 
         for instr in items.into_iter() {
+
+            if instr.id().0 == 0 {
+                debug!("Skipping data bytes {}", instr);
+                continue;
+            }
+
             consumed += instr.len();
             self.addr += instr.len() as u64;
             self.total_instr_len += instr.len() as u64;
@@ -66,6 +73,7 @@ impl<R: Read> DisasmStream<R> {
             let detail = self.cs.insn_detail(instr)?;
             let arch_detail = detail.arch_detail();
             let x86_detail = arch_detail.x86().unwrap();
+
             batch.push((instr, x86_detail).into());
         }
 
