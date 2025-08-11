@@ -1,8 +1,7 @@
 use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::{Path, PathBuf}};
 use anyhow::*;
 use log::info;
-use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::get_lpks, process_dumper::ProcessDumper, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
-use capstone::{arch::{self, x86::{X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone};
+use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::get_lpks, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
 
 #[derive(Debug, Default)]
 pub enum TransformationStrategy {
@@ -222,89 +221,89 @@ impl DbMerger {
         dest_path: &Path
     ) -> Result<()> {
 
-        let output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
-        let mut process_dumper = ProcessDumper::new(&exe_path, &output_bin_path)?;
+        // let output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
+        // let mut process_dumper = ProcessDumper::new(&exe_path, &output_bin_path)?;
 
-        let mut cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .build()?;
+        // let mut cs = Capstone::new()
+        //     .x86()
+        //     .mode(arch::x86::ArchMode::Mode64)
+        //     .syntax(arch::x86::ArchSyntax::Intel)
+        //     .build()?;
 
-        cs.set_skipdata(true)?;
-        cs.set_detail(true)?;
+        // cs.set_skipdata(true)?;
+        // cs.set_detail(true)?;
 
-        let dump = process_dumper.get_cached()?;
+        // let dump = process_dumper.get_cached()?;
 
-        info!("Blocks: {}, Modules: {}, Exports: {}", dump.blocks.len(), dump.modules.len(), dump.exports.len());
+        // info!("Blocks: {}, Modules: {}, Exports: {}", dump.blocks.len(), dump.modules.len(), dump.exports.len());
 
-        for block in dump.blocks {
+        // for block in dump.blocks {
 
-            let module = block.block.module_name.as_ref();
-            let mut data = vec![];
+        //     let module = block.block.module_name.as_ref();
+        //     let mut data = vec![];
 
-            let module_name = match module {
-                Some(name) => name,
-                None => continue,
-            };
+        //     let module_name = match module {
+        //         Some(name) => name,
+        //         None => continue,
+        //     };
 
-            // let module_name = match module {
-            //     Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
-            //     Some(_) => continue,
-            //     None => continue,
-            // };
+        //     // let module_name = match module {
+        //     //     Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
+        //     //     Some(_) => continue,
+        //     //     None => continue,
+        //     // };
 
-            data = process_dumper.read_block_data(&block)?;
+        //     data = process_dumper.read_block_data(&block)?;
 
-            let block = &block.block;
-            let module = dump.modules.get(module_name).unwrap();
+        //     let block = &block.block;
+        //     let module = dump.modules.get(module_name).unwrap();
 
-            let table_name = format!("{}_0x{:X}", module_name, block.base)
-                .replace(".", "_");
+        //     let table_name = format!("{}_0x{:X}", module_name, block.base)
+        //         .replace(".", "_");
 
-            if block.is_executable {
-                let table_name = format!("assembly.{}_text", table_name);
-                info!("Creating {}", table_name);
-                let query: String = format!(r"
-                    CREATE TABLE {}
-                    (
-                        Id BIGINT NOT NULL PRIMARY KEY, 
-                        Mnemonic VARCHAR(20) NOT NULL,
-                        OpStr VARCHAR NOT NULL,
-                        RipRelativeAddress BIGINT NULL,
+        //     if block.is_executable {
+        //         let table_name = format!("assembly.{}_text", table_name);
+        //         info!("Creating {}", table_name);
+        //         let query: String = format!(r"
+        //             CREATE TABLE {}
+        //             (
+        //                 Id BIGINT NOT NULL PRIMARY KEY, 
+        //                 Mnemonic VARCHAR(20) NOT NULL,
+        //                 OpStr VARCHAR NOT NULL,
+        //                 RipRelativeAddress BIGINT NULL,
 
-                    );", table_name);
+        //             );", table_name);
 
-                self.connection.execute_batch(&query)?;
-                let query = format!("INSERT INTO {} (Id, Mnemonic, OpStr) VALUES (?, ?, ?)", table_name);
-                let statement = self.connection.prepare(&query)?;
+        //         self.connection.execute_batch(&query)?;
+        //         let query = format!("INSERT INTO {} (Id, Mnemonic, OpStr) VALUES (?, ?, ?)", table_name);
+        //         let statement = self.connection.prepare(&query)?;
 
-                let instructions = cs.disasm_all(&data, 0)?;
+        //         let instructions = cs.disasm_all(&data, 0)?;
 
-                for instruction in instructions.into_iter() {
-                    let address = instruction.address() as i64;
-                    let mnemonic = instruction.mnemonic().unwrap_or("");
-                    let op_str = instruction.op_str().unwrap_or("");
-                    let instr_size = instruction.len() as u64;
+        //         for instruction in instructions.into_iter() {
+        //             let address = instruction.address() as i64;
+        //             let mnemonic = instruction.mnemonic().unwrap_or("");
+        //             let op_str = instruction.op_str().unwrap_or("");
+        //             let instr_size = instruction.len() as u64;
 
-                    let detail = cs.insn_detail(instruction)?;
-                    let arch_detail = detail.arch_detail();
-                    let x86_detail = arch_detail.x86().unwrap();
+        //             let detail = cs.insn_detail(instruction)?;
+        //             let arch_detail = detail.arch_detail();
+        //             let x86_detail = arch_detail.x86().unwrap();
 
-                    for op in x86_detail.operands() {
-                        if let X86OperandType::Mem(mem) = op.op_type {
-                            if mem.base().0 as u32 == X86Reg::X86_REG_RIP {
-                                let rip_target = instruction.address() + instr_size + mem.disp() as u64;
-                                println!("RIP-relative target: 0x{:x}", rip_target);
-                            }
-                        }
-                    }
+        //             for op in x86_detail.operands() {
+        //                 if let X86OperandType::Mem(mem) = op.op_type {
+        //                     if mem.base().0 as u32 == X86Reg::X86_REG_RIP {
+        //                         let rip_target = instruction.address() + instr_size + mem.disp() as u64;
+        //                         println!("RIP-relative target: 0x{:x}", rip_target);
+        //                     }
+        //                 }
+        //             }
 
-                    // statement.execute(params![address, mnemonic, op_str])?;
-                }
-            }
+        //             // statement.execute(params![address, mnemonic, op_str])?;
+        //         }
+        //     }
 
-        }
+        // }
 
         Ok(())
     }

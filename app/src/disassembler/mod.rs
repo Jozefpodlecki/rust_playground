@@ -38,7 +38,7 @@ impl Disassembler {
         let mut writer = BufWriter::new(file);
 
         let buf_size = 10000;
-        let mut stream = DisasmStream::new(reader, buf_size)?;
+        let mut stream = DisasmStream::new(reader, base_addr, buf_size)?;
 
         while let Ok(batch) = stream.next_batch() {
             for instr in batch {

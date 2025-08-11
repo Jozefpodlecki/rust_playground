@@ -1,49 +1,79 @@
-use std::io::{Read, Write};
+use std::{fs::File, io::{BufRead, BufReader, Cursor, Read, Seek, SeekFrom, Take, Write}};
 
-use capstone::{arch::{self, x86::{X86Insn, X86Operand, X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, Insn, InsnGroupType::CS_GRP_JUMP, InsnId, Instructions};
-use anyhow::*;
+use anyhow::Result;
 use object::{Object, ObjectSection};
-use ringbuffer::{AllocRingBuffer, RingBuffer};
 
-use crate::decompiler::disassembler_stream::DisasmStream;
+use crate::decompiler::stream::DisasmStream;
 
-pub struct Disassembler {
-    cs: Capstone
+pub struct MemorySource<'a>(&'a [u8]);
+
+pub struct FileSource(File);
+
+pub struct Disassembler<S> {
+    source: S,
+    addr: u64,
+    buf_size: usize
 }
 
-pub struct DisassemblerResult {
-    
-}
-
-impl Disassembler {
-    pub fn new() -> Result<Self> {
-        let mut cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .build()?;
-
-        let mut ring_buf = AllocRingBuffer::<(InsnId, u64, Vec<X86Operand>)>::new(5);
-        cs.set_skipdata(true)?;
-        cs.set_detail(true)?;
-
+impl<S> Disassembler<S> {
+    fn with_source(source: S, addr: u64, buf_size: usize) -> Result<Self> {
         Ok(Self {
-            cs
+            source,
+            addr,
+            buf_size
         })
     }
+}
 
-    pub fn disasm<R: Read>(&self, reader: R, buf_size: usize) -> Result<DisasmStream<R>> {
-        DisasmStream::new(reader, buf_size)
+impl<'a> Disassembler<MemorySource<'a>> {
+    pub fn from_memory(data: &'a [u8], addr: u64, buf_size: usize) -> Result<Self> {
+        Self::with_source(MemorySource(data), addr, buf_size)
     }
 
-    pub fn to_writer<W: Write>(&self, data: &[u8], mut writer: W) -> Result<()> {
+    pub fn disasm_all(self) -> Result<DisasmStream<Cursor<&'a [u8]>>> {
+        let reader = Cursor::new(self.source.0);
+        DisasmStream::new(reader, self.addr, self.buf_size)
+    }
 
-        let instructions = self.cs.disasm_all(data, 0)?;
+    pub fn disasm_from_addr(&self, addr: u64) -> Result<DisasmStream<Cursor<&'a [u8]>>> {
+        let mut reader = Cursor::new(self.source.0);
+        reader.seek(SeekFrom::Start(addr - self.addr))?;
+        DisasmStream::new(reader, addr, self.buf_size)
+    }
 
-        for instr in instructions.iter() {
-            writeln!(writer, "{}", instr)?;
-        }
+    pub fn disasm_to_addr(&self, addr: u64) -> Result<DisasmStream<Take<Cursor<&'a [u8]>>>> {
+        let mut reader = Cursor::new(self.source.0);
+        let reader = reader.take(addr - self.addr);
+        DisasmStream::new(reader, addr, self.buf_size)
+    }
+}
 
-        Ok(())
+impl Disassembler<FileSource> {
+    pub fn from_file(file: File, addr: u64, buf_size: usize) -> Result<Self> {
+        Self::with_source(FileSource(file), addr, buf_size)
+    }
+
+    pub fn disasm_all(self) -> Result<DisasmStream<BufReader<File>>> {
+        let reader = BufReader::new(self.source.0);
+        DisasmStream::new(reader, self.addr, self.buf_size)
+    }
+
+    pub fn disasm_from_addr(&self, addr: u64) -> Result<DisasmStream<BufReader<File>>> {
+        let mut reader = BufReader::new(self.source.0.try_clone()?);
+        reader.seek(SeekFrom::Start(addr - self.addr))?;
+        DisasmStream::new(reader, addr, self.buf_size)
+    }
+
+    pub fn disasm_from_to_addr(&self, start_addr: u64, end_addr: u64) -> Result<DisasmStream<Take<BufReader<File>>>> {
+        let mut reader = BufReader::new(self.source.0.try_clone()?);
+        reader.seek(SeekFrom::Start(start_addr - self.addr))?;
+        let reader = reader.take(end_addr - start_addr);
+        DisasmStream::new(reader, start_addr, self.buf_size)
+    }
+
+    pub fn disasm_to_addr(&self, addr: u64) -> Result<DisasmStream<Take<BufReader<File>>>> {
+        let mut reader = BufReader::new(self.source.0.try_clone()?);
+        let reader = reader.take(addr - self.addr);
+        DisasmStream::new(reader, addr, self.buf_size)
     }
 }

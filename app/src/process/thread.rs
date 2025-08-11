@@ -10,9 +10,8 @@ use windows::{
     }
 };
 use windows::Win32::Foundation::{HANDLE, INVALID_HANDLE_VALUE};
-use crate::process_dumper::process::close_handle;
-use crate::process_dumper::types::ThreadContext;
-
+use crate::process::process::close_handle;
+use crate::process::thread_context::ThreadContext;
 
 pub fn get_threads(process_id: u32) -> Result<Vec<ThreadContext>> {
     unsafe {

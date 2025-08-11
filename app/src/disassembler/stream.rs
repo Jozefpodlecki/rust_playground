@@ -16,7 +16,7 @@ pub struct DisasmStream<R: Read> {
 }
 
 impl<R: Read> DisasmStream<R> {
-    pub fn new(reader: R, buf_size: usize) -> Result<Self> {
+    pub fn new(reader: R, addr: u64, buf_size: usize) -> Result<Self> {
 
         let mut cs = Capstone::new()
             .x86()
@@ -32,7 +32,7 @@ impl<R: Read> DisasmStream<R> {
             cs,
             buffer: vec![0; buf_size],
             leftover: Vec::new(),
-            addr: 0,
+            addr,
             total_instr_len: 0,
             total_instr_count: 0,
         })

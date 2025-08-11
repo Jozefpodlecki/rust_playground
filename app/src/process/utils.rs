@@ -6,7 +6,7 @@ use log::debug;
 use object::Object;
 use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
 
-use crate::process_dumper::types::{ProcessModule, ProcessModuleExport};
+use crate::process::types::{ProcessModule, ProcessModuleExport};
 
 pub unsafe fn get_windows_version() -> Result<String> {
     let mut info = OSVERSIONINFOW::default();

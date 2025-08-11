@@ -9,7 +9,7 @@ use windows::{core::{PCWSTR, PWSTR}, Win32::{Security::{GetTokenInformation, Tok
 use crate::{processor::*, types::AppConfig};
 
 mod types;
-mod process_dumper;
+mod process;
 mod processor;
 mod lpk;
 mod sql_migrator;
@@ -146,10 +146,15 @@ fn main() -> Result<()> {
         if args.disassembler.is_enabled {
             processor.add_step(Box::new(DisassembleProcessStep::new(
                 args.disassembler.clone(),
-                exe_info.path,
+                exe_info.path.clone(),
                 args.output_path.clone()
             )));
         }
+        
+        processor.add_step(Box::new(ParseDumpStep::new(
+            exe_info.path,
+            args.output_path.clone()
+        )));
     }
 
     // processor.add_step(Box::new(CombineDbStep::new(args)));

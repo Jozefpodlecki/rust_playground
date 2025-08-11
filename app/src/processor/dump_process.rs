@@ -1,14 +1,14 @@
 use std::path::PathBuf;
 
 use anyhow::*;
-use crate::{process_dumper::ProcessDumper, processor::ProcessorStep, types::{LaunchMethod}};
+use crate::{process::{ProcessDump, ProcessSnapshotter}, processor::ProcessorStep, types::LaunchMethod};
 
 pub struct DumpProcessStep {
     exe_path: PathBuf,
-    output_bin_path: PathBuf,
+    dump_path: PathBuf,
     dest_path: PathBuf,
     exe_args: Vec<String>,
-    launch_ethod: LaunchMethod
+    launch_method: LaunchMethod
 }
 
 impl ProcessorStep for DumpProcessStep {
@@ -25,7 +25,7 @@ impl ProcessorStep for DumpProcessStep {
             return false
         }
 
-        if self.output_bin_path.exists() {
+        if self.dump_path.exists() {
             return false
         }
 
@@ -34,13 +34,12 @@ impl ProcessorStep for DumpProcessStep {
 
     fn execute(self: Box<Self>) -> Result<()> {
 
-        let mut process_dumper = ProcessDumper::new(&self.exe_path, &self.output_bin_path)?;
-
-        let dump = process_dumper.run(&self.exe_args, self.launch_ethod)?;
-
-        // for block in dump.blocks.iter().filter(|pr| pr.block.is_executable) {
-        //     info!("Executable 0x{:X}", block.block.base);
-        // }
+        let snapshotter = ProcessSnapshotter::run(
+            &self.exe_path,
+            &self.exe_args,
+            self.launch_method)?;
+        let snapshot = snapshotter.get_snapshot()?;
+        let dump = ProcessDump::save(snapshot, &self.dump_path)?;
 
         Ok(())
     }
@@ -51,16 +50,16 @@ impl DumpProcessStep {
         exe_path: PathBuf,
         dest_path: PathBuf,
         exe_args: Vec<String>,
-        launch_ethod: LaunchMethod
+        launch_method: LaunchMethod
     ) -> Self {
-        let output_bin_path = ProcessDumper::get_bin_path(&exe_path, &dest_path);
+        let dump_path = ProcessDump::get_path(&exe_path, &dest_path);
 
         Self {
             exe_path,
-            output_bin_path,
+            dump_path,
             dest_path,
             exe_args,
-            launch_ethod
+            launch_method
         }
     }
 }

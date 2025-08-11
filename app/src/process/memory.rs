@@ -11,7 +11,7 @@ use windows::Win32::System::ProcessStatus::{EnumProcessModulesEx, GetModuleFileN
 use std::ffi::OsString;
 use std::path::PathBuf;
 
-use crate::process_dumper::types::{MemoryBlock, ProcessModule};
+use crate::process::types::{MemoryBlock, ProcessModule};
 
 pub unsafe fn get_main_module(process_handle: HANDLE) -> Result<Option<ProcessModule>> {
     let mut module_handles: [HMODULE; 1] = [HMODULE::default()];
