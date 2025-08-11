@@ -1,47 +1,55 @@
-use std::{env::var, io::{self, BufReader, Read}, vec};
+use std::{collections::VecDeque, env::var, io::{self, BufReader, Read}, vec};
 use capstone::{arch::{self, x86::{X86Insn, X86Operand, X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, Insn, InsnGroupType::CS_GRP_JUMP, InsnId, Instructions};
 use anyhow::*;
 use log::*;
 
 use crate::disassembler::types::Instruction;
 
+fn build_capstone() -> Result<Capstone> {
+    let mut cs = Capstone::new()
+        .x86()
+        .mode(arch::x86::ArchMode::Mode64)
+        .syntax(arch::x86::ArchSyntax::Intel)
+        .build()?;
+    cs.set_skipdata(true)?;
+    cs.set_detail(true)?;
+    Ok(cs)
+}
+
 pub struct DisasmStream<R: Read> {
-    reader: BufReader<R>,
+    reader: R,
     cs: Capstone,
     buffer: Vec<u8>,
     leftover: Vec<u8>,
     addr: u64,
     total_instr_len: u64,
     total_instr_count: u64,
+    default_ratio: u64,
+    items: VecDeque<Instruction>
 }
 
 impl<R: Read> DisasmStream<R> {
     pub fn new(reader: R, addr: u64, buf_size: usize) -> Result<Self> {
 
-        let mut cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .build()?;
-
-        cs.set_skipdata(true)?;
-        cs.set_detail(true)?;
+        let cs = build_capstone()?;
 
         Ok(Self {
-            reader: BufReader::new(reader),
+            reader,
             cs,
             buffer: vec![0; buf_size],
             leftover: Vec::new(),
             addr,
             total_instr_len: 0,
             total_instr_count: 0,
+            default_ratio: 7,
+            items: VecDeque::with_capacity(1000)
         })
     }
 
-    pub fn next_batch(&mut self) -> Result<Vec<Instruction>> {
+    fn next_inner(&mut self) -> Result<()> {
         let bytes_read = self.reader.read(&mut self.buffer)?;
         if bytes_read == 0 && self.leftover.is_empty() {
-            return Err(anyhow!("Empty"));
+            return Ok(())
         }
 
         let mut combined = std::mem::take(&mut self.leftover);
@@ -51,30 +59,30 @@ impl<R: Read> DisasmStream<R> {
         let ratio = if self.total_instr_count > 0 {
             (self.total_instr_len as f64 / self.total_instr_count as f64).ceil() as u64
         } else {
-            7
+            self.default_ratio
         };
 
-        let count = combined_len / ratio.max(1);
+        let count = (combined_len / ratio.max(1)).max(1);
         let items = self.cs.disasm_count(&combined, self.addr, count as usize)?;
-        let mut batch = vec![];
         let mut consumed = 0;
 
         for instr in items.into_iter() {
 
+            let len = instr.len();
+            consumed += len;
+            self.addr += len as u64;
+            self.total_instr_len += len as u64;
+            self.total_instr_count += 1;
+
             if instr.id().0 == 0 {
-                debug!("Skipping data bytes {}", instr);
+                self.items.push_back(Instruction::invalid(&instr));
                 continue;
             }
 
-            consumed += instr.len();
-            self.addr += instr.len() as u64;
-            self.total_instr_len += instr.len() as u64;
-            self.total_instr_count += 1;
             let detail = self.cs.insn_detail(instr)?;
             let arch_detail = detail.arch_detail();
             let x86_detail = arch_detail.x86().unwrap();
-
-            batch.push((instr, x86_detail).into());
+            self.items.push_back((instr, x86_detail).into());
         }
 
         if consumed < combined.len() {
@@ -84,6 +92,19 @@ impl<R: Read> DisasmStream<R> {
             self.leftover = combined;
         }
 
-        Ok(batch)
+        Ok(())
+    }
+}
+
+impl<R: Read> Iterator for DisasmStream<R> {
+    type Item = Instruction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        
+        if self.items.is_empty() {
+            self.next_inner().expect("An error occurred whilst reading instructions");
+        }
+
+        self.items.pop_front()
     }
 }

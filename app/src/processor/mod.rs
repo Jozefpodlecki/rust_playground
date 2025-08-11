@@ -8,6 +8,7 @@ mod combine_db;
 mod disassemble_process;
 mod cleanup_directory;
 mod parse_dump;
+mod extract_pe;
 
 pub use copy_files::CopyFileStep;
 pub use extract_lpk::ExtractLpkStep;
@@ -16,6 +17,8 @@ pub use dump_process::DumpProcessStep;
 pub use disassemble_process::DisassembleProcessStep;
 pub use cleanup_directory::CleanupDirectoryStep;
 pub use parse_dump::ParseDumpStep;
+pub use extract_pe::ExtractPeStep;
+
 use log::info;
 
 pub trait ProcessorStep {

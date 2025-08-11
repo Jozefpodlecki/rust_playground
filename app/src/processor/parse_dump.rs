@@ -1,8 +1,8 @@
 use log::*;
-use std::{collections::{HashMap, HashSet}, fs::{self, File}, io::{BufWriter, Write}, path::PathBuf};
+use std::{collections::{BTreeMap, HashMap, HashSet}, fs::{self, File}, io::{BufWriter, Write}, path::PathBuf};
 use anyhow::*;
 
-use crate::{process::ProcessDump, processor::ProcessorStep};
+use crate::{export_dump::ExportDump, process::ProcessDump, processor::ProcessorStep};
 
 
 pub struct ParseDumpStep {
@@ -27,23 +27,8 @@ impl ProcessorStep for ParseDumpStep {
     fn execute(self: Box<Self>) -> Result<()> {
 
         let dump = ProcessDump::open(self.dump_path)?;
-        let mut map = HashMap::new();
-
-        for (name, exports) in dump.exports {
-
-            let module = dump.modules.get(&name).unwrap();
-
-            if !module.is_dll {
-                continue;
-            }
-
-            for export in exports {
-                let name = export.name;
-                let address = module.base + export.address;
-                let value = format!("{}.{}", module.file_name, name);
-                map.insert(address, value);
-            }
-        }
+        let export_file_path = self.dest_path.join("exports.json");
+        let export_dump = ExportDump::create(&export_file_path, dump.modules, dump.exports)?;
 
         Ok(())
     }
@@ -55,7 +40,7 @@ impl ParseDumpStep {
         dest_path: PathBuf) -> Self {
         let file_stem = exe_path.file_stem().unwrap().to_string_lossy().to_string();
         let output_path = dest_path.join(file_stem);
-        let dump_path = ProcessDump::get_path(&exe_path, &output_path);
+        let dump_path = ProcessDump::get_path(&exe_path, &dest_path);
 
         Self {
             dump_path,

@@ -44,10 +44,10 @@ impl<R: Read> DisasmStream<R> {
         })
     }
 
-    fn next_inner(&mut self) -> Result<Vec<Instruction>> {
+    fn next_inner(&mut self) -> Result<()> {
         let bytes_read = self.reader.read(&mut self.buffer)?;
         if bytes_read == 0 && self.leftover.is_empty() {
-            return Ok(vec![])
+            return Ok(())
         }
 
         let mut combined = std::mem::take(&mut self.leftover);
@@ -60,30 +60,30 @@ impl<R: Read> DisasmStream<R> {
             self.default_ratio
         };
 
-        let count = combined_len / ratio.max(1);
+        let count = (combined_len / ratio.max(1)).max(1);
         let items = self.cs.disasm_count(&combined, self.addr, count as usize)?;
-        let mut batch = vec![];
         let mut consumed = 0;
 
         for instr in items.into_iter() {
-
-            if instr.id().0 == 0 {
-                batch.push(Instruction::invalid(instr.
-                    mnemonic().unwrap(),
-                    instr.address(),
-                    instr.len() as u64));
-                continue;
-            }
 
             let len = instr.len();
             consumed += len;
             self.addr += len as u64;
             self.total_instr_len += len as u64;
             self.total_instr_count += 1;
+
+            if instr.id().0 == 0 {
+                self.items.push_back(Instruction::invalid(instr.
+                    mnemonic().unwrap(),
+                    instr.address(),
+                    instr.len() as u64));
+                continue;
+            }
+
             let detail = self.cs.insn_detail(instr)?;
             let arch_detail = detail.arch_detail();
             let x86_detail = arch_detail.x86().unwrap();
-            batch.push((instr, x86_detail).into());
+            self.items.push_back((instr, x86_detail).into());
         }
 
         if consumed < combined.len() {
@@ -93,7 +93,7 @@ impl<R: Read> DisasmStream<R> {
             self.leftover = combined;
         }
 
-        Ok(batch)
+        Ok(())
     }
 }
 
@@ -103,17 +103,8 @@ impl<R: Read> Iterator for DisasmStream<R> {
     fn next(&mut self) -> Option<Self::Item> {
         
         if self.items.is_empty() {
-            let batch = self.next_inner().expect("An error occurred whilst reading instructions");
+            self.next_inner().expect("An error occurred whilst reading instructions");
 
-            if batch.is_empty() {
-                return None    
-            }
-
-            self.items = batch.into();
-        }
-
-        if self.items.is_empty() {
-            return None
         }
 
         self.items.pop_front()

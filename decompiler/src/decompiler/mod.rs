@@ -6,11 +6,11 @@ use object::ObjectSection;
 
 use crate::decompiler::{loader::Loader, types::{CallTarget, Instruction}};
 
-mod disassembler;
-mod stream;
-mod analyser;
-mod types;
-mod loader;
+pub mod disassembler;
+pub mod stream;
+pub mod analyser;
+pub mod types;
+pub mod loader;
 pub mod utils;
 
 pub use disassembler::Disassembler;
@@ -68,7 +68,7 @@ impl Decompiler {
                 basic_block.instructions.push(instruction.clone());
 
                 match &instruction.kind {
-                    types::InstructionType::ConditionalJump(target_addr) => {
+                    types::InstructionType::ConditionalJump(condition_code, target_addr) => {
                         // Current BB successors: branch target + fall-through
                         basic_block.successors.push(*target_addr);
                         let fall_through = instruction.address + instruction.length;
@@ -80,7 +80,7 @@ impl Decompiler {
 
                         break;
                     }
-                    types::InstructionType::UnConditionalJump(target) => {
+                    types::InstructionType::UnconditionalJump(target) => {
                         match target {
                             CallTarget::Direct(target_addr) => {
                                 basic_block.successors.push(*target_addr);

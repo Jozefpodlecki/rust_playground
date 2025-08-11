@@ -2,10 +2,9 @@
 
 use std::{fmt::format, fs::{self, File}, io::{BufReader, BufWriter, Write}, path::PathBuf};
 use anyhow::*;
+use decompiler_lib::decompiler::Decompiler;
 use flexi_logger::Logger;
-use crate::decompiler::{utils::*, Decompiler, Disassembler};
 
-mod decompiler;
 fn main() -> Result<()> {
     Logger::try_with_str("info")?.start()?;
     // let path = r"C:\repos\rust_playground\test_app.exe";

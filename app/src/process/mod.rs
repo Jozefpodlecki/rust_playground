@@ -7,4 +7,4 @@ mod thread_context;
 mod snapshot;
 
 pub use snapshot::*;
-pub use types::ProcessDump;
+pub use types::*;

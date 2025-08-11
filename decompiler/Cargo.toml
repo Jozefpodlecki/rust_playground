@@ -5,6 +5,9 @@ authors = ["Jozef Podlecki"]
 edition = "2024"
 rust-version = "1.88"
 
+[lib]
+name = "decompiler_lib"
+path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1.0.96"

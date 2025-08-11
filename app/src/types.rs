@@ -1,16 +1,6 @@
 use std::{collections::HashSet, env, path::PathBuf, time::Duration};
 use serde::{Deserialize, Deserializer};
 
-// #[derive(Debug, Clone)]
-// pub struct RunArgs {
-//     pub cipher_key: Vec<u8>,
-//     pub aes_xor_key: Vec<u8>,
-//     pub game_path: PathBuf,
-//     pub output_path: PathBuf,
-//     pub exe_path: PathBuf,
-//     pub exe_args: Vec<String>,
-//     pub strategy: WaitStrategy
-// }
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
     pub log_level: String,
