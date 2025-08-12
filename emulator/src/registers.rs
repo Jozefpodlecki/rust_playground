@@ -1,12 +1,7 @@
+use std::u64;
+
 use anyhow::{bail, Result};
-use crate::memory::Memory;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Reg {
-    Rax, Rcx, Rdx, Rbx, Rsp, Rbp, Rsi, Rdi,
-    R8, R9, R10, R11, R12, R13, R14, R15,
-}
-
+use decompiler_lib::decompiler::types::Register;
 
 #[derive(Debug, Default, Clone)]
 pub struct Registers {
@@ -29,13 +24,13 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new() -> Self {
+    pub fn new(rsp: u64) -> Self {
         Self {
             rax: 0,
             rcx: 0,
             rdx: 0,
             rbx: 0,
-            rsp: 0,
+            rsp,
             rbp: 0,
             rsi: 0,
             rdi: 0,
@@ -50,45 +45,69 @@ impl Registers {
         }
     }
 
-    pub fn get(&self, reg: Reg) -> u64 {
+    pub fn get(&self, reg: Register) -> u64 {
         match reg {
-            Reg::Rax => self.rax,
-            Reg::Rcx => self.rcx,
-            Reg::Rdx => self.rdx,
-            Reg::Rbx => self.rbx,
-            Reg::Rsp => self.rsp,
-            Reg::Rbp => self.rbp,
-            Reg::Rsi => self.rsi,
-            Reg::Rdi => self.rdi,
-            Reg::R8 => self.r8,
-            Reg::R9 => self.r9,
-            Reg::R10 => self.r10,
-            Reg::R11 => self.r11,
-            Reg::R12 => self.r12,
-            Reg::R13 => self.r13,
-            Reg::R14 => self.r14,
-            Reg::R15 => self.r15,
+            Register::Rax => self.rax,
+            Register::Eax => self.rax,
+            Register::Rbx => self.rbx,
+            Register::Ebx => self.rbx,
+            Register::Bx => self.rbx,
+            Register::Rcx => self.rcx,
+            Register::Ecx => self.rcx,
+            Register::Rdx => self.rdx,
+            Register::Edx => self.rdx,
+            Register::Rsp => self.rsp,
+            Register::Rbp => self.rbp,
+            Register::Rsi => self.rsi,
+            Register::Rdi => self.rdi,
+            Register::Edi => self.rdi,
+            Register::R8 => self.r8,
+            Register::R9 => self.r9,
+            Register::R10 => self.r10,
+            Register::R11 => self.r11,
+            Register::R12 => self.r12,
+            Register::R13 => self.r13,
+            Register::R14 => self.r14,
+            Register::R15 => self.r15,
+            Register::Rip => panic!("Invalid operation"),
+            Register::Unknown(id) => panic!("Invalid register: {}", id)
         }
     }
 
-    pub fn set(&mut self, reg: Reg, val: u64) {
+    pub fn set(&mut self, reg: Register, val: u64) {
+        let old_val = self.get(reg);
+        if old_val != val {
+            println!(
+                "[REG] {:?}: {:#x} → {:#x}",
+                reg, old_val, val
+            );
+        }
+
         match reg {
-            Reg::Rax => self.rax = val,
-            Reg::Rcx => self.rcx = val,
-            Reg::Rdx => self.rdx = val,
-            Reg::Rbx => self.rbx = val,
-            Reg::Rsp => self.rsp = val,
-            Reg::Rbp => self.rbp = val,
-            Reg::Rsi => self.rsi = val,
-            Reg::Rdi => self.rdi = val,
-            Reg::R8 => self.r8 = val,
-            Reg::R9 => self.r9 = val,
-            Reg::R10 => self.r10 = val,
-            Reg::R11 => self.r11 = val,
-            Reg::R12 => self.r12 = val,
-            Reg::R13 => self.r13 = val,
-            Reg::R14 => self.r14 = val,
-            Reg::R15 => self.r15 = val,
+            Register::Rax => self.rax = val,
+            Register::Eax => self.rax = val,
+            Register::Rbx => self.rbx = val,
+            Register::Ebx => self.rbx = val,
+            Register::Bx => self.rbx = val,
+            Register::Rcx => self.rcx = val,
+            Register::Ecx => self.rcx = val,
+            Register::Rdx => self.rdx = val,
+            Register::Edx => self.rdx = val,
+            Register::Rsp => self.rsp = val,
+            Register::Rbp => self.rbp = val,
+            Register::Rsi => self.rsi = val,
+            Register::Rdi => self.rdi = val,
+            Register::Edi => self.rdi = val,
+            Register::R8 => self.r8 = val,
+            Register::R9 => self.r9 = val,
+            Register::R10 => self.r10 = val,
+            Register::R11 => self.r11 = val,
+            Register::R12 => self.r12 = val,
+            Register::R13 => self.r13 = val,
+            Register::R14 => self.r14 = val,
+            Register::R15 => self.r15 = val,
+            Register::Rip => panic!("Invalid operation"),
+            Register::Unknown(id) => panic!("Invalid register: {}", id)
         }
     }
 }

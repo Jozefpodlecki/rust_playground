@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::{self, File}, io::{Cursor, Write}, path::PathBuf};
+use std::{collections::HashMap, fs::{self, File}, io::{Cursor, Read, Write}, path::PathBuf};
 use anyhow::Result;
 use log::*;
 use object::{read::pe::PeFile64, LittleEndian, Object, ObjectSection};
@@ -66,6 +66,14 @@ impl ProcessorStep for ExtractPeStep {
             image_base: format!("0x{:X}", image_base),
             sections: Vec::new(),
         };
+
+        let file_path = dest_path.join("0x140000000_4096_dos.data");
+        
+        if !file_path.exists() {
+            let mut writer = File::create(file_path)?;
+            let slice = &data[0..0x1000.min(data.len())];
+            writer.write_all(slice)?;
+        }
 
         for section in pe_file.sections() {
             let sec_name_bytes = section.name_bytes()?;

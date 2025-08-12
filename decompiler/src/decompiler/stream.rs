@@ -72,18 +72,7 @@ impl<R: Read> DisasmStream<R> {
             self.total_instr_len += len as u64;
             self.total_instr_count += 1;
 
-            if instr.id().0 == 0 {
-                self.items.push_back(Instruction::invalid(instr.
-                    mnemonic().unwrap(),
-                    instr.address(),
-                    instr.len() as u64));
-                continue;
-            }
-
-            let detail = self.cs.insn_detail(instr)?;
-            let arch_detail = detail.arch_detail();
-            let x86_detail = arch_detail.x86().unwrap();
-            self.items.push_back((instr, x86_detail).into());
+            self.items.push_back((instr, &self.cs).into());
         }
 
         if consumed < combined.len() {

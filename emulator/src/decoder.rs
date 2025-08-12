@@ -1,24 +1,49 @@
-use std::{fs::File, io::BufReader, path::Path};
+use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 
 use anyhow::Result;
-use decompiler_lib::decompiler::{stream::DisasmStream, types::Instruction, Disassembler};
+use decompiler_lib::decompiler::types::Instruction;
+
+use crate::{bus::SharedBus};
+
+fn build_capstone() -> Result<Capstone> {
+    let mut cs = Capstone::new()
+        .x86()
+        .mode(arch::x86::ArchMode::Mode64)
+        .syntax(arch::x86::ArchSyntax::Intel)
+        .build()?;
+    cs.set_skipdata(true)?;
+    cs.set_detail(true)?;
+    Ok(cs)
+}
 
 pub struct Decoder {
-    stream: DisasmStream<BufReader<File>>,
+    bus: SharedBus,
+    cs: Capstone
 }
 
 impl Decoder {
-    pub fn new(file_path: &Path) -> Result<Self> {
-        let file = File::open(file_path)?;
-        let disassembler = Disassembler::from_file(file, 0x147E25000, 1000)?;
-        let stream = disassembler.disasm_all()?;
+    pub fn new(bus: SharedBus) -> Result<Self> {
+        let cs = build_capstone()?;
 
-        Ok(Self { stream })
+        Ok(Self { 
+            bus,
+            cs
+        })
     }
 
-    pub fn decode_next(&mut self) -> Option<Instruction> {
-       
-        self.stream.next()
+    pub fn decode_next(&self, rip: u64) -> Result<Instruction> {
+
+        let mut code = vec![0u8; 15];
+        self.bus.borrow().read_exact(rip, &mut code)?;
+
+        let instructions = self.cs.disasm_count(&code, rip, 1)?;
+
+        let cs_insn = instructions.get(0)
+            .ok_or_else(|| anyhow::anyhow!("Failed to decode instruction at {:#x}", rip))?;
+
+        let instruction = (cs_insn, &self.cs).into();
+
+        Ok(instruction)
     }
 
 }

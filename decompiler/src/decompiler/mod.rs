@@ -4,7 +4,7 @@ use capstone::arch::x86::X86Insn;
 use log::*;
 use object::ObjectSection;
 
-use crate::decompiler::{loader::Loader, types::{CallTarget, Instruction}};
+use crate::decompiler::{loader::Loader, types::{Instruction}};
 
 pub mod disassembler;
 pub mod stream;
@@ -67,50 +67,50 @@ impl Decompiler {
             for instruction in stream {
                 basic_block.instructions.push(instruction.clone());
 
-                match &instruction.kind {
-                    types::InstructionType::ConditionalJump(condition_code, target_addr) => {
-                        // Current BB successors: branch target + fall-through
-                        basic_block.successors.push(*target_addr);
-                        let fall_through = instruction.address + instruction.length;
-                        basic_block.successors.push(fall_through);
+                // match &instruction.kind {
+                //     types::InstructionType::ConditionalJump(condition_code, target_addr) => {
+                //         // Current BB successors: branch target + fall-through
+                //         basic_block.successors.push(*target_addr);
+                //         let fall_through = instruction.address + instruction.length;
+                //         basic_block.successors.push(fall_through);
 
-                        // Enqueue successors for exploration
-                        seeds.push_back(*target_addr);
-                        seeds.push_back(fall_through);
+                //         // Enqueue successors for exploration
+                //         seeds.push_back(*target_addr);
+                //         seeds.push_back(fall_through);
 
-                        break;
-                    }
-                    types::InstructionType::UnconditionalJump(target) => {
-                        match target {
-                            CallTarget::Direct(target_addr) => {
-                                basic_block.successors.push(*target_addr);
-                                seeds.push_back(*target_addr);
-                            }
-                            CallTarget::Indirect(_) | CallTarget::Memory { .. } => {
-                                info!("Indirect jump at 0x{:X}", instruction.address);
-                            }
-                        }
-                        break; // BB ends here
-                    }
-                    types::InstructionType::Call(target) => {
-                        match target {
-                            CallTarget::Direct(target_addr) => {
-                                seeds.push_back(*target_addr); // treat calls as new functions
-                            }
-                            CallTarget::Indirect(_) | CallTarget::Memory { .. } => {
-                                info!("Indirect call at 0x{:X}", instruction.address);
-                            }
-                        }
-                        // Calls do not end BB (fall-through continues)
-                    }
-                    types::InstructionType::Ret => {
-                        // BB ends here, no successors
-                        break;
-                    }
-                    _ => {
-                        // Continue accumulating instructions
-                    }
-                }
+                //         break;
+                //     }
+                //     types::InstructionType::UnconditionalJump(target) => {
+                //         match target {
+                //             CallTarget::Direct(target_addr) => {
+                //                 basic_block.successors.push(*target_addr);
+                //                 seeds.push_back(*target_addr);
+                //             }
+                //             CallTarget::Indirect(_) | CallTarget::Memory { .. } => {
+                //                 info!("Indirect jump at 0x{:X}", instruction.address);
+                //             }
+                //         }
+                //         break; // BB ends here
+                //     }
+                //     types::InstructionType::Call(target) => {
+                //         match target {
+                //             CallTarget::Direct(target_addr) => {
+                //                 seeds.push_back(*target_addr); // treat calls as new functions
+                //             }
+                //             CallTarget::Indirect(_) | CallTarget::Memory { .. } => {
+                //                 info!("Indirect call at 0x{:X}", instruction.address);
+                //             }
+                //         }
+                //         // Calls do not end BB (fall-through continues)
+                //     }
+                //     types::InstructionType::Ret => {
+                //         // BB ends here, no successors
+                //         break;
+                //     }
+                //     _ => {
+                //         // Continue accumulating instructions
+                //     }
+                // }
             }
 
             if !self.functions.contains_key(&current_addr) {
