@@ -1,5 +1,6 @@
 use decompiler_lib::decompiler::types::{ConditionCode, Operand, OperandSize, Register};
 use anyhow::{bail, Result};
+use log::{debug, info};
 use crate::{bus::SharedBus, registers::Registers};
 
 pub fn calc_address(
@@ -66,6 +67,7 @@ pub fn read_operand_u64_rip(
             let base_val = base.map_or(0, |r| registers.get(r));
             let index_val = index.map_or(0, |(r, scale)| registers.get(r) * scale as u64);
             let addr = base_val.wrapping_add(index_val).wrapping_add(disp as u64);
+            debug!("read_operand_u64_rip 0x{:X}", addr);
             addr
         },
     }
@@ -101,23 +103,12 @@ pub fn read_operand(
         Operand::Imm(val) => Ok(*val),
         Operand::Memory { base, index, disp, size, segment: _ } => {
             let addr = calc_address(registers, *base, *index, *disp);
+            let bus = bus.borrow();
             let val = match size {
-                OperandSize::Byte => {
-                    let byte = bus.borrow().read_u8(addr)?;
-                    byte as i64
-                },
-                OperandSize::Word => {
-                    let word = bus.borrow().read_u16(addr)?;
-                    word as i64
-                },
-                OperandSize::Dword => {
-                    let dword = bus.borrow().read_u32(addr)?;
-                    dword as i64
-                },
-                OperandSize::Qword => {
-                    let qword = bus.borrow().read_u64(addr)?;
-                    qword as i64
-                },
+                OperandSize::Byte => bus.read_u8(addr)? as i64,
+                OperandSize::Word => bus.read_u16(addr)? as i64,
+                OperandSize::Dword => bus.read_u32(addr)? as i64,
+                OperandSize::Qword => bus.read_u64(addr)? as i64
             };
             Ok(val)
         }
@@ -136,6 +127,7 @@ pub fn write_operand_u64(
         },
         Operand::Memory { base, index, disp, size, segment } => {
             let addr = calc_address(&registers, base, index, disp);
+            debug!("write_operand_u64 0x{:X} -> 0x{:X}", addr, value);
             bus.borrow_mut().write_u64(addr, value)?;
         },
         Operand::Imm(_) => {
@@ -158,19 +150,28 @@ pub fn write_operand(
         }
         Operand::Memory { base, index, disp, size, segment: _ } => {
             let addr = calc_address(registers, base, index, disp);
+            let mut bus = bus.borrow_mut();
             match size {
-                OperandSize::Byte => bus.borrow_mut().write_u8(addr, value as u8),
+                OperandSize::Byte => {
+                    debug!("write_operand 0x{:X} -> 0x{:X}", addr, value);
+                    bus.write_u8(addr, value as u8)
+                },
                 OperandSize::Word => {
                     let val = value as u16;
                     let bytes = val.to_le_bytes();
-                    bus.borrow_mut().write_bytes(addr, &bytes)
+                    debug!("write_operand 0x{:X} -> 0x{:X}", addr, value);
+                    bus.write_bytes(addr, &bytes)
                 },
                 OperandSize::Dword => {
                     let val = value as u32;
                     let bytes = val.to_le_bytes();
-                    bus.borrow_mut().write_bytes(addr, &bytes)
+                    debug!("write_operand 0x{:X} -> 0x{:X}", addr, value);
+                    bus.write_bytes(addr, &bytes)
                 },
-                OperandSize::Qword => bus.borrow_mut().write_u64(addr, value),
+                OperandSize::Qword => {
+                    debug!("write_operand 0x{:X} -> 0x{:X}", addr, value);
+                    bus.write_u64(addr, value)
+                }
             }
         }
         Operand::Imm(_) => {

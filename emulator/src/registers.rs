@@ -2,6 +2,7 @@ use std::u64;
 
 use anyhow::{bail, Result};
 use decompiler_lib::decompiler::types::Register;
+use log::debug;
 
 #[derive(Debug, Default, Clone)]
 pub struct Registers {
@@ -77,45 +78,42 @@ impl Registers {
         }
     }
 
-    pub fn set(&mut self, reg: Register, val: u64) {
-        // let old_val = self.get(reg);
-        // if old_val != val {
-        //     println!("[REG] {:?}: {:#x} → {:#x}", reg, old_val, val);
-        // }
+    pub fn set(&mut self, reg: Register, value: u64) {
+        debug!("{:?} -> 0x{:X}", reg, value);
 
         match reg {
             // RAX family
-            Register::RAX | Register::EAX | Register::AX | Register::AH | Register::AL => self.rax = val,
+            Register::RAX | Register::EAX | Register::AX | Register::AH | Register::AL => self.rax = value,
             // RBX family
-            Register::RBX | Register::EBX | Register::BX | Register::BH | Register::BL => self.rbx = val,
+            Register::RBX | Register::EBX | Register::BX | Register::BH | Register::BL => self.rbx = value,
             // RCX family
-            Register::RCX | Register::ECX | Register::CX | Register::CH | Register::CL => self.rcx = val,
+            Register::RCX | Register::ECX | Register::CX | Register::CH | Register::CL => self.rcx = value,
             // RDX family
-            Register::RDX | Register::EDX | Register::DX | Register::DH | Register::DL => self.rdx = val,
+            Register::RDX | Register::EDX | Register::DX | Register::DH | Register::DL => self.rdx = value,
             // RSP family
-            Register::RSP | Register::ESP | Register::SP | Register::SPL => self.rsp = val,
+            Register::RSP | Register::ESP | Register::SP | Register::SPL => self.rsp = value,
             // RBP family
-            Register::RBP | Register::EBP | Register::BP | Register::BPL => self.rbp = val,
+            Register::RBP | Register::EBP | Register::BP | Register::BPL => self.rbp = value,
             // RSI family
-            Register::RSI | Register::ESI | Register::SI | Register::SIL => self.rsi = val,
+            Register::RSI | Register::ESI | Register::SI | Register::SIL => self.rsi = value,
             // RDI family
-            Register::RDI | Register::EDI | Register::DI | Register::DIL => self.rdi = val,
+            Register::RDI | Register::EDI | Register::DI | Register::DIL => self.rdi = value,
             // R8 family
-            Register::R8 | Register::R8D | Register::R8W | Register::R8B => self.r8 = val,
+            Register::R8 | Register::R8D | Register::R8W | Register::R8B => self.r8 = value,
             // R9 family
-            Register::R9 | Register::R9D | Register::R9W | Register::R9B => self.r9 = val,
+            Register::R9 | Register::R9D | Register::R9W | Register::R9B => self.r9 = value,
             // R10 family
-            Register::R10 | Register::R10D | Register::R10W | Register::R10B => self.r10 = val,
+            Register::R10 | Register::R10D | Register::R10W | Register::R10B => self.r10 = value,
             // R11 family
-            Register::R11 | Register::R11D | Register::R11W | Register::R11B => self.r11 = val,
+            Register::R11 | Register::R11D | Register::R11W | Register::R11B => self.r11 = value,
             // R12 family
-            Register::R12 | Register::R12D | Register::R12W | Register::R12B => self.r12 = val,
+            Register::R12 | Register::R12D | Register::R12W | Register::R12B => self.r12 = value,
             // R13 family
-            Register::R13 | Register::R13D | Register::R13W | Register::R13B => self.r13 = val,
+            Register::R13 | Register::R13D | Register::R13W | Register::R13B => self.r13 = value,
             // R14 family
-            Register::R14 | Register::R14D | Register::R14W | Register::R14B => self.r14 = val,
+            Register::R14 | Register::R14D | Register::R14W | Register::R14B => self.r14 = value,
             // R15 family
-            Register::R15 | Register::R15D | Register::R15W | Register::R15B => self.r15 = val,
+            Register::R15 | Register::R15D | Register::R15W | Register::R15B => self.r15 = value,
 
             Register::RIP => panic!("Cannot set RIP"),
             _ => panic!("Register not implemented: {:?}", reg),

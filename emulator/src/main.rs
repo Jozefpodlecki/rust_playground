@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc};
 
-use flexi_logger::Logger;
+use flexi_logger::{FileSpec, Logger, WriteMode};
 use anyhow::Result;
 use log::*;
 use crate::{bus::{Bus, SharedBus}, cpu::Cpu, decoder::Decoder, emulator::Emulator, memory_region::MemoryRegion};
@@ -41,7 +41,10 @@ fn get_memory_region(file_path: &str) -> Result<MemoryRegion> {
 }
 
 fn main() -> Result<()> {
-    Logger::try_with_str("info")?.start()?;
+    Logger::try_with_str("debug")?
+        .log_to_file(FileSpec::default())
+        .write_mode(WriteMode::BufferAndFlush)
+        .start()?;
 
     let bus: SharedBus = Rc::new(RefCell::new(Bus::new()));
 

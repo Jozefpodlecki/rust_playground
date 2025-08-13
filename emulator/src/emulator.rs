@@ -22,7 +22,7 @@ impl Emulator {
           
             let instruction = self.decoder.decode_next(self.cpu.rip)?;
 
-            info!("Instruction: {}", instruction);
+            info!("{}", instruction);
 
             self.cpu.handle(instruction)?;
         }
@@ -36,14 +36,14 @@ impl Emulator {
         let mut writer = BufWriter::new(file);
 
         let bus = self.cpu.bus.borrow();
-        let region = bus.find_region(0x1475c3043)?;
-        let disassembler = Disassembler::from_memory(&region.data, region.start_addr, 1000)?;
+        // let region = bus.find_region(0x1475c3043)?;
+        // let disassembler = Disassembler::from_memory(&region.data, region.start_addr, 1000)?;
 
-        let stream = disassembler.disasm_all()?;
+        // let stream = disassembler.disasm_all()?;
 
-        for instr in stream {
-            writeln!(writer, "{}", instr)?;
-        }
+        // for instr in stream {
+        //     writeln!(writer, "{}", instr)?;
+        // }
 
         let region = bus.find_region(0x1469ea014)?;
         let disassembler = Disassembler::from_memory(&region.data, region.start_addr, 1000)?;

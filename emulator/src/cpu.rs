@@ -9,8 +9,13 @@ pub struct Cpu {
     pub rip: u64,
     pub rflags: u64,
     pub bus: SharedBus,
+    pub debug: Debug
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct Debug {
+    pub count: u64,
+}
 
 impl Cpu {
     pub fn new(
@@ -21,7 +26,8 @@ impl Cpu {
             registers: Registers::new(rsp),
             rip,
             rflags: 0,
-            bus
+            bus,
+            ..Default::default()
         }
     }
 
@@ -32,6 +38,12 @@ impl Cpu {
         //     info!("{:?}", instruction);
         //     bail!("test");
         // }
+
+        self.debug.count += 1;
+
+        if self.debug.count % 1000 == 0 {
+            
+        }
 
         match instruction.kind {
             InstructionType::Invalid => bail!("Invalid opcode"),
@@ -158,21 +170,7 @@ impl Cpu {
             InstructionType::Rep(instr) => {
                 match instr {
                     RepeatableInstruction::Mov(src, dst) => {
-                        while self.registers.rcx != 0 {
-                            let byte = self.bus.borrow().read_u8(self.registers.rsi)?;
-                            
-                            self.bus.borrow_mut().write_u8(self.registers.rdi, byte)?;
-
-                            if (self.rflags >> 10) & 1 == 0 {
-                                self.registers.rsi = self.registers.rsi.wrapping_add(1);
-                                self.registers.rdi = self.registers.rdi.wrapping_add(1);
-                            } else {
-                                self.registers.rsi = self.registers.rsi.wrapping_sub(1);
-                                self.registers.rdi = self.registers.rdi.wrapping_sub(1);
-                            }
-
-                            self.registers.rcx = self.registers.rcx.wrapping_sub(1);
-                        }
+                        rep_movsb(self.rflags, &mut self.registers, &self.bus)?;
                     },
                     _ => bail!("Unhandled REP instruction"),
                 }
@@ -186,4 +184,29 @@ impl Cpu {
 
         Ok(())
     }
+}
+
+pub fn rep_movsb(
+    rflags: u64,
+    registers: &mut Registers,
+    bus: &SharedBus) -> Result<()> {
+    let direction = (rflags >> 10) & 1 == 0;
+
+    while registers.rcx != 0 {
+        let byte = bus.borrow().read_u8(registers.rsi)?;
+        
+        bus.borrow_mut().write_u8(registers.rdi, byte)?;
+
+        if direction {
+            registers.rsi = registers.rsi.wrapping_add(1);
+            registers.rdi = registers.rdi.wrapping_add(1);
+        } else {
+            registers.rsi = registers.rsi.wrapping_sub(1);
+            registers.rdi = registers.rdi.wrapping_sub(1);
+        }
+
+        registers.rcx = registers.rcx.wrapping_sub(1);
+    }
+
+    Ok(())
 }

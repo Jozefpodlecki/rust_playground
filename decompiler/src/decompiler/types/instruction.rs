@@ -93,6 +93,7 @@ impl From<&[u8; 4]> for InstructionPrefix {
 #[derive(Debug, Clone)]
 pub struct Instruction {
     pub id: X86Insn,
+    pub bytes: Vec<u8>,
     pub prefix: InstructionPrefix,
     pub kind: InstructionType,
     pub mnemonic: String,
@@ -144,6 +145,9 @@ pub enum InstructionType {
 impl Display for Instruction {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         write!(fmt, "{:#x}: ", self.address)?;
+        for byte in &self.bytes {
+            write!(fmt, "{:02X} ", byte)?;
+        }
         write!(fmt, "{} ", self.mnemonic)?;
         write!(fmt, "{}", self.op_str)?;
 
@@ -168,6 +172,7 @@ impl<'a> From<(&Insn<'a>, &Capstone)> for Instruction {
         let mnemonic = insn.mnemonic().unwrap().to_string();
         let op_str = insn.op_str().unwrap().to_string();
         let address = insn.address();
+        let bytes = insn.bytes().to_vec();
         let length = insn.len() as u64;
         let prefix = x86_detail.prefix().into();
 
@@ -175,6 +180,7 @@ impl<'a> From<(&Insn<'a>, &Capstone)> for Instruction {
 
         Instruction {
             id,
+            bytes,
             prefix,
             kind,
             mnemonic,
@@ -190,6 +196,7 @@ impl Instruction {
     pub fn invalid(id: X86Insn, insn: &Insn) -> Self {
         Self {
             id,
+            bytes: vec![],
             kind: InstructionType::Invalid,
             length: insn.len() as u64,
             address: insn.address(),
