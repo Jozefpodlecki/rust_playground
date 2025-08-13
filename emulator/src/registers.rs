@@ -25,89 +25,100 @@ pub struct Registers {
 
 impl Registers {
     pub fn new(rsp: u64) -> Self {
-        Self {
-            rax: 0,
-            rcx: 0,
-            rdx: 0,
-            rbx: 0,
-            rsp,
-            rbp: 0,
-            rsi: 0,
-            rdi: 0,
-            r8: 0,
-            r9: 0,
-            r10: 0,
-            r11: 0,
-            r12: 0,
-            r13: 0,
-            r14: 0,
-            r15: 0,
-        }
+        Self { rsp, ..Default::default() }
     }
+
+    #[inline]
+    fn lo8(x: u64) -> u64 { x & 0xFF }
+    #[inline]
+    fn hi8(x: u64) -> u64 { (x >> 8) & 0xFF }
+    #[inline]
+    fn lo16(x: u64) -> u64 { x & 0xFFFF }
+    #[inline]
+    fn lo32(x: u64) -> u64 { x & 0xFFFF_FFFF }
 
     pub fn get(&self, reg: Register) -> u64 {
         match reg {
-            Register::Rax => self.rax,
-            Register::Eax => self.rax,
-            Register::Rbx => self.rbx,
-            Register::Ebx => self.rbx,
-            Register::Bx => self.rbx,
-            Register::Rcx => self.rcx,
-            Register::Ecx => self.rcx,
-            Register::Rdx => self.rdx,
-            Register::Edx => self.rdx,
-            Register::Rsp => self.rsp,
-            Register::Rbp => self.rbp,
-            Register::Rsi => self.rsi,
-            Register::Rdi => self.rdi,
-            Register::Edi => self.rdi,
-            Register::R8 => self.r8,
-            Register::R9 => self.r9,
-            Register::R10 => self.r10,
-            Register::R11 => self.r11,
-            Register::R12 => self.r12,
-            Register::R13 => self.r13,
-            Register::R14 => self.r14,
-            Register::R15 => self.r15,
-            Register::Rip => panic!("Invalid operation"),
-            Register::Unknown(id) => panic!("Invalid register: {}", id)
+            // RAX family
+            Register::RAX | Register::EAX | Register::AX | Register::AH | Register::AL => self.rax,
+            // RBX family
+            Register::RBX | Register::EBX | Register::BX | Register::BH | Register::BL => self.rbx,
+            // RCX family
+            Register::RCX | Register::ECX | Register::CX | Register::CH | Register::CL => self.rcx,
+            // RDX family
+            Register::RDX | Register::EDX | Register::DX | Register::DH | Register::DL => self.rdx,
+            // RSP family
+            Register::RSP | Register::ESP | Register::SP | Register::SPL => self.rsp,
+            // RBP family
+            Register::RBP | Register::EBP | Register::BP | Register::BPL => self.rbp,
+            // RSI family
+            Register::RSI | Register::ESI | Register::SI | Register::SIL => self.rsi,
+            // RDI family
+            Register::RDI | Register::EDI | Register::DI | Register::DIL => self.rdi,
+            // R8 family
+            Register::R8 | Register::R8D | Register::R8W | Register::R8B => self.r8,
+            // R9 family
+            Register::R9 | Register::R9D | Register::R9W | Register::R9B => self.r9,
+            // R10 family
+            Register::R10 | Register::R10D | Register::R10W | Register::R10B => self.r10,
+            // R11 family
+            Register::R11 | Register::R11D | Register::R11W | Register::R11B => self.r11,
+            // R12 family
+            Register::R12 | Register::R12D | Register::R12W | Register::R12B => self.r12,
+            // R13 family
+            Register::R13 | Register::R13D | Register::R13W | Register::R13B => self.r13,
+            // R14 family
+            Register::R14 | Register::R14D | Register::R14W | Register::R14B => self.r14,
+            // R15 family
+            Register::R15 | Register::R15D | Register::R15W | Register::R15B => self.r15,
+
+            Register::RIP => panic!("Cannot get RIP"),
+            _ => panic!("Register not implemented: {:?}", reg),
         }
     }
 
     pub fn set(&mut self, reg: Register, val: u64) {
-        let old_val = self.get(reg);
-        if old_val != val {
-            println!(
-                "[REG] {:?}: {:#x} → {:#x}",
-                reg, old_val, val
-            );
-        }
+        // let old_val = self.get(reg);
+        // if old_val != val {
+        //     println!("[REG] {:?}: {:#x} → {:#x}", reg, old_val, val);
+        // }
 
         match reg {
-            Register::Rax => self.rax = val,
-            Register::Eax => self.rax = val,
-            Register::Rbx => self.rbx = val,
-            Register::Ebx => self.rbx = val,
-            Register::Bx => self.rbx = val,
-            Register::Rcx => self.rcx = val,
-            Register::Ecx => self.rcx = val,
-            Register::Rdx => self.rdx = val,
-            Register::Edx => self.rdx = val,
-            Register::Rsp => self.rsp = val,
-            Register::Rbp => self.rbp = val,
-            Register::Rsi => self.rsi = val,
-            Register::Rdi => self.rdi = val,
-            Register::Edi => self.rdi = val,
-            Register::R8 => self.r8 = val,
-            Register::R9 => self.r9 = val,
-            Register::R10 => self.r10 = val,
-            Register::R11 => self.r11 = val,
-            Register::R12 => self.r12 = val,
-            Register::R13 => self.r13 = val,
-            Register::R14 => self.r14 = val,
-            Register::R15 => self.r15 = val,
-            Register::Rip => panic!("Invalid operation"),
-            Register::Unknown(id) => panic!("Invalid register: {}", id)
+            // RAX family
+            Register::RAX | Register::EAX | Register::AX | Register::AH | Register::AL => self.rax = val,
+            // RBX family
+            Register::RBX | Register::EBX | Register::BX | Register::BH | Register::BL => self.rbx = val,
+            // RCX family
+            Register::RCX | Register::ECX | Register::CX | Register::CH | Register::CL => self.rcx = val,
+            // RDX family
+            Register::RDX | Register::EDX | Register::DX | Register::DH | Register::DL => self.rdx = val,
+            // RSP family
+            Register::RSP | Register::ESP | Register::SP | Register::SPL => self.rsp = val,
+            // RBP family
+            Register::RBP | Register::EBP | Register::BP | Register::BPL => self.rbp = val,
+            // RSI family
+            Register::RSI | Register::ESI | Register::SI | Register::SIL => self.rsi = val,
+            // RDI family
+            Register::RDI | Register::EDI | Register::DI | Register::DIL => self.rdi = val,
+            // R8 family
+            Register::R8 | Register::R8D | Register::R8W | Register::R8B => self.r8 = val,
+            // R9 family
+            Register::R9 | Register::R9D | Register::R9W | Register::R9B => self.r9 = val,
+            // R10 family
+            Register::R10 | Register::R10D | Register::R10W | Register::R10B => self.r10 = val,
+            // R11 family
+            Register::R11 | Register::R11D | Register::R11W | Register::R11B => self.r11 = val,
+            // R12 family
+            Register::R12 | Register::R12D | Register::R12W | Register::R12B => self.r12 = val,
+            // R13 family
+            Register::R13 | Register::R13D | Register::R13W | Register::R13B => self.r13 = val,
+            // R14 family
+            Register::R14 | Register::R14D | Register::R14W | Register::R14B => self.r14 = val,
+            // R15 family
+            Register::R15 | Register::R15D | Register::R15W | Register::R15B => self.r15 = val,
+
+            Register::RIP => panic!("Cannot set RIP"),
+            _ => panic!("Register not implemented: {:?}", reg),
         }
     }
 }

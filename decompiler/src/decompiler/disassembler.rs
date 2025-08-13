@@ -1,7 +1,6 @@
-use std::{fs::File, io::{BufRead, BufReader, Cursor, Read, Seek, SeekFrom, Take, Write}};
+use std::{fs::File, io::{BufReader, Cursor, Read, Seek, SeekFrom, Take}};
 
 use anyhow::Result;
-use object::{Object, ObjectSection};
 
 use crate::decompiler::stream::DisasmStream;
 

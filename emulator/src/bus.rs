@@ -26,7 +26,7 @@ impl Bus {
             .ok_or_else(|| anyhow::anyhow!("No memory region for address {:#x}", addr))
     }
 
-    fn find_region(&self, addr: u64) -> Result<&MemoryRegion> {
+    pub fn find_region(&self, addr: u64) -> Result<&MemoryRegion> {
         self.regions
             .iter()
             .find(|r| addr >= r.start_addr && addr < r.end_addr)

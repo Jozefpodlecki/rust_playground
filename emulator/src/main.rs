@@ -2,6 +2,7 @@ use std::{cell::RefCell, fs::File, io::Read, path::PathBuf, rc::Rc};
 
 use flexi_logger::Logger;
 use anyhow::Result;
+use log::*;
 use crate::{bus::{Bus, SharedBus}, cpu::Cpu, decoder::Decoder, emulator::Emulator, memory_region::MemoryRegion};
 
 mod cpu;
@@ -11,6 +12,9 @@ mod emulator;
 mod decoder;
 mod bus;
 mod types;
+mod flags;
+mod utils;
+mod alu;
 
 fn get_memory_region(file_path: &str) -> Result<MemoryRegion> {
     let (start_addr, size) = {
@@ -49,6 +53,14 @@ fn main() -> Result<()> {
     let code_region = get_memory_region(file_path)?;
     bus.borrow_mut().add_region(code_region);
 
+    let file_path = r"C:\repos\rust_playground\app\target\debug\output\LOSTARK\PE\0x140000000_4096_dos.data";
+    let code_region = get_memory_region(file_path)?;
+    bus.borrow_mut().add_region(code_region);
+
+    let file_path = r"C:\repos\rust_playground\app\target\debug\output\LOSTARK\PE\0x1469EA000_12423168_2020202020202020.section";
+    let code_region = get_memory_region(file_path)?;
+    bus.borrow_mut().add_region(code_region);
+
     let rip = 0x147E25000;
     let stack_size = 64 * 1024usize;
     let stack_base = 0x7fff_ffff_0000 as u64;
@@ -60,7 +72,15 @@ fn main() -> Result<()> {
     let decoder = Decoder::new(bus)?;
     let mut emulator = Emulator::new(cpu, decoder);
 
-    emulator.run()?;
+    match emulator.run() {
+        Ok(_) => {
+            info!("Completed");
+        },
+        Err(err) => {
+            error!("{}", err);
+            emulator.dump()?;
+        },
+    }
 
     Ok(())
 }
