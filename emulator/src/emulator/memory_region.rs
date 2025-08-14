@@ -1,6 +1,7 @@
 use anyhow::{Result, bail};
+use bincode::{Decode, Encode};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Encode, Decode, Clone)]
 pub struct MemoryRegion {
     pub start_addr: u64,
     pub end_addr: u64,

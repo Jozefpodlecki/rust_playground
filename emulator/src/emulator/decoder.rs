@@ -3,7 +3,7 @@ use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 use anyhow::Result;
 use decompiler_lib::decompiler::types::Instruction;
 
-use crate::{bus::SharedBus};
+use crate::emulator::Bus;
 
 fn build_capstone() -> Result<Capstone> {
     let mut cs = Capstone::new()
@@ -16,13 +16,13 @@ fn build_capstone() -> Result<Capstone> {
     Ok(cs)
 }
 
-pub struct Decoder {
-    bus: SharedBus,
+pub struct Decoder<'a> {
+    bus: &'a Bus,
     cs: Capstone
 }
 
-impl Decoder {
-    pub fn new(bus: SharedBus) -> Result<Self> {
+impl<'a> Decoder<'a> {
+    pub fn new(bus: &'a Bus) -> Result<Self> {
         let cs = build_capstone()?;
 
         Ok(Self { 
@@ -34,7 +34,7 @@ impl Decoder {
     pub fn decode_next(&self, rip: u64) -> Result<Instruction> {
 
         let mut code = vec![0u8; 15];
-        self.bus.borrow().read_exact(rip, &mut code)?;
+        self.bus.read_exact(rip, &mut code)?;
 
         let instructions = self.cs.disasm_count(&code, rip, 1)?;
 

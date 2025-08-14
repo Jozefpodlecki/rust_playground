@@ -145,9 +145,9 @@ pub enum InstructionType {
 impl Display for Instruction {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         write!(fmt, "{:#x}: ", self.address)?;
-        for byte in &self.bytes {
-            write!(fmt, "{:02X} ", byte)?;
-        }
+        // for byte in &self.bytes {
+        //     write!(fmt, "{:02X} ", byte)?;
+        // }
         write!(fmt, "{} ", self.mnemonic)?;
         write!(fmt, "{}", self.op_str)?;
 

@@ -5,9 +5,9 @@ use crate::memory_region::MemoryRegion;
 
 pub type SharedBus = Rc<RefCell<Bus>>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Bus {
-    regions: Vec<MemoryRegion>,
+    pub(crate) regions: Vec<MemoryRegion>,
 }
 
 impl Bus {
@@ -15,8 +15,12 @@ impl Bus {
         Self { regions: vec![] }
     }
 
-    pub fn add_region(&mut self, region: MemoryRegion) {
-        self.regions.push(region);
+    pub fn from_regions(regions: Vec<MemoryRegion>) -> Self {
+        Self { regions }
+    }
+
+    pub fn get_regions(&self) -> &[MemoryRegion] {
+        &self.regions
     }
 
     fn find_region_mut(&mut self, addr: u64) -> Result<&mut MemoryRegion> {

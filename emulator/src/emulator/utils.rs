@@ -1,7 +1,9 @@
+use std::{fs::File, io::Read, path::{Path, PathBuf}};
+
 use decompiler_lib::decompiler::types::{ConditionCode, Operand, OperandSize, Register};
 use anyhow::{bail, Result};
 use log::{debug, info};
-use crate::{bus::SharedBus, registers::Registers};
+use crate::{bus::SharedBus, emulator::{Bus, MemoryRegion}, registers::Registers};
 
 pub fn calc_address(
     registers: &Registers,
@@ -56,7 +58,7 @@ pub fn get_count(registers: &Registers, operand: Operand) -> Result<u8> {
 }
 
 pub fn read_operand_u64_rip(
-    bus: &SharedBus,
+    bus: &Bus,
     registers: &Registers,
     operand: Operand
 ) -> u64 {
@@ -74,28 +76,27 @@ pub fn read_operand_u64_rip(
 }
 
 pub fn read_operand_u64(
-    bus: &SharedBus,
+    bus: &Bus,
     registers: &Registers,
     op: Operand
-) -> u64 {
-    match op {
+) -> Result<u64> {
+    Ok(match op {
         Operand::Reg(reg) => registers.get(reg),
         Operand::Imm(val) => val as u64,
         Operand::Memory { base, index, disp, size, segment: _ } => {
-            let bus = bus.borrow();
             let addr = calc_address(&registers, base, index, disp);
             match size {
-                OperandSize::Byte => bus.read_u8(addr).unwrap() as u64,
-                OperandSize::Word => bus.read_u16(addr).unwrap() as u64,
-                OperandSize::Dword => bus.read_u32(addr).unwrap() as u64,
-                OperandSize::Qword => bus.read_u64(addr).unwrap(),
+                OperandSize::Byte => bus.read_u8(addr)? as u64,
+                OperandSize::Word => bus.read_u16(addr)? as u64,
+                OperandSize::Dword => bus.read_u32(addr)? as u64,
+                OperandSize::Qword => bus.read_u64(addr)?,
             }
         }
-    }
+    })
 }
 
 pub fn read_operand(
-    bus: &SharedBus,
+    bus: &Bus,
     registers: &Registers,
     op: &Operand) -> Result<i64> {
     match op {
@@ -103,7 +104,6 @@ pub fn read_operand(
         Operand::Imm(val) => Ok(*val),
         Operand::Memory { base, index, disp, size, segment: _ } => {
             let addr = calc_address(registers, *base, *index, *disp);
-            let bus = bus.borrow();
             let val = match size {
                 OperandSize::Byte => bus.read_u8(addr)? as i64,
                 OperandSize::Word => bus.read_u16(addr)? as i64,
@@ -116,7 +116,7 @@ pub fn read_operand(
 }
 
 pub fn write_operand_u64(
-    bus: &SharedBus,
+    bus: &mut Bus,
     registers: &mut Registers,
     operand: Operand,
     value: u64
@@ -128,7 +128,7 @@ pub fn write_operand_u64(
         Operand::Memory { base, index, disp, size, segment } => {
             let addr = calc_address(&registers, base, index, disp);
             debug!("write_operand_u64 0x{:X} -> 0x{:X}", addr, value);
-            bus.borrow_mut().write_u64(addr, value)?;
+            bus.write_u64(addr, value)?;
         },
         Operand::Imm(_) => {
             bail!("Invalid pop operand: immediate");
@@ -139,7 +139,7 @@ pub fn write_operand_u64(
 }
 
 pub fn write_operand(
-    bus: &SharedBus,
+    bus: &mut Bus,
     registers: &mut Registers,
     op: Operand,
     value: u64) -> Result<()> {
@@ -150,7 +150,6 @@ pub fn write_operand(
         }
         Operand::Memory { base, index, disp, size, segment: _ } => {
             let addr = calc_address(registers, base, index, disp);
-            let mut bus = bus.borrow_mut();
             match size {
                 OperandSize::Byte => {
                     debug!("write_operand 0x{:X} -> 0x{:X}", addr, value);
@@ -178,4 +177,27 @@ pub fn write_operand(
             Err(anyhow::anyhow!("Cannot write to immediate operand"))
         }
     }
+}
+
+pub fn get_memory_region(file_path: &Path) -> Result<MemoryRegion> {
+    let (start_addr, size) = {
+        let stem = file_path.file_stem().unwrap().to_string_lossy();
+        let mut parts = stem.split('_');
+        let addr_str = parts.next().unwrap();
+        let size_str = parts.next().unwrap();
+        
+        let addr_val = u64::from_str_radix(addr_str.trim_start_matches("0x"), 16).unwrap();
+        let size_val = size_str.parse::<usize>().unwrap();
+
+        (addr_val, size_val)
+    };
+
+    let mut file = File::open(file_path)?;
+    let mut data = vec![];
+    file.read_to_end(&mut data)?;
+
+    let mut region = MemoryRegion::new(start_addr, size);
+    region.write_bytes(start_addr, &data)?;
+
+    Ok(region)
 }
