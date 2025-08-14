@@ -1,18 +1,25 @@
-use anyhow::{bail, Result};
-use decompiler_lib::decompiler::Disassembler;
+use anyhow::Result;
 use log::info;
-
-use crate::{cpu::Cpu, decoder::Decoder, emulator::snapshot::{self, Snapshot}};
+use crate::{cpu::Cpu, decoder::Decoder, emulator::snapshot::{Snapshot, SnapshotStore}};
 
 pub struct Emulator<'a> {
     cpu: Cpu<'a>,
     decoder: Decoder<'a>,
-    tick_count: u64,
+    snapshot_store: &'a SnapshotStore,
+    tick_count: u64
 }
 
 impl<'a> Emulator<'a> {
-    pub fn new(cpu: Cpu<'a>, decoder: Decoder<'a>) -> Self {
-        Self { cpu, decoder, tick_count: 0 }
+    pub fn new(
+        cpu: Cpu<'a>,
+        decoder: Decoder<'a>,
+        snapshot_store: &'a SnapshotStore) -> Self {
+        Self {
+            cpu,
+            decoder,
+            snapshot_store,
+            tick_count: 0
+        }
     }
 
     pub fn run(&mut self) -> Result<()> {
@@ -26,14 +33,12 @@ impl<'a> Emulator<'a> {
             self.cpu.handle(instruction)?;
             self.tick_count += 1;
 
-            if self.tick_count % 100000 == 0 {
+            if self.tick_count % 200000 == 0 {
                 let snapshot = self.snapshot()?;
                 info!("Saving snapshot");
-                snapshot.save()?;
+                self.snapshot_store.save(&snapshot)?;
             }
         }
-
-        Ok(())
     }
 
     pub fn snapshot(&self) -> Result<Snapshot> {

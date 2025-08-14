@@ -1,7 +1,10 @@
+use std::num::NonZeroUsize;
+
 use capstone::{arch::{self, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 
 use anyhow::Result;
 use decompiler_lib::decompiler::types::Instruction;
+use lru::LruCache;
 
 use crate::emulator::Bus;
 
@@ -18,7 +21,8 @@ fn build_capstone() -> Result<Capstone> {
 
 pub struct Decoder<'a> {
     bus: &'a Bus,
-    cs: Capstone
+    cs: Capstone,
+    cache: LruCache<u64, Instruction>,
 }
 
 impl<'a> Decoder<'a> {
@@ -27,11 +31,16 @@ impl<'a> Decoder<'a> {
 
         Ok(Self { 
             bus,
-            cs
+            cs,
+            cache: LruCache::new(NonZeroUsize::new(10).unwrap())
         })
     }
 
-    pub fn decode_next(&self, rip: u64) -> Result<Instruction> {
+    pub fn decode_next(&mut self, rip: u64) -> Result<Instruction> {
+
+        if let Some(instr) = self.cache.get(&rip) {
+            return Ok(instr.to_owned())
+        }
 
         let mut code = vec![0u8; 15];
         self.bus.read_exact(rip, &mut code)?;
@@ -41,7 +50,8 @@ impl<'a> Decoder<'a> {
         let cs_insn = instructions.get(0)
             .ok_or_else(|| anyhow::anyhow!("Failed to decode instruction at {:#x}", rip))?;
 
-        let instruction = (cs_insn, &self.cs).into();
+        let instruction: Instruction = (cs_insn, &self.cs).into();
+        self.cache.push(rip, instruction.clone());
 
         Ok(instruction)
     }

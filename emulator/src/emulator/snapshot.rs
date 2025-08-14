@@ -1,9 +1,62 @@
-use std::path::Path;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use std::{fs::File, io::BufWriter};
 use anyhow::Result;
 use bincode::{Decode, Encode};
 use chrono::Local;
+use log::info;
 use crate::emulator::{MemoryRegion, Registers};
+
+pub struct SnapshotStore {
+    save_dir: PathBuf,
+}
+
+impl SnapshotStore {
+    pub fn new() -> Result<Self> {
+        let current_exe = std::env::current_exe()?;
+        let save_dir = current_exe.parent().unwrap().to_path_buf().join("snapshots");
+        fs::create_dir_all(&save_dir)?;
+        Ok(Self { save_dir })
+    }
+
+    pub fn latest(&self) -> Option<Snapshot> {
+        let mut latest: Option<(SystemTime, PathBuf)> = None;
+
+        for entry in fs::read_dir(&self.save_dir).ok()? {
+            let entry = entry.ok()?;
+            let path = entry.path();
+
+            if path.extension().and_then(|ext| ext.to_str()) != Some("snapshot") {
+                continue;
+            }
+
+            let metadata = entry.metadata().ok()?;
+            let created = metadata.created().or_else(|_| metadata.modified()).ok()?;
+
+            match &latest {
+                Some((latest_time, _)) if created <= *latest_time => {}
+                _ => latest = Some((created, path)),
+            }
+        }
+
+        latest.map(|(_, path)| Snapshot::get(&path)).flatten()
+    }
+
+    pub fn save(&self, snapshot: &Snapshot) -> Result<PathBuf> {
+        let timestamp = Local::now().format("%H_%M_%S").to_string();
+        let file_name = format!("snapshot_{}.snapshot", timestamp);
+        let file_path = self.save_dir.join(file_name);
+
+        let file = File::create(&file_path)?;
+        let mut writer = BufWriter::new(file);
+
+        let config = bincode::config::standard();
+        bincode::encode_into_std_write(snapshot, &mut writer, config)?;
+
+        Ok(file_path)
+    }
+}
 
 #[derive(Debug, Default, Encode, Decode, Clone)]
 pub struct Snapshot {
@@ -14,18 +67,6 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    pub fn save(self) -> Result<()> {
-        
-        let timestamp = Local::now().format("%H_%M_%S").to_string();
-        let filename = format!("snapshot_{}.snapshot", timestamp);
-        let file = File::create(filename)?;
-        let mut writer = BufWriter::new(file);
-
-        let config = bincode::config::standard();
-        bincode::encode_into_std_write(self, &mut writer, config)?;
-
-        Ok(())
-    }
 
     pub fn get(path: &Path) -> Option<Self> {
         if !path.exists() {
@@ -37,6 +78,7 @@ impl Snapshot {
             Err(_) => return None,
         };
 
+        info!("Using snapshot {:?}", path);
         let config = bincode::config::standard();
         bincode::decode_from_std_read(&mut file, config).ok()
     }

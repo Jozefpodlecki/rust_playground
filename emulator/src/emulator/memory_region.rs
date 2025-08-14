@@ -1,11 +1,25 @@
 use anyhow::{Result, bail};
 use bincode::{Decode, Encode};
+use std::fmt;
 
 #[derive(Debug, Encode, Decode, Clone)]
 pub struct MemoryRegion {
     pub start_addr: u64,
     pub end_addr: u64,
     pub data: Vec<u8>,
+}
+
+impl fmt::Display for MemoryRegion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let size = self.data.len();
+        write!(
+            f,
+            "Region 0x{:X} - 0x{:X} (size: {} bytes)",
+            self.start_addr,
+            self.end_addr,
+            size
+        )
+    }
 }
 
 impl MemoryRegion {

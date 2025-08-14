@@ -1,9 +1,10 @@
-use std::{fs::File, io::Read, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::File, io::Read, path::{Path, PathBuf}};
 
 use decompiler_lib::decompiler::types::{ConditionCode, Operand, OperandSize, Register};
 use anyhow::{bail, Result};
 use log::{debug, info};
-use crate::{bus::SharedBus, emulator::{Bus, MemoryRegion}, registers::Registers};
+use serde_json::Value;
+use crate::{bus::SharedBus, emulator::{snapshot::Snapshot, Bus, MemoryRegion}, registers::Registers};
 
 pub fn calc_address(
     registers: &Registers,
@@ -200,4 +201,49 @@ pub fn get_memory_region(file_path: &Path) -> Result<MemoryRegion> {
     region.write_bytes(start_addr, &data)?;
 
     Ok(region)
+}
+
+pub fn create_stack() -> MemoryRegion {
+    let stack_size = 64 * 1024usize;
+    let stack_base = 0x7fff_ffff_0000 as u64;
+    MemoryRegion::new(stack_base, stack_size)
+}
+
+pub fn create_snapshot() -> Result<Snapshot> {
+    
+    let mut regions = vec![];
+    let base_path = PathBuf::from(r"C:\repos\rust_playground\app\target\debug\output\LOSTARK\PE\");
+
+    let file_path = base_path.join(r"summary.json");
+    let file = File::open(file_path)?;
+    let map: HashMap<String, Value> = serde_json::from_reader(file)?;
+    let value = map.get("entry_point_va").unwrap();
+    let rip = u64::from_str_radix(value.as_str().unwrap().trim_start_matches("0x"), 16).unwrap();
+
+    let file_path = base_path.join(r"0x147E25000_4096_bpcbpmed.section");
+    let region = get_memory_region(&file_path)?;
+    regions.push(region);
+
+    let file_path = base_path.join(r"0x1475C3000_8790016_nuztkydr.section");
+    let region = get_memory_region(&file_path)?;
+    regions.push(region);
+
+    let file_path = base_path.join(r"0x140000000_4096_dos.data");
+    let region = get_memory_region(&file_path)?;
+    regions.push(region);
+
+    let file_path = base_path.join(r"0x1469EA000_12423168_2020202020202020.section");
+    let region = get_memory_region(&file_path)?;
+    regions.push(region);
+
+    let region = create_stack();
+    let rsp = region.end_addr;
+    regions.push(region);
+
+    Ok(Snapshot { 
+        rip,
+        rflags: 0,
+        registers: Registers::new(rsp),
+        regions
+    })
 }
