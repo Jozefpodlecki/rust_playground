@@ -1,7 +1,6 @@
 use log::*;
-use object::Object;
-use serde::Serialize;
-use std::{collections::{BTreeMap, HashMap, HashSet}, fs::{self, File}, io::{BufWriter, Write}, path::PathBuf};
+use byteorder::{LittleEndian, ReadBytesExt};
+use std::{collections::{BTreeMap, HashMap, HashSet}, fs::{self, File}, io::{BufWriter, ErrorKind, Write}, path::PathBuf};
 use anyhow::*;
 
 use crate::{config::DisassemblerConfig, disassembler::{utils::DisassemblerExtensions, Disassembler}, misc::export_dump::ExportDump, process::{ProcessDump, ProcessModule, ProcessModuleExport}, processor::ProcessorStep};
@@ -20,11 +19,7 @@ impl ProcessorStep for ParseDumpStep {
 
     fn can_execute(&self) -> bool {
         
-        if !self.dump_path.exists() {
-            return false
-        }
-        
-        true
+        self.dump_path.exists()
     }
 
     fn execute(self: Box<Self>) -> Result<()> {
@@ -43,6 +38,29 @@ impl ProcessorStep for ParseDumpStep {
                 Some(_) => continue,
                 None => continue
             };
+
+            if block.is_readable {
+                let addresses: Vec<u64> = vec![
+                    0xFFFEB457AD30,
+                    0xFFFEB45AC500
+                ];
+                info!("Scanning 0x{:X} + {}", block.base, block.size);
+                let mut reader = block.read_data()?;
+                let mut offset = 0;
+                
+                loop {
+                    match reader.read_u64::<LittleEndian>() {
+                        std::result::Result::Ok(addr) => {
+                            offset += 8;
+                            if addresses.contains(&addr) {
+                                info!("Found address 0x{:X} at offset 0x{:X}", addr, offset);
+                            }
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::UnexpectedEof => break, // reached end
+                        Err(e) => return Err(e.into()), // propagate other errors
+                    }
+                }
+            }
 
             if block.is_executable {
                 let reader = block.read_data()?;
@@ -76,13 +94,13 @@ impl ParseDumpStep {
         exe_path: PathBuf,
         dest_path: PathBuf) -> Self {
         let file_stem = exe_path.file_stem().unwrap().to_string_lossy().to_string();
-        let output_path = dest_path.join(file_stem);
+        let dest_path = dest_path.join(file_stem);
         let dump_path = ProcessDump::get_path(&exe_path, &dest_path);
 
         Self {
             config,
             dump_path,
-            dest_path: output_path
+            dest_path
         }
     }
 }

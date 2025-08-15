@@ -1,8 +1,19 @@
 use std::{collections::HashMap, path::Path};
 use anyhow::*;
 use duckdb::{CachedStatement, Connection as DuckConnection, Params};
+use log::info;
+use serde::Serialize;
 
 use crate::sql_migrator::{types::ColumnAction, utils::{to_camel_case, to_snake_case}};
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct Record {
+    id: u64,
+    sub_id: Option<u64>,
+    data: HashMap<String, serde_json::Value>
+}
+
 
 pub struct DuckDb(DuckConnection);
 
@@ -24,70 +35,54 @@ impl DuckDb {
         Ok(())
     }
 
-    pub fn get_skills(&self) -> Result<Vec<HashMap<String, serde_json::Value>>> {
-        let query = r"SELECT * FROM data.Skill";
-
-        let mut statement = self.0.prepare(query)?;
-        let column_names: Vec<(usize, String)> = statement
-            .column_names()
+    pub fn get_table_data(&self, table_name: &str) -> Result<Vec<Record>> {
+        let query = format!(r"SELECT * FROM {} LIMIT 1", table_name);
+        let mut statement = self.0.prepare(&query)?;
+        let _ = statement.query([])?;
+        let column_names: Vec<String> = statement.column_names();
+        let filtered_column_names: Vec<(usize, String)> = 
+            column_names
             .iter()
-            // .filter(|&pr| pr != "Id" && "pr" != "SubId" )
+            .cloned()
             .enumerate()
             .map(|(i, name)| (i, name.to_string()))
+            .filter(|pr| pr.1 != "Id" && pr.1 != "SubId" )
             .collect();
+
+        let has_sub_id = column_names.contains(&"SubId".to_string());
+
+        let query = format!(r"SELECT * FROM {}", table_name);
+        let mut statement = self.0.prepare(&query)?;
         let mut rows = statement.query([])?;
-        let mut records: Vec<HashMap<String, serde_json::Value>> = vec![];
+        let mut records: Vec<Record> = vec![];
 
         while let Some(row) = rows.next()? {
             let mut map: HashMap<String, serde_json::Value> = HashMap::new();
+            let id = row.get::<_, u64>(0)?;
+            let sub_id = if has_sub_id { Some(row.get::<_, u64>(1)?) } else { None };
 
-            for (it, name) in column_names.clone() {
+            for (it, name) in filtered_column_names.clone() {
                 let value = row.get_ref(it)?;
                 let json_value = match value {
                     duckdb::types::ValueRef::Null => serde_json::Value::Null,
                     duckdb::types::ValueRef::Boolean(value) => {
-                        if !value {
-                            serde_json::Value::Null
-                        }
-                        else {
-                            serde_json::Value::Bool(value)
-                        }
+                        serde_json::Value::Bool(value)
                     }
                     duckdb::types::ValueRef::TinyInt(value) => {
-                        if value == 0 {
-                            serde_json::Value::Null
-                        }
-                        else {
-                            let value = value.into();
-                            serde_json::Value::Number(value)
-                        }
+                        let value = value.into();
+                        serde_json::Value::Number(value)
                     },
                     duckdb::types::ValueRef::SmallInt(value) => {
-                        if value == 0 {
-                            serde_json::Value::Null
-                        }
-                        else {
-                            let value = value.into();
-                            serde_json::Value::Number(value)
-                        }
+                        let value = value.into();
+                        serde_json::Value::Number(value)
                     },
                     duckdb::types::ValueRef::Int(value) => {
-                        if value == 0 {
-                            serde_json::Value::Null
-                        }
-                        else {
-                            let value = value.into();
-                            serde_json::Value::Number(value)
-                        }
+                        let value = value.into();
+                        serde_json::Value::Number(value)
                     },
                     duckdb::types::ValueRef::BigInt(value) => {
-                        if value == 0 {
-                            serde_json::Value::Null
-                        }
-                        else {
-                            let value = value.into();
-                            serde_json::Value::Number(value)
-                        }
+                        let value = value.into();
+                        serde_json::Value::Number(value)
                     },
                     duckdb::types::ValueRef::Text(bytes) => {
 
@@ -100,7 +95,12 @@ impl DuckDb {
                             serde_json::Value::String(value)
                         }
                     }
-                    _ => todo!()
+                    duckdb::types::ValueRef::Double(value) => {
+                        let value = value.into();
+                        let value = serde_json::Number::from_f64(value).unwrap();
+                        serde_json::Value::Number(value)
+                    }
+                    value => todo!("{:?}", value)
                 };
 
                 if !json_value.is_null() {
@@ -109,7 +109,13 @@ impl DuckDb {
 
             }
 
-            records.push(map);
+            let record = Record {
+                id,
+                sub_id,
+                data: map
+            };
+
+            records.push(record);
         }
 
         Ok(records)
@@ -149,7 +155,6 @@ impl DuckDb {
         while let Some(row) = rows.next()? {
             let schema: String = row.get(0)?;
             let table: String = row.get(1)?;
-            let column: String = row.get(2)?;
 
             let select = format!(
                 "SELECT Id, '{}' AS table_name FROM {}.{}",
@@ -240,7 +245,7 @@ impl DuckDb {
             let column: String = row.get(2)?;
 
             script += &format!(
-                "ALTER TABLE \"{}\".\"{}\" ADD PRIMARY KEY (\"{}\");\n",
+                "ALTER TABLE \"{}\".\"{}\" ADD PRIMARY KEY ({});\n",
                 schema, table, column
             );
         }
@@ -471,13 +476,14 @@ impl DuckDb {
         let mut script = String::new();
 
         for (table_name, columns) in table_columns {
-            
+            info!("Updating {}", table_name);
+
             for column_name in columns.iter() {
                 let stmt = format!(
                     r#"UPDATE {} t
                     SET "{}" = gme.Message
                     FROM data.GameMsg_English gme
-                    WHERE gme.Key = t.{};"#,
+                    WHERE gme.Id = t.{};"#,
                     table_name, column_name, column_name
                 );
                 script.push_str(&stmt);

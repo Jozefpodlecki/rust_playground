@@ -41,7 +41,7 @@ impl<'a> Disassembler<MemorySource<'a>> {
     }
 
     pub fn disasm_to_addr(&self, addr: u64) -> Result<DisasmStream<Take<Cursor<&'a [u8]>>>> {
-        let mut reader = Cursor::new(self.source.0);
+        let reader = Cursor::new(self.source.0);
         let reader = reader.take(addr - self.addr);
         DisasmStream::new(reader, addr, self.buf_size)
     }
@@ -71,7 +71,7 @@ impl Disassembler<FileSource> {
     }
 
     pub fn disasm_to_addr(&self, addr: u64) -> Result<DisasmStream<Take<BufReader<File>>>> {
-        let mut reader = BufReader::new(self.source.0.try_clone()?);
+        let reader = BufReader::new(self.source.0.try_clone()?);
         let reader = reader.take(addr - self.addr);
         DisasmStream::new(reader, addr, self.buf_size)
     }

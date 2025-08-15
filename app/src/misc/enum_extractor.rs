@@ -36,7 +36,7 @@ pub static WORDS_MAP: Lazy<HashSet<&str>> = Lazy::new(|| {
         "period", "team", "match", "lobby", "troop", "wallpaper", "auction", "trophy", "remove",
         "gamepad", "vibration", "skill", "constraint", "voyage", "continent", "quest", "branch",
         "feature", "apply", "target", "coop", "competition", "reward", "member", "monitoring",
-        "zone", "item", "durability", "ability", "buddy", "penalty", "excess", "property",
+        "zone", "durability", "ability", "buddy", "penalty", "excess", "property",
         "ref", "table", "projectile", "trace", "idle", "move", "aossu", "event", "condition",
         "playguide", "pc", "delete", "code", "medal", "rank", "mod", "wave", "colosseum",
         "team", "observer", "mail", "reason", "welcome", "boost", "card", "position", "warboard",
@@ -86,7 +86,16 @@ pub static WORDS_MAP: Lazy<HashSet<&str>> = Lazy::new(|| {
         "tag", "player", "transfer", "congestion", "sub", "buff", "enhance", "key", "base", "merdiem", "provider",
         "widget", "disband", "cmd", "task", "donation", "heart", "site", "exchange", "action", "popup",
         "accessory", "dictionary", "inherit", "polish", "proximity", "stack", "recovery", "produce", "hotkey",
-        "talk", "gender", "judgement", "field", "second", "pattern", "denominator", "adjust", "background"
+        "talk", "gender", "judgement", "field", "second", "pattern", "denominator", "adjust", "background",
+        "value", "theft", "confirm", "delay", "order", "stash", "mercenary", "recruit", "assist", "icon",
+        "connect", "vote", "burst", "mass", "detect", "list", "calendar", "bubble", "flying", "recycle",
+        "chain", "exp", "macro", "select", "daily", "overlap", "helmet", "preview", "ingame", "consume",
+        "shock", "energy", "vessel", "survival", "memo", "cube", "modern", "moderation", "throne", "of", "way",
+        "despawn", "replace", "board", "path", "merge", "inspect", "appearance", "activation", "repairable",
+        "freeze", "node", "destroy", "mind", "dot", "shield", "decision", "unique", "armor", "farm", "outside",
+        "commendation", "shutdown", "bound", "visible", "not", "layer", "coma", "display", "highlight", 
+        "extreme", "guess", "normal", "feast", "exclusive", "divine", "ride", "getoff", "atk", "wakeup",
+        "deco", "application", "policy", "on", "corps", "fury"
     ].into_iter().collect()
 });
 

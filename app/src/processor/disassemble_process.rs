@@ -17,11 +17,7 @@ impl ProcessorStep for DisassembleProcessStep {
 
     fn can_execute(&self) -> bool {
         
-        if !self.dump_path.exists() {
-            return false
-        }
-
-        true
+        self.dump_path.exists()
     }
 
     fn execute(self: Box<Self>) -> Result<()> {
@@ -30,7 +26,6 @@ impl ProcessorStep for DisassembleProcessStep {
         fs::create_dir_all(&self.dest_path)?;
        
         let mut dump = ProcessDump::open(self.dump_path)?;
-        // let disassembler = Disassembler::from_memory()?;
         let regions_path = self.dest_path.join("regions");
         fs::create_dir_all(&regions_path)?;
 
@@ -87,13 +82,13 @@ impl DisassembleProcessStep {
         exe_path: PathBuf,
         dest_path: PathBuf) -> Self {
         let file_stem = exe_path.file_stem().unwrap().to_string_lossy().to_string();
-        let output_path = dest_path.join(file_stem);
+        let dest_path = dest_path.join(file_stem);
         let dump_path = ProcessDump::get_path(&exe_path, &dest_path);
 
         Self {
             config,
             dump_path,
-            dest_path: output_path
+            dest_path,
         }
     }
 }

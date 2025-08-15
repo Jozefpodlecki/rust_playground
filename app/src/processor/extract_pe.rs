@@ -1,11 +1,13 @@
-use std::{collections::HashMap, fs::{self, File}, io::{Cursor, Read, Write}, path::PathBuf};
+use std::{collections::HashMap, fmt::format, fs::{self, File}, io::{Cursor, Read, Write}, path::PathBuf};
 use anyhow::Result;
 use log::*;
 use object::{read::pe::PeFile64, LittleEndian, Object, ObjectSection};
+use pelite::PeFile;
 use serde::Serialize;
-use crate::{disassembler::{utils::DisassemblerExtensions, Disassembler}, processor::ProcessorStep};
+use crate::{disassembler::{utils::DisassemblerExtensions, Disassembler}, processor::ProcessorStep, utils::is_folder_empty};
 
 pub struct ExtractPeStep {
+    file_name: String,
     exe_path: PathBuf,
     dest_path: PathBuf,
 }
@@ -33,21 +35,41 @@ impl ProcessorStep for ExtractPeStep {
 
     fn can_execute(&self) -> bool {
       
-        true
+        !self.dest_path.exists()
+        || is_folder_empty(&self.dest_path).unwrap_or_default()
+        // true
     }
 
     fn execute(self: Box<Self>) -> Result<()> {
 
-        let file_name = self.exe_path
-            .file_stem()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        let dest_path = self.dest_path.join(&file_name).join("PE");
+        let dest_path = self.dest_path;
+        fs::create_dir_all(&dest_path)?;
 
-        if !dest_path.exists() {
-            fs::create_dir_all(&dest_path)?;
-        }
+        // let data = fs::read(self.exe_path)?;
+        // let file = PeFile::from_bytes(&data)?;
+        
+        // let resources = file.resources()?;
+
+        // let icons = resources.icons();
+
+        // for icon in icons {
+        //     let icon = match icon {
+        //         Ok(icon) => icon,
+        //         Err(_) => continue,
+        //     };
+            
+        //     let group = icon.1;
+
+        //     for entry in group.entries() {
+        //         // group.image(id)
+        //         let contents = group.image(entry.nId)?;
+        //         fs::write(format!("{}_image_{}.ico", self.file_name, entry.nId), contents)?;
+        //         info!("{}", entry.nId);
+        //     }
+            
+        // }
+
+        // return Ok(());
 
         let data = fs::read(self.exe_path)?;
 
@@ -59,7 +81,7 @@ impl ProcessorStep for ExtractPeStep {
         let address_of_entry_point = image_base + address_of_entry_point_rva as u64;
 
         let mut summary = PeSummary {
-            file_name: file_name.clone(),
+            file_name: self.file_name.clone(),
             entry_point_rva: format!("0x{:X}", address_of_entry_point_rva),
             entry_point_va: format!("0x{:X}", address_of_entry_point),
             image_base: format!("0x{:X}", image_base),
@@ -83,6 +105,7 @@ impl ProcessorStep for ExtractPeStep {
                 Ok(str) => str.trim().to_string(),
                 Err(_) => hex::encode(sec_name_bytes),
             };
+            
             let address = section.address();
             let size = section.size();
             let file_name = format!("0x{:X}_{}_{}.section", address, size, sec_name);
@@ -96,7 +119,9 @@ impl ProcessorStep for ExtractPeStep {
                 info!("Skipping existing section {}", file_name);
             }
 
-            if address_of_entry_point == address {
+            if address_of_entry_point <= address
+                && address_of_entry_point + size > address {
+                info!("Disassembling text section {}", file_name);
                 let data = section.data()?;
                 let disassembler = Disassembler::from_memory(data, address, 1000)?;
                 let stream = disassembler.disasm_all()?;
@@ -108,7 +133,7 @@ impl ProcessorStep for ExtractPeStep {
             summary.sections.push(SectionSummary {
                 name: sec_name,
                 address: format!("0x{:X}", address),
-                size: section.size(),
+                size,
             });
         }
 
@@ -129,8 +154,15 @@ impl ExtractPeStep {
         exe_path: PathBuf,
         dest_path: PathBuf
     ) -> Self {
+        let file_name = exe_path
+            .file_stem()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
+        let dest_path = dest_path.join(&file_name).join("PE");
 
         Self {
+            file_name,
             exe_path,
             dest_path,
         }

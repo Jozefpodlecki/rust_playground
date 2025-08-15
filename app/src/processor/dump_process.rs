@@ -40,9 +40,6 @@ impl ProcessorStep for DumpProcessStep {
         let summary_path = self.dest_path.join("summary.json");
         create_dump_summary(&dump, summary_path)?;
 
-        let export_file_path = self.dest_path.join("exports.json");
-        let export_dump = ExportDump::create(&export_file_path, &dump.modules, &dump.exports)?;
-
         Ok(())
     }
 }

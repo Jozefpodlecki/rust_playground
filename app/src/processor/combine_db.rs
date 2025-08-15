@@ -40,17 +40,35 @@ impl ProcessorStep for CombineDbStep {
        
         if let Some(duckdb_path) = get_latest_db(&output_db_path) {
             info!("Using latest db");
-            // let merger = DbMerger::new(&duckdb_path, 1000)?;
-            let connection = DuckDb::new(&duckdb_path)?;
+            let duck_db = DuckDb::new(&duckdb_path)?;
 
-            let records = connection.get_skills()?;
+            // let records = duck_db.get_table_data("data.SkillEffect")?;
+            // let file_path = output_db_path.join("skill_effect.json");
+            // let writer = File::create(file_path)?;
+            // serde_json::to_writer_pretty(writer, &records)?;
 
-            let file_path = output_db_path.join("skills.json");
-            let writer = File::create(file_path)?;
-            serde_json::to_writer_pretty(writer, &records)?;
-            // merger.post_work()
+            // let records = duck_db.get_table_data("data.Npc")?;
+            // let file_path = output_db_path.join("npc.json");
+            // let writer = File::create(file_path)?;
+            // serde_json::to_writer_pretty(writer, &records)?;
+
+            // let records = duck_db.get_table_data("data.Skill")?;
+            // let file_path = output_db_path.join("skill.json");
+            // let writer = File::create(file_path)?;
+            // serde_json::to_writer_pretty(writer, &records)?;
+
+            // let records = duck_db.get_table_data("data.SkillBuff")?;
+            // let file_path = output_db_path.join("skill_buff.json");
+            // let writer = File::create(file_path)?;
+            // serde_json::to_writer_pretty(writer, &records)?;
+
+            // let records = duck_db.get_table_data("data.Item")?;
+            // let file_path = output_db_path.join("item.json");
+            // let writer = File::create(file_path)?;
+            // serde_json::to_writer_pretty(writer, &records)?;
         }
-        else {
+        else
+        {
             let duckdb_path = create_new_db_file(&output_db_path);
 
             let merger = DbMerger::new(&duckdb_path, 1000)?;
@@ -63,7 +81,7 @@ impl ProcessorStep for CombineDbStep {
             merger.insert_lpk_metadata(&lpk_path, cipher_key, aes_xor_key)?;
             let summary = merger.post_work()?;
 
-            let summary_path = output_path.join("refactor.sql");
+            let summary_path = output_db_path.join("refactor.sql");
             save_summary_script(summary, &summary_path)?;
         }
 

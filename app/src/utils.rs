@@ -2,6 +2,11 @@ use std::{fs::{self, File}, io::{BufWriter, Read, Write}, path::Path};
 
 use anyhow::*;
 
+pub fn is_folder_empty(path: &Path) -> Result<bool> {
+    let mut entries = fs::read_dir(path)?;
+    Ok(entries.next().is_none())
+}
+
 pub fn save_pretty_hex_dump_from_slice<P: AsRef<Path>>(data: Vec<u8>, output_path: P, bytes_per_line: usize) -> Result<()> {
     
     let mut writer = BufWriter::new(File::create(&output_path)

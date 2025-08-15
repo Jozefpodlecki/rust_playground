@@ -9,6 +9,7 @@ mod disassemble_process;
 mod cleanup_directory;
 mod parse_dump;
 mod extract_pe;
+mod extract_icons;
 
 pub use copy_files::CopyFileStep;
 pub use extract_lpk::ExtractLpkStep;
@@ -19,6 +20,7 @@ pub use cleanup_directory::CleanupDirectoryStep;
 pub use parse_dump::ParseDumpStep;
 pub use extract_pe::ExtractPeStep;
 pub use combine_db::CombineDbStep;
+pub use extract_icons::ExtractIconsStep;
 
 use log::info;
 

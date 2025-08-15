@@ -109,19 +109,19 @@ pub fn create_dump_summary(dump: &ProcessDump, summary_path: PathBuf) -> Result<
 
     for (key, value) in dump.modules.iter() {
 
-        let data = std::fs::read(&value.file_path)?;
-        let obj_file = object::File::parse(&*data)?;
+        // let data = std::fs::read(&value.file_path)?;
+        // let obj_file = object::File::parse(&*data)?;
 
-        let image_base = obj_file.relative_address_base();
-        for export in obj_file.exports()? {
-            let name_bytes = export.name();
-            let address = export.address() - image_base;
-            let name = match std::str::from_utf8(name_bytes) {
-                std::result::Result::Ok(s) => s.to_string(),
-                Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
-            };
+        // let image_base = obj_file.relative_address_base();
+        // for export in obj_file.exports()? {
+        //     let name_bytes = export.name();
+        //     let address = export.address() - image_base;
+        //     let name = match std::str::from_utf8(name_bytes) {
+        //         std::result::Result::Ok(s) => s.to_string(),
+        //         Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
+        //     };
 
-        }
+        // }
 
         let module = ModuleSummary {
             order: value.order,
@@ -132,6 +132,7 @@ pub fn create_dump_summary(dump: &ProcessDump, summary_path: PathBuf) -> Result<
             end_addr: format!("0x{:X}", value.base + value.size as u64),
 
         };
+        
         summary.modules.insert(key.to_string(), module);
     }
 

@@ -75,6 +75,9 @@ fn main() -> Result<()> {
         )));
     }
 
+    processor.add_step(Box::new(ExtractIconsStep::new(
+        args.output_path.join("upk"),
+        args.output_path.clone())));
     processor.add_step(Box::new(CombineDbStep::new(args)));
 
     if let Err(err) = processor.run() {

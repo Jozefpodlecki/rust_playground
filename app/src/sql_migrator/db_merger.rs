@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::{Path, PathBuf}};
 use anyhow::*;
-use log::info;
+use log::*;
 use crate::{get_lpks, misc::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files}, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
 
 #[derive(Debug, Default)]
@@ -47,73 +47,74 @@ impl DbMerger {
 
         let mut result = String::from("");
 
-        info!("generate_update_localization_script");
+        info!("Resolving i18n");
         let script = &self.connection.generate_update_localization_script()?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        let test = self.connection.generate_rust_struct("data", "Ability")?;
-        let mut file = File::create("models.rs")?;
-        file.write_all(test.as_bytes())?;
+        // info!("generating structs");
+        // let test = self.connection.generate_rust_struct("data", "Ability")?;
+        // let mut file = File::create("models.rs")?;
+        // file.write_all(test.as_bytes())?;
 
-        let script = include_str!("./scripts/post_migration.sql");
-        self.connection.execute_batch(script)?;
-        result += script;
-
-        info!("generate_drop_empty_columns");
+        info!("Dropping empty columns");
         let comment_column_map = self.connection.get_column_values("Comment")?;
         let script = &self.connection.generate_drop_empty_columns_script("Comment", comment_column_map);
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("drop_empty_tables");
+        info!("Dropping empty tables");
         let script = &self.connection.generate_drop_empty_tables_script()?;
         self.connection.execute_batch(script)?;
         result += script;
         
-        info!("drop_unused_secondary_keys");
+        info!("Dropping unused secondary keys");
         let script = &self.connection.generate_drop_unused_secondary_keys_script("SecondaryKey")?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("rename PrimaryKey");
+        info!("Renaming PrimaryKey");
         let script = &self.connection.generate_column_script("PrimaryKey", ColumnAction::Rename("Id".to_string()))?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("rename SecondaryKey");
+        info!("Renaming SecondaryKey");
         let script = &self.connection.generate_column_script("SecondaryKey", ColumnAction::Rename("SubId".to_string()))?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("rename Desc");
+        info!("Renaming column Desc");
         let script = &self.connection.generate_column_script("Desc", ColumnAction::Rename("Description".to_string()))?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("drop Milestone");
+        info!("Dropping Milestone");
         let script = &self.connection.generate_column_script("Milestone", ColumnAction::Drop)?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("drop SourceRow");
+        info!("Dropping column SourceRow");
         let script = &self.connection.generate_column_script("SourceRow", ColumnAction::Drop)?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("integer_downgrade");
+        info!("Adjusting data types");
         let script = &self.connection.generate_integer_downgrade_script()?;
         self.connection.execute_batch(script)?;
         result += script;
 
-        info!("primary_keys");
+        info!("Generating primary keys");
         let script = &self.connection.generate_primary_keys_script()?;
-        self.connection.execute_batch(script)?;
+        if let Err(err) = self.connection.execute_batch(script) {
+            error!("{}", err);
+        }
         result += script;
 
-        info!("primary_keys");
+        info!("Creating search view");
         let script = &self.connection.generate_global_search_view()?;
-        self.connection.execute_batch(script)?;
+        if let Err(err) = self.connection.execute_batch(script) {
+            error!("{}", err);
+        }
         result += script;
 
         self.connection.execute_batch("CHECKPOINT;")?;
