@@ -18,6 +18,7 @@ pub use disassemble_process::DisassembleProcessStep;
 pub use cleanup_directory::CleanupDirectoryStep;
 pub use parse_dump::ParseDumpStep;
 pub use extract_pe::ExtractPeStep;
+pub use combine_db::CombineDbStep;
 
 use log::info;
 
@@ -39,7 +40,7 @@ impl Processor {
     }
 
     pub fn add_step(&mut self, step: Box<dyn ProcessorStep>) {
-        info!("added step {}", step.name());
+        info!("Added step {}", step.name());
         self.steps.push(step);
     }
 

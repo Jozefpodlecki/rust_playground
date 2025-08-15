@@ -1,6 +1,6 @@
 use log::*;
 use std::{collections::HashSet, fs::{self, File}, io::{BufWriter, Write}, path::PathBuf};
-use crate::{disassembler::Disassembler, process::ProcessDump, processor::ProcessorStep, types::DisassemblerConfig, utils::*};
+use crate::{config::DisassemblerConfig, disassembler::{utils::DisassemblerExtensions, Disassembler}, process::ProcessDump, processor::ProcessorStep, utils::*};
 use anyhow::*;
 
 
@@ -30,41 +30,44 @@ impl ProcessorStep for DisassembleProcessStep {
         fs::create_dir_all(&self.dest_path)?;
        
         let mut dump = ProcessDump::open(self.dump_path)?;
-        let disassembler = Disassembler::new()?;
+        // let disassembler = Disassembler::from_memory()?;
+        let regions_path = self.dest_path.join("regions");
+        fs::create_dir_all(&regions_path)?;
 
         for mut block in dump.blocks {
 
-            let module_name = match &block.block.module_name {
+            let address = block.base;
+            let module_name = match &block.module_name {
                 Some(name) if self.config.filter.contains(name) => name,
                 Some(_) => continue,
                 None => continue
             };
 
-            if block.block.is_executable {
+            if block.is_executable {
                
-                //    let file_name = format!("{}_{}_exec.data", module_name, block.block.base);
-                let file_name = format!("{}_{}_exec.txt", module_name, block.block.base);
-                // let file_name = format!("{}_{}.csv", module_name, block.block.base);
-                let file_path = self.dest_path.join(&file_name);
+                let file_name = format!("{}_{}_exec.txt", module_name, block.base);
+                let file_path = regions_path.join(&file_name);
 
                 if file_path.exists() {
+                    info!("Skipping {:?}", file_path.strip_prefix(&self.dest_path));
                     continue;
                 }
 
                 info!("Creating {}", file_name);
-                let mut reader = block.read_data()?;
+                let reader = block.read_data()?;
 
-                // let mut writer = BufWriter::new(File::create(&file_path)?);
-                // std::io::copy(&mut reader, &mut writer)?;
-                disassembler.export_to_txt(block.block.base, reader, &file_path)?;
-                // disassembler.export_to_csv(block.block.base, &data, &file_path)?;
+                let buf_size = 1000;
+                let disassembler = Disassembler::from_reader(reader, address, buf_size)?;
+                let stream = disassembler.disasm_all()?;
+                stream.export_to_txt(&file_path)?;
             }
 
-            if block.block.is_readable {
-                let file_name = format!("{}_{}_read.txt", module_name, block.block.base);
-                let file_path = self.dest_path.join(&file_name);
+            if block.is_readable {
+                let file_name = format!("{}_{}_read.txt", module_name, address);
+                let file_path = regions_path.join(&file_name);
 
                 if file_path.exists() {
+                    info!("Skipping {:?}", file_path.strip_prefix(&self.dest_path));
                     continue;
                 }
 

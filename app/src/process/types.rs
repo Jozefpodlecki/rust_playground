@@ -1,10 +1,38 @@
-use std::{collections::HashMap, fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write}, path::{Path, PathBuf}};
+use std::{collections::HashMap, fs::File, io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write}, ops::Deref, path::{Path, PathBuf}};
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use log::*;
+use serde::Serialize;
 use windows::Win32::System::Diagnostics::Debug::CONTEXT;
 
 use crate::process::{memory::MemoryRegionIterator, snapshot, thread_context::ThreadContext, utils::*, ProcessSnapshot};
+
+#[derive(Serialize)]
+pub struct DumpSummary {
+    pub entry_point: String,
+    pub regions: Vec<MemoryRegionSummary>,
+    pub modules: HashMap<String, ModuleSummary>
+}
+
+#[derive(Serialize)]
+pub struct ModuleSummary {
+    pub order: u16,
+    pub file_name: String,
+    pub entry_point: String,
+    pub size: u32,
+    pub start_addr: String,
+    pub end_addr: String,
+}
+
+#[derive(Serialize)]
+pub struct MemoryRegionSummary {
+    pub module_name: Option<String>,
+    pub start_address: String,
+    pub end_address: String,
+    pub size: u64,
+    pub is_executable: bool,
+    pub is_readable: bool,
+}
 
 #[derive(Debug)]
 pub struct ProcessDump {
@@ -28,9 +56,17 @@ pub struct MemoryBlock {
 
 #[derive(Debug)]
 pub struct SerializedMemoryBlock {
-    pub file: File,
+    file: File,
     pub data_offset: u64,
-    pub block: MemoryBlock,
+    block: MemoryBlock,
+}
+
+impl Deref for SerializedMemoryBlock {
+    type Target = MemoryBlock;
+
+    fn deref(&self) -> &Self::Target {
+        &self.block
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +83,7 @@ pub struct ProcessModule {
 #[derive(Debug, Clone)]
 pub struct ProcessModuleExport {
     pub name: String,
+    pub address_rva: u64,
     pub address: u64
 }
 
@@ -254,8 +291,13 @@ pub fn read_module_exports<R: Read>(reader: &mut R) -> Result<HashMap<String, Ve
         let mut export_list = Vec::with_capacity(entry_count as usize);
         for _ in 0..entry_count {
             let name = read_string(reader)?;
+            let address_rva = reader.read_u64::<LittleEndian>()?;
             let address = reader.read_u64::<LittleEndian>()?;
-            export_list.push(ProcessModuleExport { name, address });
+            export_list.push(ProcessModuleExport { 
+                name,
+                address_rva,
+                address
+            });
         }
 
         exports.insert(module_name, export_list);
@@ -272,7 +314,8 @@ fn write_module_exports<W: Write>(writer: &mut W, exports: &HashMap<String, Vec<
 
         for export in export_list {
             write_string(writer, &export.name)?;
-            writer.write_all(&export.address.to_le_bytes())?;
+            writer.write_u64::<LittleEndian>(export.address_rva)?;
+            writer.write_u64::<LittleEndian>(export.address)?;
         }
     }
     Ok(())

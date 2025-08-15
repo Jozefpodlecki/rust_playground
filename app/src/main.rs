@@ -2,23 +2,9 @@
 
 use anyhow::*;
 
+use app_lib::{config::AppConfig, processor::*};
 use flexi_logger::Logger;
-use std::{ffi::OsStr, fs::File, os::windows::ffi::OsStrExt, process::exit, ptr::null_mut, result::Result::Ok, thread::sleep, time::Duration};
 use log::*;
-use windows::{core::{PCWSTR, PWSTR}, Win32::{Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY}, System::Threading::{GetCurrentProcess, OpenProcessToken}, UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL}}};
-use crate::{processor::*, types::AppConfig};
-
-mod types;
-mod process;
-mod processor;
-mod lpk;
-mod sql_migrator;
-mod loa_extractor;
-mod enum_extractor;
-mod utils;
-mod models;
-mod disassembler;
-mod export_dump;
 
 fn main() -> Result<()> {
     let args = AppConfig::new()?;
@@ -30,8 +16,8 @@ fn main() -> Result<()> {
     if args.cleanup.is_enabled {
         processor.add_step(Box::new(CleanupDirectoryStep::new(
             args.output_path.clone(),
-            args.cleanup.files,
-            args.cleanup.folders
+            args.cleanup.files.clone(),
+            args.cleanup.folders.clone()
         )));
     }
     processor.add_step(Box::new(CopyFileStep::new(
@@ -59,7 +45,7 @@ fn main() -> Result<()> {
         args.output_path.join("upk"),
     )));
 
-    for exe_info in args.exe_paths.clone() {
+    for exe_info in args.process_dumper.exe_paths.clone() {
         if args.process_dumper.is_enabled {
             processor.add_step(Box::new(DumpProcessStep::new(
                 exe_info.path.clone(),
@@ -83,12 +69,13 @@ fn main() -> Result<()> {
         )));
         
         processor.add_step(Box::new(ParseDumpStep::new(
+            args.disassembler.clone(),
             exe_info.path,
             args.output_path.clone()
         )));
     }
 
-    // processor.add_step(Box::new(CombineDbStep::new(args)));
+    processor.add_step(Box::new(CombineDbStep::new(args)));
 
     if let Err(err) = processor.run() {
         error!("An error occurred whilst processing: {err:?}");

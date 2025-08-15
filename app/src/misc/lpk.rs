@@ -74,15 +74,7 @@ pub fn get_lpks<'a>(
     cipher_key: &'a [u8],
     aes_xor_key: &'a [u8]
 ) -> Result<Vec<LpkInfo<'a>>> {
-    // pub cipher_key: Vec<u8>,
-    // pub aes_xor_key: Vec<u8>,
-    // pub lpk_dir: String,
-    // pub game_path: PathBuf,
-    // pub output_path: PathBuf,
-    // pub exe_path: String,
-    // pub exe_args: Vec<String>,
-    // pub strategy: WaitStrategy
-
+    
     let mut items = vec![];
 
     for entry in fs::read_dir(&path)? {
@@ -337,8 +329,8 @@ impl<'a> LpkInfo<'a> {
 impl<'a> LpkEntryContent<'a> {
     pub fn to_bytes(&'a mut self) -> Result<Cow<'a, [u8]>> {
         match self {
-            crate::lpk::LpkEntryContent::BlowfishZlib(content) => content.to_bytes(),
-            crate::lpk::LpkEntryContent::Aes256Cbc(content) => content.to_bytes(),
+            LpkEntryContent::BlowfishZlib(content) => content.to_bytes(),
+            LpkEntryContent::Aes256Cbc(content) => content.to_bytes(),
         }
     }
 }

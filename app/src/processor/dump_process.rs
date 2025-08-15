@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::*;
-use crate::{process::{ProcessDump, ProcessSnapshotter}, processor::ProcessorStep, types::LaunchMethod};
+use crate::{config::LaunchMethod, misc::export_dump::ExportDump, process::{create_dump_summary, ProcessDump, ProcessSnapshotter}, processor::ProcessorStep};
 
 pub struct DumpProcessStep {
     exe_path: PathBuf,
@@ -21,10 +21,6 @@ impl ProcessorStep for DumpProcessStep {
             return false
         }
 
-        if !self.dest_path.exists() {
-            return false
-        }
-
         if self.dump_path.exists() {
             return false
         }
@@ -41,6 +37,12 @@ impl ProcessorStep for DumpProcessStep {
         let snapshot = snapshotter.get_snapshot()?;
         let dump = ProcessDump::save(snapshot, &self.dump_path)?;
 
+        let summary_path = self.dest_path.join("summary.json");
+        create_dump_summary(&dump, summary_path)?;
+
+        let export_file_path = self.dest_path.join("exports.json");
+        let export_dump = ExportDump::create(&export_file_path, &dump.modules, &dump.exports)?;
+
         Ok(())
     }
 }
@@ -52,6 +54,8 @@ impl DumpProcessStep {
         exe_args: Vec<String>,
         launch_method: LaunchMethod
     ) -> Self {
+        let file_name = exe_path.file_stem().unwrap().to_string_lossy().to_string();
+        let dest_path = dest_path.join(file_name);
         let dump_path = ProcessDump::get_path(&exe_path, &dest_path);
 
         Self {

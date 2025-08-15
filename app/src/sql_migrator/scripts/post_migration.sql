@@ -13,9 +13,6 @@ DROP TABLE IF EXISTS data.Dispose;
 DROP TABLE IF EXISTS data.ExcessTemplate;
 DROP TABLE IF EXISTS data.SecretDungeonElementSpawn;
 DROP TABLE IF EXISTS data.LifeFishingTiming;
-DROP TABLE IF EXISTS data.GameMsg_French;
-DROP TABLE IF EXISTS data.GameMsg_German;
-DROP TABLE IF EXISTS data.GameMsg_Spanish;
 
 ALTER TABLE data.GameMsg_English RENAME KEY TO Id;
 ALTER TABLE data.GameMsg_English RENAME MSG TO Message;
@@ -25,4 +22,4 @@ ALTER TABLE data.Skill RENAME LearnClass TO ClassId;
 ALTER TABLE data.Skill RENAME LearnSkillPoint TO ClassId;
 ALTER TABLE data.Skill RENAME LearnAwakening TO IsAwakening;
 ALTER TABLE data.Skill RENAME LearnSuperSkill TO IsSuperSkill;
-ALTER TABLE data.PC RENAME TO data.PlayerCharacter;
+ALTER TABLE data.PC RENAME TO PlayerCharacter;

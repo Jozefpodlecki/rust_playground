@@ -3,7 +3,7 @@ use anyhow::Result;
 use log::*;
 use object::{read::pe::PeFile64, LittleEndian, Object, ObjectSection};
 use serde::Serialize;
-use crate::{disassembler::Disassembler, processor::ProcessorStep};
+use crate::{disassembler::{utils::DisassemblerExtensions, Disassembler}, processor::ProcessorStep};
 
 pub struct ExtractPeStep {
     exe_path: PathBuf,
@@ -33,7 +33,6 @@ impl ProcessorStep for ExtractPeStep {
 
     fn can_execute(&self) -> bool {
       
-
         true
     }
 
@@ -98,12 +97,12 @@ impl ProcessorStep for ExtractPeStep {
             }
 
             if address_of_entry_point == address {
-                let disassembler = Disassembler::new()?;
                 let data = section.data()?;
-                let reader = Cursor::new(data);
+                let disassembler = Disassembler::from_memory(data, address, 1000)?;
+                let stream = disassembler.disasm_all()?;
                 let file_name = format!("0x{:X}_{}_{}.txt", address, size, sec_name);
                 let file_path = dest_path.join(&file_name);
-                disassembler.export_to_txt(address_of_entry_point, reader, &file_path)?;
+                stream.export_to_txt(&file_path)?;
             }
 
             summary.sections.push(SectionSummary {
@@ -114,8 +113,12 @@ impl ProcessorStep for ExtractPeStep {
         }
 
         let summary_path = dest_path.join("summary.json");
-        let writer = File::create(summary_path)?;
-        serde_json::to_writer_pretty(writer, &summary)?;
+
+        if !summary_path.exists() {
+            info!("Saving {:?}", summary_path.strip_prefix(&dest_path)?);
+            let writer = File::create(summary_path)?;
+            serde_json::to_writer_pretty(writer, &summary)?;
+        }
 
         Ok(())
     }

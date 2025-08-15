@@ -1,3 +1,6 @@
+use std::{ffi::OsStr, fs::File, os::windows::ffi::OsStrExt, process::exit, ptr::null_mut, result::Result::Ok, thread::sleep, time::Duration};
+use windows::{core::{PCWSTR, PWSTR}, Win32::{Security::{GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY}, System::Threading::{GetCurrentProcess, OpenProcessToken}, UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL}}};
+
 fn to_pcwstr(s: &str) -> PCWSTR {
     let wide: Vec<u16> = OsStr::new(s)
         .encode_wide()

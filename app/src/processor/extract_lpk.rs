@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs::{self, File}, io::Write, path::{Path, PathBu
 
 use anyhow::*;
 use log::info;
-use crate::{lpk::get_lpks, processor::ProcessorStep};
+use crate::{misc::lpk::get_lpks, processor::ProcessorStep};
 
 pub struct ExtractLpkStep {
     cipher_key: Vec<u8>,
@@ -51,11 +51,11 @@ impl ProcessorStep for ExtractLpkStep {
                 items.push(entry.metadata.file_path.clone());
                 let content = entry.content.to_bytes()?;
                 let file_path = &entry.metadata.file_path;
-                let output_path = output_path.join(file_path);
+                let file_path = &output_path.join(file_path);
                 
                 fs::create_dir_all(&output_path.parent().unwrap())?;
-                info!("Saving to {}", output_path.to_str().unwrap());
-                let mut file = File::create(&output_path)?;
+                info!("Saving to {:?}", file_path.strip_prefix(&output_path));
+                let mut file = File::create(&file_path)?;
                 file.write_all(&content)?;
             }
         }

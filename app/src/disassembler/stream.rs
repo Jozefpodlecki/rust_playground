@@ -1,7 +1,6 @@
-use std::{collections::VecDeque, env::var, io::{self, BufReader, Read}, vec};
-use capstone::{arch::{self, x86::{X86Insn, X86Operand, X86OperandType, X86Reg}, BuildsCapstone, BuildsCapstoneSyntax, DetailsArchInsn}, Capstone, Insn, InsnGroupType::CS_GRP_JUMP, InsnId, Instructions};
+use std::{collections::VecDeque, io::Read, vec};
+use capstone::{arch::{self, x86::X86Insn, BuildsCapstone, BuildsCapstoneSyntax}, Capstone};
 use anyhow::*;
-use log::*;
 
 use crate::disassembler::types::Instruction;
 
@@ -68,21 +67,19 @@ impl<R: Read> DisasmStream<R> {
 
         for instr in items.into_iter() {
 
+            let id = instr.id().0;
             let len = instr.len();
             consumed += len;
             self.addr += len as u64;
             self.total_instr_len += len as u64;
             self.total_instr_count += 1;
 
-            if instr.id().0 == 0 {
-                self.items.push_back(Instruction::invalid(&instr));
+            if id == 0 {
+                self.items.push_back(Instruction::invalid(X86Insn::from(id), &instr));
                 continue;
             }
 
-            let detail = self.cs.insn_detail(instr)?;
-            let arch_detail = detail.arch_detail();
-            let x86_detail = arch_detail.x86().unwrap();
-            self.items.push_back((instr, x86_detail).into());
+            self.items.push_back((instr, &self.cs).into());
         }
 
         if consumed < combined.len() {

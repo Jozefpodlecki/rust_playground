@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::{self, File}, io::{Read, Write}, path::{Path, PathBuf}};
 use anyhow::*;
 use log::info;
-use crate::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files, lpk::get_lpks, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
+use crate::{get_lpks, misc::{enum_extractor::extract_enum_maps_from_xml, loa_extractor::collect_loa_files}, sql_migrator::{sqlite_db::SqliteDb, table_schema::TableSchema, types::ColumnAction, utils::*, DuckDb}};
 
 #[derive(Debug, Default)]
 pub enum TransformationStrategy {
@@ -15,6 +15,8 @@ pub struct DbFileEntry {
     pub file_path: PathBuf,
     pub file_name: String,
     pub strategy: TransformationStrategy,
+    pub ignore: bool,
+    pub table_names: Vec<String>
 }
 
 pub struct DbMerger {
@@ -25,7 +27,6 @@ pub struct DbMerger {
 impl DbMerger {
     pub fn new(duckdb_path: &Path, batch_size: usize) -> Result<Self> {
         let connection = DuckDb::new(duckdb_path)?;
-        // connection.execute("SET default_block_size = 32768;", [])?;
 
         Ok(Self {
             connection,
@@ -35,20 +36,20 @@ impl DbMerger {
 
     pub fn setup(&self) -> Result<()> {
         let script = include_str!("./scripts/before_migration.sql");
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         
         Ok(())
     }
 
     pub fn post_work(&self) -> Result<String> {
         let script = include_str!("./scripts/post_migration.sql");
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
 
         let mut result = String::from("");
 
         info!("generate_update_localization_script");
         let script = &self.connection.generate_update_localization_script()?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         let test = self.connection.generate_rust_struct("data", "Ability")?;
@@ -56,63 +57,63 @@ impl DbMerger {
         file.write_all(test.as_bytes())?;
 
         let script = include_str!("./scripts/post_migration.sql");
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("generate_drop_empty_columns");
         let comment_column_map = self.connection.get_column_values("Comment")?;
         let script = &self.connection.generate_drop_empty_columns_script("Comment", comment_column_map);
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("drop_empty_tables");
         let script = &self.connection.generate_drop_empty_tables_script()?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
         
         info!("drop_unused_secondary_keys");
         let script = &self.connection.generate_drop_unused_secondary_keys_script("SecondaryKey")?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("rename PrimaryKey");
         let script = &self.connection.generate_column_script("PrimaryKey", ColumnAction::Rename("Id".to_string()))?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("rename SecondaryKey");
         let script = &self.connection.generate_column_script("SecondaryKey", ColumnAction::Rename("SubId".to_string()))?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("rename Desc");
         let script = &self.connection.generate_column_script("Desc", ColumnAction::Rename("Description".to_string()))?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("drop Milestone");
         let script = &self.connection.generate_column_script("Milestone", ColumnAction::Drop)?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("drop SourceRow");
         let script = &self.connection.generate_column_script("SourceRow", ColumnAction::Drop)?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("integer_downgrade");
         let script = &self.connection.generate_integer_downgrade_script()?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("primary_keys");
         let script = &self.connection.generate_primary_keys_script()?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         info!("primary_keys");
         let script = &self.connection.generate_global_search_view()?;
-        self.connection.execute_batch(script);
+        self.connection.execute_batch(script)?;
         result += script;
 
         self.connection.execute_batch("CHECKPOINT;")?;
@@ -124,13 +125,17 @@ impl DbMerger {
         let mut entries = collect_db_file_entries(&sqlite_dir)?;
         let entry = entries.get_mut("EFTable_LanguageGrams").unwrap();
         entry.strategy = TransformationStrategy::BatchInsert;
-        self.merge(entries, "data");
+        
+        let entry = entries.get_mut("EFTable_GameMsg").unwrap();
+        entry.table_names.retain(|pr| pr == "GameMsg_English");
+
+        self.merge(entries, "data")?;
         Ok(())
     }
 
     pub fn merge_jss(&self, sqlite_dir: PathBuf) -> Result<()> {
         let entries: HashMap<String, DbFileEntry> = collect_db_file_entries(&sqlite_dir)?;
-        self.merge(entries, "jss");
+        self.merge(entries, "jss")?;
 
         Ok(())
     }
@@ -142,9 +147,19 @@ impl DbMerger {
             let file_path = entry.file_path;
             info!("Merging {}", entry.file_name);
 
+            if entry.ignore {
+                continue;
+            }
+
             match entry.strategy {
-                TransformationStrategy::AttachSqlite => self.transfer_sqlite_to_duckdb_by_attach(&file_path, schema_name)?,
-                TransformationStrategy::BatchInsert => self.transfer_sqlite_to_duckdb_by_insert(&file_path, schema_name)?,
+                TransformationStrategy::AttachSqlite => self.transfer_sqlite_to_duckdb_by_attach(
+                    &file_path,
+                    entry.table_names,
+                    schema_name)?,
+                TransformationStrategy::BatchInsert => self.transfer_sqlite_to_duckdb_by_insert(
+                    &file_path,
+                    entry.table_names,
+                    schema_name)?,
             };
         }
 
@@ -162,7 +177,8 @@ impl DbMerger {
             &cipher_key,
             &aes_xor_key)?;
 
-        for lpk in lpks {
+        for mut lpk in lpks {
+            lpk.load()?;
 
             let full_table_name = lpk.name.clone();
 
@@ -215,99 +231,6 @@ impl DbMerger {
         Ok(())
     }
 
-    pub fn insert_assembly(
-        &self,
-        exe_path: PathBuf,
-        dest_path: &Path
-    ) -> Result<()> {
-
-        // let output_bin_path = ProcessDumper::get_bin_path(&exe_path, dest_path);
-        // let mut process_dumper = ProcessDumper::new(&exe_path, &output_bin_path)?;
-
-        // let mut cs = Capstone::new()
-        //     .x86()
-        //     .mode(arch::x86::ArchMode::Mode64)
-        //     .syntax(arch::x86::ArchSyntax::Intel)
-        //     .build()?;
-
-        // cs.set_skipdata(true)?;
-        // cs.set_detail(true)?;
-
-        // let dump = process_dumper.get_cached()?;
-
-        // info!("Blocks: {}, Modules: {}, Exports: {}", dump.blocks.len(), dump.modules.len(), dump.exports.len());
-
-        // for block in dump.blocks {
-
-        //     let module = block.block.module_name.as_ref();
-        //     let mut data = vec![];
-
-        //     let module_name = match module {
-        //         Some(name) => name,
-        //         None => continue,
-        //     };
-
-        //     // let module_name = match module {
-        //     //     Some(name) if name == "LOSTARK.exe" || name == "EFEngine.dll" => name,
-        //     //     Some(_) => continue,
-        //     //     None => continue,
-        //     // };
-
-        //     data = process_dumper.read_block_data(&block)?;
-
-        //     let block = &block.block;
-        //     let module = dump.modules.get(module_name).unwrap();
-
-        //     let table_name = format!("{}_0x{:X}", module_name, block.base)
-        //         .replace(".", "_");
-
-        //     if block.is_executable {
-        //         let table_name = format!("assembly.{}_text", table_name);
-        //         info!("Creating {}", table_name);
-        //         let query: String = format!(r"
-        //             CREATE TABLE {}
-        //             (
-        //                 Id BIGINT NOT NULL PRIMARY KEY, 
-        //                 Mnemonic VARCHAR(20) NOT NULL,
-        //                 OpStr VARCHAR NOT NULL,
-        //                 RipRelativeAddress BIGINT NULL,
-
-        //             );", table_name);
-
-        //         self.connection.execute_batch(&query)?;
-        //         let query = format!("INSERT INTO {} (Id, Mnemonic, OpStr) VALUES (?, ?, ?)", table_name);
-        //         let statement = self.connection.prepare(&query)?;
-
-        //         let instructions = cs.disasm_all(&data, 0)?;
-
-        //         for instruction in instructions.into_iter() {
-        //             let address = instruction.address() as i64;
-        //             let mnemonic = instruction.mnemonic().unwrap_or("");
-        //             let op_str = instruction.op_str().unwrap_or("");
-        //             let instr_size = instruction.len() as u64;
-
-        //             let detail = cs.insn_detail(instruction)?;
-        //             let arch_detail = detail.arch_detail();
-        //             let x86_detail = arch_detail.x86().unwrap();
-
-        //             for op in x86_detail.operands() {
-        //                 if let X86OperandType::Mem(mem) = op.op_type {
-        //                     if mem.base().0 as u32 == X86Reg::X86_REG_RIP {
-        //                         let rip_target = instruction.address() + instr_size + mem.disp() as u64;
-        //                         println!("RIP-relative target: 0x{:x}", rip_target);
-        //                     }
-        //                 }
-        //             }
-
-        //             // statement.execute(params![address, mnemonic, op_str])?;
-        //         }
-        //     }
-
-        // }
-
-        Ok(())
-    }
-
     pub fn insert_loa_data(&self, output_path: &Path) -> Result<()> {
         const TABLE_NAME: &str = "lpk.LoaFiles";
 
@@ -356,7 +279,7 @@ impl DbMerger {
     }
 
     pub fn create_enums(&self, lpk_path: &Path) -> Result<()> {
-        let schema_name = "enums";
+        let schema_name = "enum";
         
         if self.connection.tables_exists(schema_name)? {
             info!("Skipping creating enums");
@@ -418,11 +341,15 @@ impl DbMerger {
         Ok(())
     }
 
-    fn transfer_sqlite_to_duckdb_by_attach(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
+    fn transfer_sqlite_to_duckdb_by_attach(
+        &self,
+        sqlite_path: &Path,
+        table_names: Vec<String>,
+        schema_name: &str) -> Result<()> {
         let file_name = sqlite_path.file_stem().unwrap().to_string_lossy();
         let sqlite_path_str = sqlite_path.to_string_lossy().to_string();
         let connection = SqliteDb::new(sqlite_path)?;
-        let table_names = connection.get_table_names()?;
+
         let mut query = format!("ATTACH '{}' (TYPE sqlite);\n", sqlite_path_str).to_string();
 
         for table_name in table_names {
@@ -436,9 +363,12 @@ impl DbMerger {
         Ok(())
     }
 
-    fn transfer_sqlite_to_duckdb_by_insert(&self, sqlite_path: &Path, schema_name: &str) -> Result<()> {
+    fn transfer_sqlite_to_duckdb_by_insert(
+        &self,
+        sqlite_path: &Path,
+        table_names: Vec<String>,
+        schema_name: &str) -> Result<()> {
         let connection = SqliteDb::new(sqlite_path)?;
-        let table_names = connection.get_table_names()?;
 
         for table_name in table_names {
             let total_row_count = connection.get_row_count(&table_name)?;
@@ -530,12 +460,17 @@ pub fn collect_db_file_entries(dir: &Path) -> Result<HashMap<String, DbFileEntry
         let file_name = file_path.file_name().unwrap().to_string_lossy().to_string();
         let file_stem = file_path.file_stem().unwrap().to_string_lossy().to_string();
 
+        let connection = SqliteDb::new(&file_path)?;
+        let table_names = connection.get_table_names()?;
+
         entries.insert(
             file_stem.to_string(),
             DbFileEntry {
                 file_path: file_path,
                 file_name: file_name,
                 strategy: TransformationStrategy::AttachSqlite,
+                ignore: false,
+                table_names,
             },
         );
     }

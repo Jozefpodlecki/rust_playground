@@ -1,29 +1,28 @@
 use std::{collections::{BTreeMap, HashMap}, fs::File, path::Path};
 use anyhow::Result;
+use log::info;
 use crate::process::{ProcessModule, ProcessModuleExport};
 
 
-pub struct ExportDump {
-
-}
+pub struct ExportDump;
 
 impl ExportDump {
     pub fn create(
         path: &Path, 
-        modules: HashMap<String, ProcessModule>,
-        exports: HashMap<String, Vec<ProcessModuleExport>>) -> Result<BTreeMap<String, String>> {
-        let mut map= BTreeMap::new();
+        modules: &HashMap<String, ProcessModule>,
+        exports: &HashMap<String, Vec<ProcessModuleExport>>) -> Result<BTreeMap<String, String>> {
+         let mut map= BTreeMap::new();
 
         for (name, exports) in exports {
 
-            let module = modules.get(&name).unwrap();
+            let module = modules.get(name).unwrap();
 
             if !module.is_dll {
                 continue;
             }
 
             for export in exports {
-                let name = export.name;
+                let name = export.name.to_string();
                 let address = module.base + export.address;
                 let key = format!("0x{:X}", address);
                 let value = format!("{}.{}", module.file_name, name);

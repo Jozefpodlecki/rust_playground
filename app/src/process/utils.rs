@@ -1,12 +1,12 @@
-use std::{collections::HashMap, io::{Read, Write}};
+use std::{collections::HashMap, fs::File, io::{Read, Write}, path::PathBuf};
 
 use anyhow::*;
 use byteorder::{LittleEndian, ReadBytesExt};
-use log::debug;
+use log::{debug, info};
 use object::Object;
 use windows::Win32::System::SystemInformation::{GetVersionExW, OSVERSIONINFOW};
 
-use crate::process::types::{ProcessModule, ProcessModuleExport};
+use crate::process::{types::{ProcessModule, ProcessModuleExport}, *};
 
 pub unsafe fn get_windows_version() -> Result<String> {
     let mut info = OSVERSIONINFOW::default();
@@ -67,18 +67,89 @@ pub fn collect_exports(modules: &[ProcessModule]) -> Result<HashMap<String, Vec<
         let module_exports: &mut Vec<ProcessModuleExport> = exports.entry(module.file_name.clone()).or_default();
         
         debug!("Finding module exports for {}", module.file_path.to_str().unwrap());
+        let image_base = obj_file.relative_address_base();
         for export in obj_file.exports()? {
             let name_bytes = export.name();
-            let address = export.address();
+            let address_rva = export.address() - image_base;
+            let address = address_rva + module.base;
             let name = match std::str::from_utf8(name_bytes) {
                 std::result::Result::Ok(s) => s.to_string(),
                 Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
             };
 
             debug!("Module export {}:address", name);
-            module_exports.push(ProcessModuleExport { name, address });
+            module_exports.push(ProcessModuleExport { 
+                name,
+                address_rva,
+                address
+            });
         }
     }
 
     Ok(exports)
+}
+
+
+pub fn create_dump_summary(dump: &ProcessDump, summary_path: PathBuf) -> Result<()> {
+    
+    if summary_path.exists() {
+        info!("Skipping {:?}", summary_path);
+        return Ok(())
+    }
+    
+    let entry_point = dump.modules.iter()
+        .find(|(name, value)| value.order == 0)
+        .unwrap().1.entry_point;
+
+    let mut summary = DumpSummary {
+        entry_point: format!("0x{:X}", entry_point),
+        regions: vec![],
+        modules: HashMap::new()
+    };
+
+    for (key, value) in dump.modules.iter() {
+
+        let data = std::fs::read(&value.file_path)?;
+        let obj_file = object::File::parse(&*data)?;
+
+        let image_base = obj_file.relative_address_base();
+        for export in obj_file.exports()? {
+            let name_bytes = export.name();
+            let address = export.address() - image_base;
+            let name = match std::str::from_utf8(name_bytes) {
+                std::result::Result::Ok(s) => s.to_string(),
+                Err(_) => format!("sub_{}_{:X}", hex::encode(name_bytes), address),
+            };
+
+        }
+
+        let module = ModuleSummary {
+            order: value.order,
+            file_name: value.file_name.clone(),
+            entry_point: format!("0x{:X}", value.entry_point), 
+            size: value.size,
+            start_addr: format!("0x{:X}", value.base),
+            end_addr: format!("0x{:X}", value.base + value.size as u64),
+
+        };
+        summary.modules.insert(key.to_string(), module);
+    }
+
+    for block in dump.blocks.iter() {
+        let region = MemoryRegionSummary {
+            module_name: block.module_name.clone(),
+            start_address: format!("0x{:X}", block.base),
+            end_address: format!("0x{:X}", block.base + block.size),
+            size: block.size,
+            is_executable: block.is_executable,
+            is_readable: block.is_readable
+        };
+        summary.regions.push(region);
+    }
+
+    info!("Saving {:?}", summary_path.file_name());
+    let writer = File::create(summary_path)?;
+    serde_json::to_writer_pretty(writer, &summary)?;
+
+    Ok(())
 }

@@ -1,7 +1,7 @@
 
 use capstone::{arch::{x86::{X86Insn, X86Operand, X86OperandType}, DetailsArchInsn}, Capstone, Insn};
 use std::fmt::{self, Display, Formatter};
-use crate::decompiler::types::{get_2_operands, get_operand, ConditionCode, Register}; 
+use crate::disassembler::types::{get_2_operands, get_operand, ConditionCode, Register}; 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -113,6 +113,7 @@ pub enum RepeatableInstruction {
 #[derive(Debug, Clone, PartialEq)]
 pub enum InstructionType {
     Invalid,
+    Unknown(X86Insn),
     Shl(Operand, Operand),
     Shr(Operand, Operand),
     Push(Operand),
@@ -336,6 +337,6 @@ pub fn classify_instruction(
             
             InstructionType::ConditionalJump(cond, target)
         },
-        _ => InstructionType::Invalid,
+        _ => InstructionType::Unknown(id),
     }
 }

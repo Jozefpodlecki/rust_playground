@@ -16,7 +16,6 @@ pub struct AppConfig {
 
     #[serde(deserialize_with = "deserialize_pathbuf_with_env")]
     pub output_path: PathBuf,
-    pub exe_paths: Vec<ExeInfo>,
 
     pub process_dumper: ProcessDumperConfig,
     pub disassembler: DisassemblerConfig,
@@ -72,8 +71,7 @@ impl AppConfig {
             config.output_path = absolute.canonicalize()?;
         }
       
-        config.exe_paths.retain_mut(|pr| {
-
+        config.process_dumper.exe_paths.retain_mut(|pr| {
             pr.is_enabled
         });
 

@@ -15,7 +15,7 @@ impl DuckDb {
     }
 
     pub fn execute_batch(&self, sql: &str) -> Result<()> {
-        self.0.execute_batch(sql);
+        self.0.execute_batch(sql)?;
         Ok(())
     }
 
@@ -24,21 +24,19 @@ impl DuckDb {
         Ok(())
     }
 
-    pub fn process_skill(&self) -> Result<String> {
+    pub fn get_skills(&self) -> Result<Vec<HashMap<String, serde_json::Value>>> {
         let query = r"SELECT * FROM data.Skill";
-
-        let script = "".into();
 
         let mut statement = self.0.prepare(query)?;
         let column_names: Vec<(usize, String)> = statement
             .column_names()
             .iter()
-            .filter(|&pr| pr != "Id" && "pr" != "SubId" )
+            // .filter(|&pr| pr != "Id" && "pr" != "SubId" )
             .enumerate()
             .map(|(i, name)| (i, name.to_string()))
             .collect();
         let mut rows = statement.query([])?;
-        let records: Vec<HashMap<String, serde_json::Value>> = vec![];
+        let mut records: Vec<HashMap<String, serde_json::Value>> = vec![];
 
         while let Some(row) = rows.next()? {
             let mut map: HashMap<String, serde_json::Value> = HashMap::new();
@@ -108,11 +106,13 @@ impl DuckDb {
                 if !json_value.is_null() {
                     map.insert(name, json_value);
                 }
+
             }
-            
+
+            records.push(map);
         }
 
-        Ok(script)
+        Ok(records)
     }
 
     pub fn prepare(&self, sql: &str) -> Result<CachedStatement<'_>> {

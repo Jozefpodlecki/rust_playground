@@ -1,11 +1,8 @@
-#![allow(unsafe_op_in_unsafe_fn)]
-
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 use anyhow::*;
-use byteorder::{LittleEndian, ReadBytesExt};
 use log::*;
 use windows::Win32::Foundation::HANDLE;
 
@@ -15,7 +12,7 @@ use crate::process::thread::get_threads;
 use crate::process::thread_context::ThreadContext;
 use crate::process::types::*;
 use crate::process::utils::*;
-use crate::types::LaunchMethod;
+use crate::config::LaunchMethod;
 
 pub struct ProcessSnapshot {
     pub win_version: String,

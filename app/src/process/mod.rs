@@ -6,5 +6,6 @@ mod thread;
 mod thread_context;
 mod snapshot;
 
+pub use utils::*;
 pub use snapshot::*;
 pub use types::*;
