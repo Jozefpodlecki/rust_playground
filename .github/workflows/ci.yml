@@ -15,6 +15,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.89.0
       - run: Get-Location
       - run: replace-Toml.ps1
+        shell: pwsh
         working-directory: ./buildtest
 
       - run: cargo build --release
