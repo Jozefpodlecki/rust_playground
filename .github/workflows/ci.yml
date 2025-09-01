@@ -1,30 +1,18 @@
-
 name: CI
 
 on:
+  push:
+    branches:
+      - master
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache-dependency-path: web/package-lock.json
-          cache: 'npm'
-      - run: npm ci
-        working-directory: ./web
-      - uses: dtolnay/rust-toolchain@1.85.0
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          includeRelease: true
-          tagName: ${{ github.ref_name }}
-          releaseName: "Release ${{ github.ref_name }}"
-          releaseDraft: false
-          prerelease: false
+      - uses: dtolnay/rust-toolchain@1.89.0
+      - run: buildtest/replace-Toml.ps1
+
+      - run: cargo build --release

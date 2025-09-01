@@ -1,0 +1,12 @@
+[package]
+name = "buildtest"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+
+[features]
+default = ["some-feat"]
+some-feat = ["dep:mscp"]
+
+[dependencies]
+mscp = { git = "https://github.com/some/where", optional = true }
