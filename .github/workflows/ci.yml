@@ -19,3 +19,4 @@ jobs:
         working-directory: ./buildtest
 
       - run: cargo build --release
+        working-directory: ./buildtest
