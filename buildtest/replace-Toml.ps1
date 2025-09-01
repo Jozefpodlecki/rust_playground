@@ -1,5 +1,5 @@
 param(
-    [string]$TomlPath = "buildtest/Cargo.toml",
+    [string]$TomlPath = "Cargo.toml",
     [string]$DepName = "mscp",
     [string]$FeatureName = "some-feat"
 )
