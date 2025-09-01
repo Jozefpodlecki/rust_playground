@@ -13,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.89.0
-      - run: buildtest/replace-Toml.ps1
+      - run: Get-Location
+      - run: ./buildtest/replace-Toml.ps1
 
       - run: cargo build --release
