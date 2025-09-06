@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "flamegraphtest"
+name = "buildtest"
 version = "0.1.0"

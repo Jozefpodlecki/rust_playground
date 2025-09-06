@@ -6,6 +6,8 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.75"
 minidump = "0.26.0"
+log = "0.4.18"
+flexi_logger = { version = "0.30.2", default-features = false }
 
 [dependencies.windows]
 version = "0.61.3"

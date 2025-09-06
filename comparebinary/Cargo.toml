@@ -1,0 +1,8 @@
+[package]
+name = "comparebinary"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+capstone = "0.13"
+object = "0.37.2"
