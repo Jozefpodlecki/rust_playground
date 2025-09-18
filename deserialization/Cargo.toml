@@ -1,0 +1,12 @@
+[package]
+name = "deserialization"
+version = "0.1.0"
+authors = ["Jozef Podlecki"]
+edition = "2024"
+rust-version = "1.88"
+
+
+[dependencies]
+anyhow = "1.0.96"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
