@@ -1,6 +1,5 @@
 {
 	"rust-analyzer.linkedProjects": [
-    	"bitmap-generator/Cargo.toml",
-		"windows-service/Cargo.toml",
+    	
   ]
 }
