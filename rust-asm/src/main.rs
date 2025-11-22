@@ -8,6 +8,20 @@ pub type BYTE = u8;
 pub type USHORT = u16;
 
 #[repr(C)]
+pub struct TEB {
+    pub Reserved1: [PVOID; 12],             // 0x00
+    pub ProcessEnvironmentBlock: *mut PEB,  // 0x60
+    pub Reserved2: [PVOID; 399],            // 0x68
+    pub Reserved3: [BYTE; 1952],            // large padding
+    pub TlsSlots: [PVOID; 64],
+    pub Reserved4: [BYTE; 8],
+    pub Reserved5: [PVOID; 26],
+    pub ReservedForOle: PVOID,
+    pub Reserved6: [PVOID; 4],
+    pub TlsExpansionSlots: PVOID,
+}
+
+#[repr(C)]
 pub struct PEB {
     pub Reserved1: [BYTE; 2],
     pub BeingDebugged: BYTE,
@@ -82,6 +96,27 @@ pub struct PEB_LDR_DATA {
     pub InInitializationOrderModuleList: LIST_ENTRY,
 }
 
+fn get_peb_via_teb() -> *mut PEB {
+    let teb = get_teb();
+
+    unsafe {
+        // At offset 0x60 inside the TEB
+        (*teb).ProcessEnvironmentBlock
+    }
+}
+
+fn get_teb() -> *mut TEB {
+    let teb: *mut TEB;
+    unsafe {
+        asm!(
+            "mov {0}, qword ptr gs:[0x30]",
+            out(reg) teb,
+            options(nostack, preserves_flags)
+        );
+    }
+    teb
+}
+
 fn get_peb() -> *mut PEB {
     let peb: *mut PEB;
     unsafe {
@@ -102,7 +137,8 @@ unsafe fn read_unicode_string(us: &UNICODE_STRING) -> String {
 }
 
 fn main() {
-    let peb = get_peb();
+    let peb = get_peb_via_teb();
+    // let peb = get_peb();
 
     unsafe {
         let ldr = (*peb).Ldr;
