@@ -1,7 +1,0 @@
-{
-	"rust-analyzer.linkedProjects": [
-    	"rust-asm/Cargo.toml",
-		"widget-app/Cargo.toml",
-		"widget-dll/Cargo.toml"
-  ]
-}

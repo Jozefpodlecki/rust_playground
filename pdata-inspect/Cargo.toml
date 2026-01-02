@@ -1,6 +1,8 @@
 [package]
-name = "rust-asm"
+name = "pdata-inspect"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+pelite = "0.10.0"
+anyhow = "1.0.96"
