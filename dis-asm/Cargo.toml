@@ -1,0 +1,30 @@
+cargo-features = ["panic-immediate-abort"]
+
+[package]
+name = "dis-asm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94.0"
+
+[dependencies]
+windows-sys = { version = "0.61.2", features = [
+	"Win32_Foundation",
+    "Win32_System_Console",
+	"Win32_UI_WindowsAndMessaging",
+	"Win32_System_Threading",
+] }
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/DEFAULTLIB:kernel32.lib"]
+
+# [profile.dev]
+# panic = "immediate-abort"
+
+# [profile.release]
+# panic = "immediate-abort"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
