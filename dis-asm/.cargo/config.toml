@@ -1,5 +1,0 @@
-[unstable]
-panic-immediate-abort = true
-
-[profile.release]
-panic = "immediate-abort"

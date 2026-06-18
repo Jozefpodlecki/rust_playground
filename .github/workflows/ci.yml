@@ -11,12 +11,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.89.0
-      # - run: Get-Location
-      # - run: ./replace-Toml.ps1
-      #   shell: pwsh
-      #   working-directory: ./buildtest
-
-      - run: cargo build --release
-        working-directory: ./buildtest
+      - uses: actions/checkout@v7
+      - shell: pwsh
+        run: |
+          Write-Host "Current directory: $(Get-Location)"
+      - shell: pwsh
+        run: .\scripts\ci.ps1

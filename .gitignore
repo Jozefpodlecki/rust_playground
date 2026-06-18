@@ -1,7 +1,1 @@
 target/
-*.dll
-.env
-*-shm
-*-wal
-env.json
-.env
