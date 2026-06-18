@@ -16,4 +16,4 @@ jobs:
         run: |
           Write-Host "Current directory: $(Get-Location)"
       - shell: pwsh
-        run: .\scripts\ci.ps1
+        run: .\.github\scripts\ci.ps1
