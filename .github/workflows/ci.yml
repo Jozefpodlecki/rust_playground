@@ -13,7 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - shell: pwsh
-        run: |
-          Write-Host "Current directory: $(Get-Location)"
-      - shell: pwsh
         run: .\.github\scripts\ci.ps1
