@@ -1,5 +1,5 @@
-#![no_std]
-#![no_main]
+// #![no_std]
+// #![no_main]
 #![allow(static_mut_refs, non_snake_case, non_camel_case_types)]
 #![windows_subsystem = "console"]
 #![feature(arbitrary_self_types_pointers)]
@@ -15,14 +15,15 @@ extern crate alloc;
 mod static_alloc;
 mod crt;
 
-use crate::static_alloc::FreeListAllocator;
+use crate::static_alloc::{ARENA, FreeListAllocator};
 
-#[inline(never)]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// #[inline(never)]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 
+// #[global_allocator]
 static ALLOCATOR: FreeListAllocator = FreeListAllocator;
 
 #[rustc_std_internal_symbol]
@@ -76,11 +77,21 @@ fn __rust_alloc_zeroed(
     ) }
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn mainCRTStartup() -> i32 {
+// #[unsafe(no_mangle)]
+// pub extern "C" fn mainCRTStartup() -> i32 {
 
-    let mut test = vec![0; 1024 * 1];
+//     let mut test = vec![0; 1024 * 128];
+//     // let mut test = vec![0; 1024 * 512];
+//     let used = unsafe { (*ARENA.get()).used() };
+//     used as i32
+// }
 
-    0
+fn main() {
+    let mut test = vec![0; 1024 * 128];
+    // let mut test = vec![0; 1024];
+    // let mut test = vec![0; 1024];
+    // let mut test = vec![0; 1024];
+    // let mut test = vec![0; 1024 * 512];
+    let used = unsafe { (*ARENA.get()).used() };
+    println!("{}", used);
 }
-     

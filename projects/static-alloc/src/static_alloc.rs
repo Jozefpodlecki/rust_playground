@@ -1,247 +1,155 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::cell::{SyncUnsafeCell};
-use core::ptr::{self};
-use core::sync::atomic::{AtomicPtr, Ordering};
+use core::ptr;
 
 const ARENA_SIZE: usize = 1024 * 1024;
 
-
-#[repr(C, align(16))]
-struct Block {
+#[repr(C)]
+pub struct Block {
     size: usize,
     next: *mut Block,
 }
 
-impl Block {
-    #[inline]
-    const fn header_size() -> usize {
-        core::mem::size_of::<Block>()
-    }
-
-    #[inline]
-    fn split(&mut self, needed: usize) -> *mut Block {
-        unsafe {
-            let remaining = self.size - needed - Self::header_size();
-            let new_block = (self as *mut Self as usize + Self::header_size() + needed) as *mut Block;
-            (*new_block).size = remaining;
-            (*new_block).next = self.next;
-            self.size = needed;
-            self.next = new_block;
-            new_block
-        }
-    }
-
-    #[inline]
-    fn coalesce_with_next(&mut self, next: *mut Block) {
-        unsafe {
-            self.size += (*next).size + Self::header_size();
-            self.next = (*next).next;
-        }
-    }
-
-    #[inline]
-    fn can_split(&self, needed: usize) -> bool {
-        self.size >= needed + Self::header_size() + 16
-    }
-}
-
-struct Arena {
+#[repr(align(16))]
+pub struct Arena {
     data: [u8; ARENA_SIZE],
-    head: AtomicPtr<Block>,
-    initialized: bool,
+    head: *mut Block,
 }
 
 unsafe impl Sync for Arena {}
 
 impl Arena {
     const fn new() -> Self {
-        Arena {
+        Self {
             data: [0; ARENA_SIZE],
-            head: AtomicPtr::new(ptr::null_mut()),
-            initialized: false,
+            head: ptr::null_mut(),
         }
     }
 
     fn init(&mut self) {
         unsafe {
-            if !self.initialized {
-                let block = self.data.as_mut_ptr() as *mut Block;
-                (*block).size = ARENA_SIZE - Block::header_size();
-                (*block).next = ptr::null_mut();
-                self.head.store(block, Ordering::Release);
-                self.initialized = true;
-            }
+            let base = self.data.as_ptr() as *mut Block;
+            (*base).size = ARENA_SIZE - core::mem::size_of::<Block>();
+            (*base).next = ptr::null_mut();
+            self.head = base;
         }
     }
 
     #[inline]
-    fn align_up(x: usize, align: usize) -> usize {
-        (x + align - 1) & !(align - 1)
+    const fn align_up(x: usize, a: usize) -> usize {
+        (x + a - 1) & !(a - 1)
     }
 
-    fn alloc(&mut self, size: usize, align: usize) -> *mut u8 {
+    fn alloc(&mut self, layout: Layout) -> *mut u8 {
         unsafe {
-            let mut current = self.head.load(Ordering::Acquire);
+            let size = layout.size();
+            let align = layout.align();
+            let header_size = core::mem::size_of::<Block>();
+
+            if size == 0 {
+                return ptr::null_mut();
+            }
+
             let mut prev: *mut Block = ptr::null_mut();
+            let mut cur = self.head;
 
-            while !current.is_null() {
-                let block = &mut *current;
-                let block_start = current as usize;
-                let header_size = Block::header_size();
-                let storage_size = core::mem::size_of::<*mut Block>();
+            while !cur.is_null() {
+                let block_start = cur as usize;
+                let payload_start = block_start + header_size;
+                let payload_aligned = Self::align_up(payload_start, align);
+                let padding = payload_aligned - payload_start;
+                let total_needed = size + padding;
+                let block_payload_size = (*cur).size;
 
-                // Minimum address for user data: block_start + header + storage (for the stored pointer)
-                let min_user_data = block_start + header_size + storage_size;
-                let aligned_user_data = Self::align_up(min_user_data, align);
-                let total_needed = (aligned_user_data - block_start) + size;
+                if total_needed <= block_payload_size {
+                    let remaining_payload = block_payload_size - total_needed;
+                    let next_block = (*cur).next;
 
-                if total_needed <= block.size {
-                    if block.can_split(total_needed) {
-                        let remaining = block.size - total_needed - header_size;
-                        let new_block = (block_start + total_needed) as *mut Block;
-                        (*new_block).size = remaining;
-                        (*new_block).next = block.next;
-                        block.size = total_needed;
-                        block.next = new_block;
-                    }
+                    if remaining_payload > header_size + 16 {
+                        let split_payload_start = block_start + header_size + total_needed;
+                        let split_block = split_payload_start as *mut Block;
 
-                    if prev.is_null() {
-                        self.head.store(block.next, Ordering::Release);
+                        (*split_block).size = remaining_payload - header_size;
+                        (*split_block).next = next_block;
+                        (*cur).size = total_needed;
+
+                        if prev.is_null() {
+                            self.head = split_block;
+                        } else {
+                            (*prev).next = split_block;
+                        }
                     } else {
-                        (*prev).next = block.next;
+                        if prev.is_null() {
+                            self.head = next_block;
+                        } else {
+                            (*prev).next = next_block;
+                        }
                     }
 
-                    block.next = ptr::null_mut();
-
-                    let user_ptr = aligned_user_data as *mut u8;
-                    let storage_ptr = (user_ptr as usize - storage_size) as *mut *mut Block;
-                    *storage_ptr = block as *mut Block;
-
-                    return user_ptr;
+                    return payload_aligned as *mut u8;
                 }
 
-                prev = current;
-                current = block.next;
+                prev = cur;
+                cur = (*cur).next;
             }
 
             ptr::null_mut()
         }
     }
 
-    fn dealloc(&mut self, ptr: *mut u8, _size: usize) {
+    fn dealloc(&mut self, ptr: *mut u8, _layout: Layout) {
         unsafe {
-            let storage_size = core::mem::size_of::<*mut Block>();
-            let storage_ptr = (ptr as usize - storage_size) as *mut *mut Block;
-            let block_ptr = *storage_ptr;
-
-            if block_ptr.is_null() {
+            if ptr.is_null() {
                 return;
             }
 
-            let block = &mut *block_ptr;
-            block.next = ptr::null_mut();
-            // We don't need to set size here because we'll use the stored size from the block header.
+            let header_size = core::mem::size_of::<Block>();
+            let block = (ptr as usize - header_size) as *mut Block;
 
-            let mut current = self.head.load(Ordering::Acquire);
-            let mut prev: *mut Block = ptr::null_mut();
-
-            while !current.is_null() && current < block_ptr {
-                prev = current;
-                current = (*current).next;
-            }
-
-            self.insert_block(block_ptr, prev, current);
-            self.coalesce();
+            (*block).next = self.head;
+            self.head = block;
         }
     }
 
-    #[inline]
-    fn insert_block(&mut self, block: *mut Block, prev: *mut Block, next: *mut Block) {
+    pub fn used(&self) -> usize {
         unsafe {
-            if prev.is_null() {
-                (*block).next = self.head.load(Ordering::Acquire);
-                self.head.store(block, Ordering::Release);
-            } else {
-                (*block).next = next;
-                (*prev).next = block;
-            }
-        }
+            let header_size = core::mem::size_of::<Block>();
+    let mut total_free = 0;
+    let mut block_count = 0;
+    let mut cur = self.head;
+    
+    while !cur.is_null() {
+        let block_start = cur as usize;
+        let block_size = (*cur).size;
+        total_free += header_size + block_size;
+        block_count += 1;
+        cur = (*cur).next;
     }
-
-    #[inline]
-    fn coalesce(&mut self) {
-        unsafe {
-            let mut current = self.head.load(Ordering::Acquire);
-
-            while !current.is_null() {
-                let next = (*current).next;
-                if next.is_null() {
-                    break;
-                }
-                let current_end = current as usize + Block::header_size() + (*current).size;
-                if current_end == next as usize {
-                    (*current).coalesce_with_next(next);
-                } else {
-                    current = next;
-                }
-            }
+    
+    // Return the actual used amount
+    ARENA_SIZE - total_free
         }
     }
 }
 
-static ARENA: SyncUnsafeCell<Arena> = SyncUnsafeCell::new(Arena::new());
+pub static mut ARENA: SyncUnsafeCell<Arena> = SyncUnsafeCell::new(Arena::new());
 
 pub struct FreeListAllocator;
 
-impl FreeListAllocator {
-    #[inline]
-    fn arena(&self) -> *mut Arena {
-        ARENA.get()
-    }
-
-    #[inline]
-    fn ensure_initialized(&self) {
-        unsafe {
-            let arena = self.arena();
-            if !(*arena).initialized {
-                (*arena).init();
-            }
-        }
-    }
-}
-
 unsafe impl GlobalAlloc for FreeListAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        let size = layout.size();
-        let align = layout.align();
-
-        if size == 0 {
-            return align as *mut u8;
+        let arena = ARENA.get_mut();
+        
+        if arena.head.is_null() {
+            arena.init();
         }
-
-        self.ensure_initialized();
-        let arena = self.arena();
-        (*arena).alloc(size, align)
+        
+        arena.alloc(layout)
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        if ptr.is_null() || layout.size() == 0 {
-            return;
-        }
-        let arena = self.arena();
-        (*arena).dealloc(ptr, layout.size());
-    }
-
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        unsafe {
-            let new_layout = Layout::from_size_alignment_unchecked(new_size, layout.alignment());
-            let new_ptr = self.alloc(new_layout);
-            if !new_ptr.is_null() {
-                let count = core::cmp::min(layout.size(), new_size);
-                ptr::copy_nonoverlapping(ptr, new_ptr, count);
-                self.dealloc(ptr, layout);
-            }
-            new_ptr
-        }
+        let arena = ARENA.get_mut();
+        
+        arena.dealloc(ptr, layout)
     }
 }

@@ -1,29 +1,52 @@
-use core::{hint::unreachable_unchecked, ptr::write_bytes};
 
 #[inline(never)]
 #[unsafe(no_mangle)]
 pub extern "C" fn __CxxFrameHandler3() {
-    unsafe { unreachable_unchecked() }
+    
 }
 
 #[inline(never)]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    let mut i = 0;
-    while i < n {
-        unsafe {
-            *dest.add(i) = *src.add(i);
+pub extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+    unsafe {
+        let mut i = 0;
+        let mut dest_ptr = dest as *mut usize;
+        let mut src_ptr = src as *const usize;
+        
+        while i + 8 <= n {
+            *dest_ptr = *src_ptr;
+            dest_ptr = dest_ptr.add(1);
+            src_ptr = src_ptr.add(1);
+            i += 8;
         }
-        i += 1;
+        
+        let mut dest_ptr = dest_ptr as *mut u8;
+        let mut src_ptr = src_ptr as *const u8;
+        while i < n {
+            *dest_ptr = *src_ptr;
+            dest_ptr = dest_ptr.add(1);
+            src_ptr = src_ptr.add(1);
+            i += 1;
+        }
+        
+        dest
     }
-    dest
 }
 
 #[inline(never)]
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn memset(dest: *mut u8, c: i32, n: usize) -> *mut u8 {
-    unsafe { write_bytes(dest, c as u8, n); }
-    dest
+pub extern "C" fn memset(mut dest: *mut u8, c: i32, n: usize) -> *mut u8 {
+    unsafe {
+        let original_dest = dest;
+        let mut i = 0;
+        while i < n {
+            unsafe {
+                *dest.add(i) = c as u8;
+            }
+            i += 1;
+        }
+        original_dest
+    }
 }
 
 #[unsafe(no_mangle)]

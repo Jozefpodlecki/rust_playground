@@ -1,0 +1,24 @@
+
+[package]
+name = "win-veh"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+winapi = { version = "*", features = ["errhandlingapi", "minwinbase", "libloaderapi"] }
+ntapi = { version = "*"}
+iced-x86 = "1.21.0"
+
+[profile.dev]
+# panic = "abort"
+
+[profile.release]
+# panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
