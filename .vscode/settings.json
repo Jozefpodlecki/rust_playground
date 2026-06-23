@@ -2,6 +2,7 @@
    "rust-analyzer.check.allTargets": false,
    "rust-analyzer.linkedProjects": [
       "projects/static-alloc/Cargo.toml",
-      "projects/win-veh/Cargo.toml"
+      "projects/win-veh/Cargo.toml",
+      "projects/win-seh/Cargo.toml",
     ],
 }
