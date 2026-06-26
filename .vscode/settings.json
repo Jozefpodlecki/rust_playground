@@ -1,8 +1,13 @@
 {
    "rust-analyzer.check.allTargets": false,
    "rust-analyzer.linkedProjects": [
+      "utils/Cargo.toml",
       "projects/static-alloc/Cargo.toml",
       "projects/win-veh/Cargo.toml",
       "projects/win-seh/Cargo.toml",
+      "projects/arc-mutex-thread-no-std/Cargo.toml",
+      "projects/unsleep-process/Cargo.toml",
+      "projects/tls-callback/Cargo.toml",
+      "projects/query-process/Cargo.toml"
     ],
 }
