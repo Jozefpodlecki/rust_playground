@@ -1,6 +1,8 @@
 use ntapi::{ntexapi::NtDelayExecution, ntmmapi::NtReadVirtualMemory};
 use winapi::{shared::ntdef::{HANDLE, NT_SUCCESS, NTSTATUS, PVOID}, um::winnt::LARGE_INTEGER};
 
+use crate::MemoryRegionIterator;
+
 pub struct ProcessMemoryBytesReader;
 
 impl ProcessMemoryBytesReader {

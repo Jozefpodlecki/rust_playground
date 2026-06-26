@@ -70,7 +70,7 @@ pub fn get_output_handle() -> HANDLE {
     }
 }
 
-pub fn write_console_utf8_with_nt_write(
+pub fn write_console_utf16_with_nt_write(
     handle: HANDLE,
     buffer: *const u16,
     chars_to_write: u32,
@@ -126,6 +126,10 @@ impl NtConsole {
             *handle_ref
         };
 
+        if text.is_empty() {
+            return Ok(0);
+        }
+
         let str = match U16CStackString::<260>::from_str(text) {
             Some(s) => s,
             None => return Err(STATUS_INVALID_HANDLE),
@@ -133,7 +137,7 @@ impl NtConsole {
         
         let mut written = 0;
         let status = unsafe {
-            write_console_utf8_with_nt_write(
+            write_console_utf16_with_nt_write(
                 handle,
                 str.as_ptr(),
                 str.len() as u32,

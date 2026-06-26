@@ -1,9 +1,49 @@
+use core::fmt;
+
+use crate::U8CStackString;
+
+const MAX_PAT_LEN: usize = 128;
+
 pub struct U16CStackString<const N: usize> {
     buf: [u16; N],
     len: usize,
 }
 
+impl<const N: usize> fmt::Display for U16CStackString<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() {
+            return write!(f, "");
+        }
+        let slice = self.as_slice();
+        let string = U8CStackString::<128>::from_utf16_lossy(slice);
+        write!(f, "{}", string)
+    }
+}
+
+impl<const N: usize> fmt::Debug for U16CStackString<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() {
+            return write!(f, "\"\"");
+        }
+        let slice = self.as_slice();
+        let string = U8CStackString::<128>::from_utf16_lossy(slice);
+        write!(f, "{:?}", string)
+    }
+}
+
+impl<const N: usize> Default for U16CStackString<N> {
+    fn default() -> Self {
+        let mut buf = [0u16; N];
+        buf[0] = 0;
+        Self { buf, len: 0 }
+    }
+}
+
 impl<const N: usize> U16CStackString<N> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn from_str(value: &str) -> Option<Self> {
         let mut buf = [0u16; N];
         let mut len = 0;
@@ -50,6 +90,11 @@ impl<const N: usize> U16CStackString<N> {
         Some(Self { buf, len })
     }
 
+     pub fn as_u8_stack_string<const M: usize>(&self) -> U8CStackString<M> {
+        let slice = self.as_slice();
+        U8CStackString::<M>::from_utf16_lossy(slice)
+    }
+
     pub fn push_str(&mut self, value: &str) -> bool {
         for ch in value.encode_utf16() {
             if self.len + 1 >= N {
@@ -64,6 +109,16 @@ impl<const N: usize> U16CStackString<N> {
         }
         self.buf[self.len] = 0;
         
+        true
+    }
+
+    pub fn push(&mut self, ch: u16) -> bool {
+        if self.len + 1 >= N {
+            return false;
+        }
+        self.buf[self.len] = ch;
+        self.len += 1;
+        self.buf[self.len] = 0;
         true
     }
     
@@ -88,7 +143,85 @@ impl<const N: usize> U16CStackString<N> {
         &self.buf[..self.len]
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn leak(&mut self) -> *mut u16 {
         self.buf.as_mut_ptr()
     }
+
+    pub fn contains(&self, pat: &str) -> bool {
+        if self.is_empty() || pat.is_empty() {
+            return false;
+        }
+
+        let mut pat_utf16 = [0u16; MAX_PAT_LEN];
+        let mut pat_len = 0;
+        
+        for ch in pat.encode_utf16() {
+            if pat_len >= MAX_PAT_LEN {
+                return false;
+            }
+            pat_utf16[pat_len] = ch;
+            pat_len += 1;
+        }
+        
+        if pat_len == 0 {
+            return false;
+        }
+
+        let slice = self.as_slice();
+        if slice.len() < pat_len {
+            return false;
+        }
+
+        for i in 0..=slice.len() - pat_len {
+            let mut found = true;
+            for j in 0..pat_len {
+                if slice[i + j] != pat_utf16[j] {
+                    found = false;
+                    break;
+                }
+            }
+            if found {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn contains_str(&self, pat: &str) -> bool {
+        self.contains(pat)
+    }
+
+    pub fn contains_u16_slice(&self, pat: &[u16]) -> bool {
+        if self.is_empty() || pat.is_empty() {
+            return false;
+        }
+
+        let slice = self.as_slice();
+        if slice.len() < pat.len() {
+            return false;
+        }
+
+        for i in 0..=slice.len() - pat.len() {
+            let mut found = true;
+            for j in 0..pat.len() {
+                if slice[i + j] != pat[j] {
+                    found = false;
+                    break;
+                }
+            }
+            if found {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn contains_u16(&self, ch: u16) -> bool {
+        self.as_slice().contains(&ch)
+    }
+
 }
