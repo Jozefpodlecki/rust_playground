@@ -5,9 +5,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-winapi = { version = "*", features = ["errhandlingapi", "minwinbase", "libloaderapi"] }
-ntapi = { version = "*"}
+winapi = { version = "0.3.9", features = ["errhandlingapi", "minwinbase", "libloaderapi", "synchapi"] }
+ntapi = { version = "0.4.3"}
 iced-x86 = "1.21.0"
+utils = { path = "../../utils" }
 
 [profile.dev]
 # panic = "abort"

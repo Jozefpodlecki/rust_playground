@@ -15,3 +15,8 @@ This crate implements a custom exception handler that can catch and handle vario
 - Catches exceptions in a custom handler
 - Modifies the context (`Rip`) to skip faulting instructions
 - Resumes execution seamlessly
+
+## References
+
+- [Exception Handlers - Uninformed](http://uninformed.org/index.cgi?v=4&a=1&p=18)
+- [Windows RtlAddFunctionTable pmeerw's blog](https://pmeerw.net/blog/programming/RtlAddFunctionTable.html)

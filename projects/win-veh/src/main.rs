@@ -1,13 +1,13 @@
 #![allow(unconditional_panic)]
 
 use ntapi::ntrtl::*;
+use utils::NtDll;
 use winapi::{um::{errhandlingapi::AddVectoredExceptionHandler, minwinbase::{EXCEPTION_ILLEGAL_INSTRUCTION, EXCEPTION_INT_DIVIDE_BY_ZERO}, winnt::EXCEPTION_POINTERS}, vc::excpt::*};
 
 use crate::{api::*, exceptions::*, manual::rtl_add_veh, types::*};
 
 mod types;
 mod exceptions;
-mod memory;
 mod api;
 mod manual;
 
@@ -79,8 +79,8 @@ unsafe extern "system" fn print_and_continue(
 
 pub fn print_veh_entries() {
     unsafe {
-        let ntdll_base: usize = get_ntdll_base() as _;
-        let list_ptr = (ntdll_base + 0x1E9578) as *mut VECTORED_HANDLER_LIST;
+        let ntdll = NtDll::from_current_process();
+        let list_ptr = ntdll.vectored_handler_list() as *mut VECTORED_HANDLER_LIST;
         let list = *list_ptr;
         
         println!("=== VEH Handler List ===");

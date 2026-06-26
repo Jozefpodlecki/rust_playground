@@ -24,16 +24,13 @@ extern crate alloc;
 
 use core::{cell::SyncUnsafeCell, ffi::c_void};
 use ntapi::ntexapi::NtDelayExecution;
+use utils::*;
 use winapi::{um::winnt::*, vc::excpt::{EXCEPTION_DISPOSITION, ExceptionContinueExecution}};
 
-use crate::{code_writer::FaultingCode, dynamic_section::{DynamicSection, ExceptionData, SetupError}, nt_console::*};
+use crate::{code_writer::FaultingCode, dynamic_section::{DynamicSection, ExceptionData, SetupError}};
 
-mod crt;
-mod nt_console;
-mod u16_stack_string;
 mod dynamic_section;
 mod code_buffer;
-mod helpers;
 mod types;
 mod code_writer;
 

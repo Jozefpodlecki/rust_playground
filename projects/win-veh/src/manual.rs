@@ -1,4 +1,5 @@
 use ntapi::ntrtl::*;
+use utils::NtDll;
 use winapi::{shared::ntdef::HANDLE, um::winnt::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE}};
 
 use crate::{api::*, types::*};
@@ -7,8 +8,8 @@ pub fn rtl_add_veh(process_handle: HANDLE, veh_handler_addr: *mut winapi::ctypes
     unsafe {
         let encoded_handler = RtlEncodePointer(veh_handler_addr as _);
 
-        let ntdll_base: usize = get_ntdll_base() as _;
-        let list_ptr = (ntdll_base + 0x1E9578) as *mut VECTORED_HANDLER_LIST;
+        let ntdll = NtDll::from_current_process();
+        let list_ptr = ntdll.vectored_handler_list() as *mut VECTORED_HANDLER_LIST;
         let mut list = *list_ptr;
         
         let entry_addr = alloc_memory_at_address(

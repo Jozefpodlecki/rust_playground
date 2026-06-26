@@ -30,19 +30,19 @@ fn panic(_info: &PanicInfo) -> ! {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn mainCRTStartup() -> i32 {
-    let shared_data = Arc::new(RwLock::new(42));
+    // let shared_data = Arc::new(RwLock::new(42));
 
-    let shared_data_clone = shared_data.clone();
+    // let shared_data_clone = shared_data.clone();
     let handle = Thread::spawn(move || {
-        loop {
+        // loop {
             
-            {
-                let mut shared_data = shared_data_clone.write();
-                *shared_data += 1;
-            }
+        //     // {
+        //     //     let mut shared_data = shared_data_clone.write();
+        //     //     *shared_data += 1;
+        //     // }
 
-            Sleeper::sleep(500);
-        }
+        //     // Sleeper::sleep(500);
+        // }
     });
 
     let handle = match handle {
@@ -51,14 +51,18 @@ pub extern "C" fn mainCRTStartup() -> i32 {
     };
 
     loop {
-        let shared_data = shared_data.read();
-        println!("{}", *shared_data);
-        Sleeper::sleep(500);
+
     }
 
-    if let Err(err) = handle.join() {
-        println!("error")
-    }
+    // loop {
+    //     let shared_data = shared_data.read();
+    //     println!("{}", *shared_data);
+    //     Sleeper::sleep(500);
+    // }
+
+    // if let Err(err) = handle.join() {
+    //     println!("error")
+    // }
    
     0
 }

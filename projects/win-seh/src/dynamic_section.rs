@@ -2,7 +2,7 @@ use alloc::boxed::Box;
 use ntapi::ntmmapi::{NtAllocateVirtualMemory, NtFreeVirtualMemory};
 use winapi::{ctypes, shared::ntdef::{HANDLE, NT_SUCCESS}, um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE, RUNTIME_FUNCTION, RtlAddFunctionTable, RtlDeleteFunctionTable, RtlLookupFunctionEntry}};
 
-use crate::{code_buffer::CodeBuffer, code_writer::{CodeWriter, FaultingCode}, println, types::*};
+use crate::{code_buffer::CodeBuffer, code_writer::{CodeWriter, FaultingCode}, types::*};
 
 pub struct ExceptionData {
     pub ret_addr: u64

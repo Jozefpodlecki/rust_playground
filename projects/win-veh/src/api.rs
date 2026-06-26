@@ -1,36 +1,19 @@
 use ntapi::ntmmapi::*;
 use ntapi::ntrtl::*;
+use utils::NtDll;
 use winapi::shared::basetsd::SIZE_T;
 use winapi::shared::ntdef::{PVOID, UNICODE_STRING};
 use winapi::shared::ntstatus::STATUS_SUCCESS;
 use winapi::um::winnt::PAGE_EXECUTE_READWRITE;
 use winapi::um::winnt::{HANDLE, MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE};
 
-use crate::memory::MemoryRegionIterator;
 use crate::types::*;
-
-pub fn get_ntdll_base() -> usize {
-    let handle = usize::MAX as HANDLE;
-
-    for mbi in MemoryRegionIterator::new(handle) {
-        if let Some(name) = mbi.mapped_file_name() {
-            if name.to_lowercase().contains("ntdll") {
-                return mbi.allocation_base();
-            }
-        }
-    }
-    
-    unreachable!("ntdll not found");
-}
 
 pub fn get_veh_list_struct() -> *mut VECTORED_HANDLER_LIST {
     unsafe {
-        let base = get_ntdll_base();
-        let addr = base + 0x1E9578;
+        let ntdll = NtDll::from_current_process();
+        let ptr_to_struct = ntdll.vectored_handler_list() as *mut VECTORED_HANDLER_LIST;
 
-        let ptr_to_struct = addr as *mut VECTORED_HANDLER_LIST;
-
-        let lock_ptr = *(addr as *const usize);
         ptr_to_struct
     }
 }
