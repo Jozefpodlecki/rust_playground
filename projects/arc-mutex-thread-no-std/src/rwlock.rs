@@ -4,7 +4,7 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use core::ptr;
 use ntapi::ntobapi::NtWaitForSingleObject;
-use utils::println;
+use toolkit::println;
 use winapi::shared::ntdef::HANDLE;
 use winapi::um::synchapi::{WaitOnAddress, WakeByAddressAll, WakeByAddressSingle};
 use winapi::um::winnt::LARGE_INTEGER;
