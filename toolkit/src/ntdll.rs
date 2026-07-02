@@ -28,6 +28,15 @@ impl NtDll {
         unsafe { self.0.add(0x1E9578) }
     }
 
+    #[allow(non_snake_case)]
+    pub fn RtlExitUserThread(&self) -> unsafe extern "system" fn(Code: NTSTATUS) {
+        let offset = 0x87C60;
+        let func_ptr = self.0 as usize + offset;
+        
+        unsafe { core::mem::transmute(func_ptr) }
+    }
+
+    #[allow(non_snake_case)]
     pub fn RtlUserThreadStart(&self) -> unsafe extern "system" fn(Function: PTHREAD_START_ROUTINE, Parameter: PVOID) -> NTSTATUS {
         let offset = 0x87BF0;
         let func_ptr = self.0 as usize + offset;

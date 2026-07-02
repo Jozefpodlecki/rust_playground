@@ -1,5 +1,7 @@
 use core::fmt;
 
+use winapi::shared::ntdef::UNICODE_STRING;
+
 use crate::U8CStackString;
 
 const MAX_PAT_LEN: usize = 128;
@@ -7,6 +9,14 @@ const MAX_PAT_LEN: usize = 128;
 pub struct U16CStackString<const N: usize> {
     buf: [u16; N],
     len: usize,
+}
+
+impl<const N: usize> Clone for U16CStackString<N> {
+    fn clone(&self) -> Self {
+        let mut buf = [0u16; N];
+        buf[..self.len].copy_from_slice(&self.buf[..self.len]);
+        Self { buf, len: self.len }
+    }
 }
 
 impl<const N: usize> fmt::Display for U16CStackString<N> {
@@ -43,6 +53,54 @@ impl<const N: usize> U16CStackString<N> {
     pub fn new() -> Self {
         Self::default()
     }
+
+    // pub fn from_utf16_lossy(utf16: &[u16]) -> Self {
+    //     let mut buf = [0u8; N];
+    //     let mut len = 0;
+        
+    //     for &code_unit in utf16 {
+    //         if code_unit == 0 {
+    //             break;
+    //         }
+            
+    //         // Simple lossy conversion - just handle ASCII and basic UTF-16
+    //         if code_unit <= 0x7F {
+    //             if len < N - 1 {
+    //                 buf[len] = code_unit as u8;
+    //                 len += 1;
+    //             }
+    //         } else if code_unit <= 0x7FF {
+    //             if len + 2 < N - 1 {
+    //                 buf[len] = (0xC0 | ((code_unit >> 6) & 0x1F)) as u8;
+    //                 buf[len + 1] = (0x80 | (code_unit & 0x3F)) as u8;
+    //                 len += 2;
+    //             }
+    //         } else if code_unit <= 0xFFFF {
+    //             if len + 3 < N - 1 {
+    //                 buf[len] = (0xE0 | ((code_unit >> 12) & 0x0F)) as u8;
+    //                 buf[len + 1] = (0x80 | ((code_unit >> 6) & 0x3F)) as u8;
+    //                 buf[len + 2] = (0x80 | (code_unit & 0x3F)) as u8;
+    //                 len += 3;
+    //             }
+    //         } else {
+    //             // Surrogate pairs or other - use replacement char
+    //             if len < N - 1 {
+    //                 buf[len] = 0xEF; // UTF-8 replacement
+    //                 buf[len + 1] = 0xBF;
+    //                 buf[len + 2] = 0xBD;
+    //                 len += 3;
+    //             }
+    //         }
+    //     }
+        
+    //     if len < N {
+    //         buf[len] = 0;
+    //     } else {
+    //         buf[N - 1] = 0;
+    //     }
+        
+    //     Self { buf, len }
+    // }
 
     pub fn from_str(value: &str) -> Option<Self> {
         let mut buf = [0u16; N];
@@ -224,4 +282,52 @@ impl<const N: usize> U16CStackString<N> {
         self.as_slice().contains(&ch)
     }
 
+    pub fn to_unicode_string(&self) -> UNICODE_STRING {
+        let len = (self.len * 2) as u16;
+        UNICODE_STRING {
+            Length: len,
+            MaximumLength: len + 2,
+            Buffer: self.as_ptr() as _,
+        }
+    }
+
+    pub fn eq_ignore_ascii_case_str(&self, other: &str) -> bool {
+        if self.is_empty() && other.is_empty() {
+            return true;
+        }
+        
+        let self_slice = self.as_slice();
+        let other_bytes = other.as_bytes();
+        
+        let mut i = 0;
+        let mut j = 0;
+        
+        while i < self.len && j < other_bytes.len() {
+            let a = self_slice[i];
+            let b = other_bytes[j] as u16;
+            
+            if a == b {
+                i += 1;
+                j += 1;
+                continue;
+            }
+            
+            if a >= 65 && a <= 90 {
+                if a + 32 != b {
+                    return false;
+                }
+            } else if a >= 97 && a <= 122 {
+                if a - 32 != b {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+            
+            i += 1;
+            j += 1;
+        }
+        
+        i == self.len && j == other_bytes.len()
+    }
 }
