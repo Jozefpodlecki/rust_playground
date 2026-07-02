@@ -1,7 +1,12 @@
-use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{NtProtectVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess};
-use winapi::{shared::ntdef::{HANDLE, NT_SUCCESS, NTSTATUS, PVOID}, um::winnt::{LARGE_INTEGER, PAGE_EXECUTE_READWRITE}};
+use core::fmt::{self, Display, Formatter};
 
-use crate::MemoryRegionIterator;
+use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{NtProtectVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
+use winapi::{shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
+
+use crate::{HEAP, MemoryRegionIterator, U16CStackString};
+
+
+
 
 #[unsafe(naked)]
 pub unsafe fn get_peb() -> *mut PEB {
@@ -11,18 +16,156 @@ pub unsafe fn get_peb() -> *mut PEB {
     );
 }
 
+pub struct ProcessEnvironmentBlock(*mut PEB);
+
+impl ProcessEnvironmentBlock {
+    pub fn current_process() -> Self {
+        let peb: *mut PEB;
+        unsafe {
+            core::arch::asm!(
+                "mov {0}, gs:[0x60]",
+                out(reg) peb,
+                options(nostack, readonly)
+            );
+        }
+        Self(peb)
+    }
+
+    pub fn process_params(&self) -> *mut RTL_USER_PROCESS_PARAMETERS {
+        unsafe { (*self.0).ProcessParameters }
+    }
+
+    pub fn process_heap(&self) -> *mut HEAP {
+        unsafe {
+            (*self.0).ProcessHeap as *mut HEAP
+            // let raw_heap = (*self.0).ProcessHeap;
+            // // The _HEAP structure starts at offset 0x10 (after the initial HEAP_ENTRY)
+            // (raw_heap as usize + 0x10) as *mut HEAP
+        }
+    }
+
+    pub fn executable_path(&self) -> U16CStackString<260> {
+        let params = unsafe { &*(*self.0).ProcessParameters };
+        let image_path: UNICODE_STRING = params.ImagePathName;
+        U16CStackString::<260>::from_ptr(image_path.Buffer).unwrap()
+    }
+
+}
+
+#[repr(transparent)]
+pub struct ProcessMemoryBytes<const N: usize>([u8; N]);
+
+impl<const N: usize> ProcessMemoryBytes<N> {
+    pub fn new() -> Self {
+        Self([0u8; N])
+    }
+    
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+    
+    pub fn as_mut_bytes(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+    
+    pub fn len(&self) -> usize {
+        N
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        N == 0
+    }
+    
+    pub fn get(&self, index: usize) -> Option<u8> {
+        if index < N {
+            Some(self.0[index])
+        } else {
+            None
+        }
+    }
+}
+
+impl<const N: usize> Default for ProcessMemoryBytes<N> {
+    fn default() -> Self {
+        Self([0u8; N])
+    }
+}
+
+impl<const N: usize> Display for ProcessMemoryBytes<N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "ProcessMemoryBytes ({} bytes):", N)?;
+        
+        for (i, chunk) in self.0.chunks(16).enumerate() {
+            // Hex part
+            write!(f, "{:04X}: ", i * 16)?;
+            
+            for byte in chunk.iter() {
+                write!(f, "{:02X} ", byte)?;
+            }
+            
+            let padding = 16 - chunk.len();
+            for _ in 0..padding {
+                write!(f, "   ")?;
+            }
+            
+            write!(f, " |")?;
+            for byte in chunk.iter() {
+                let c = *byte;
+                if c >= 0x20 && c <= 0x7E {
+                    write!(f, "{}", c as char)?;
+                } else {
+                    write!(f, ".")?;
+                }
+            }
+            for _ in 0..padding {
+                write!(f, " ")?;
+            }
+            writeln!(f, "|")?;
+        }
+        
+        Ok(())
+    }
+}
+
+impl<const N: usize> AsRef<[u8]> for ProcessMemoryBytes<N> {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl<const N: usize> AsMut<[u8]> for ProcessMemoryBytes<N> {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}
+
+impl<const N: usize> core::ops::Deref for ProcessMemoryBytes<N> {
+    type Target = [u8; N];
+    
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<const N: usize> core::ops::DerefMut for ProcessMemoryBytes<N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 pub struct ProcessMemoryBytesReader;
 
 impl ProcessMemoryBytesReader {
-    pub fn read<const N: usize>(address: PVOID) -> Result<[u8; N], NTSTATUS> {
+    pub fn read<const N: usize>(address: PVOID) -> Result<ProcessMemoryBytes<N>, NTSTATUS> {
         let handle = NtCurrentProcess;
-        let mut buffer = [0u8; N];
+        let mut buffer = ProcessMemoryBytes::<N>::new();
         let mut bytes_read: usize = 0;
+        
         let status = unsafe {
             NtReadVirtualMemory(
                 handle,
                 address,
-                buffer.as_mut_ptr() as _,
+                buffer.as_mut_bytes().as_mut_ptr() as _,
                 buffer.len(),
                 &mut bytes_read,
             )

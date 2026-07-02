@@ -4,6 +4,7 @@
 #![feature(core_intrinsics)]
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(static_mut_refs)]
+#![allow(non_snake_case)]
 #![allow(unused, internal_features)]
 #![feature(arbitrary_self_types_pointers)]
 
@@ -19,15 +20,7 @@ mod memory;
 mod ntdll;
 mod mutex;
 mod static_vec;
-
-#[cfg(feature = "alloc")]
-mod thread;
-
-#[cfg(feature = "alloc")]
-mod arc;
-
-#[cfg(feature = "alloc")]
-extern crate alloc;
+mod types;
 
 pub use fs::*;
 pub use io::*;
@@ -40,6 +33,16 @@ pub use helpers::*;
 pub use memory::*;
 pub use mutex::*;
 pub use ntdll::*;
+pub use types::*;
+
+#[cfg(feature = "alloc")]
+mod thread;
+
+#[cfg(feature = "alloc")]
+mod arc;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 #[cfg(feature = "alloc")]
 pub use thread::*;
