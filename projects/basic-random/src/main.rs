@@ -1,10 +1,13 @@
 #![no_std]
 #![no_main]
 #![windows_subsystem = "console"]
+#![allow(unused)]
 
 use core::panic::PanicInfo;
 
-use utils::{Sleeper, println};
+extern crate builtins;
+
+use toolkit::{Sleeper, println};
 
 use crate::rand::Rng;
 

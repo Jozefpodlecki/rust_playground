@@ -1,5 +1,7 @@
 use core::ops::Range;
 
+use toolkit::U8CStackString;
+
 use crate::chacha::ChaChaRng;
 
 #[link(name = "bcryptprimitives", kind = "raw-dylib")]
@@ -100,5 +102,73 @@ impl Rng {
     
     pub fn fill_bytes(&mut self, buffer: &mut [u8]) {
         self.inner.fill_bytes(buffer);
+    }
+
+    pub fn rand_str_lower<const N: usize>(&mut self) -> U8CStackString<N> {
+        let mut result = U8CStackString::<N>::new();
+        let max_len = N - 1;
+        
+        let len = if max_len > 0 {
+            self.range_u32(0..max_len as u32) as usize
+        } else {
+            0
+        };
+        
+        for _ in 0..len {            // 'a' = 97, 'z' = 122
+            let byte = 97 + (self.next_u32() % 26) as u8;
+            result.push(byte);
+        }
+        
+        result
+    }
+
+    pub fn rand_str_alpha<const N: usize>(&mut self) -> U8CStackString<N> {
+        let mut result = U8CStackString::<N>::new();
+        let max_len = N - 1;
+        
+        let len = if max_len > 0 {
+            self.range_u32(0..max_len as u32) as usize
+        } else {
+            0
+        };
+        
+        for _ in 0..len {
+            // 52 possible letters (a-z = 0-25, A-Z = 26-51)
+            let idx = self.next_u32() % 52;
+            let byte = if idx < 26 {
+                97 + idx as u8  // 'a' + idx
+            } else {
+                65 + (idx - 26) as u8  // 'A' + (idx - 26)
+            };
+            result.push(byte);
+        }
+        
+        result
+    }
+
+    pub fn rand_str_alnum<const N: usize>(&mut self) -> U8CStackString<N> {
+        let mut result = U8CStackString::<N>::new();
+        let max_len = N - 1;
+        
+        let len = if max_len > 0 {
+            self.range_u32(0..max_len as u32) as usize
+        } else {
+            0
+        };
+        
+        for _ in 0..len {
+            // 62 possible chars (a-z=0-25, A-Z=26-51, 0-9=52-61)
+            let idx = self.next_u32() % 62;
+            let byte = if idx < 26 {
+                97 + idx as u8  // 'a' + idx
+            } else if idx < 52 {
+                65 + (idx - 26) as u8  // 'A' + (idx - 26)
+            } else {
+                48 + (idx - 52) as u8  // '0' + (idx - 52)
+            };
+            result.push(byte);
+        }
+        
+        result
     }
 }
