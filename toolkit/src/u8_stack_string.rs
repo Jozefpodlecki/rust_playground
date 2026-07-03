@@ -56,24 +56,20 @@ impl<const N: usize> U8CStackString<N> {
 
     pub fn from_utf16_lossy(utf16: &[u16]) -> Self {
         let mut result = Self::new();
-        
-        for &code_unit in utf16 {
-            if code_unit == 0 {
-                break;
+    
+        for ch in char::decode_utf16(utf16.iter().copied()) {
+            if let Ok(c) = ch {
+                // Check for null terminator
+                if c == '\0' {
+                    break;
+                }
+                
+                // Convert char to UTF-8 bytes
+                let mut buf = [0u8; 4];
+                let bytes = c.encode_utf8(&mut buf);
+                result.push_str(bytes);
             }
-            
-            if code_unit >= 0xD800 && code_unit <= 0xDBFF {
-                continue;
-            } else if code_unit >= 0xDC00 && code_unit <= 0xDFFF {
-                continue;
-            }
-            
-            if code_unit <= 0xFF {
-                let byte = code_unit as u8;
-                result.push_str(core::str::from_utf8(&[byte]).unwrap_or("�"));
-            } else {
-                result.push_str("?");
-            }
+            // Invalid surrogates are ignored by decode_utf16
         }
         
         result

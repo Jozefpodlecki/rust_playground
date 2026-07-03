@@ -7,6 +7,7 @@ use winapi::um::winnt::LARGE_INTEGER;
 
 use crate::error::FileError;
 use crate::fs::options::FileOptions;
+use crate::types::ToUnicode;
 use crate::{U16CStackString, fs::*};
 use crate::io::*;
 
@@ -16,20 +17,20 @@ pub struct File {
 }
 
 impl File {
-    pub fn open<const N: usize>(path: &U16CStackString::<N>) -> Result<Self, FileError> {
+    pub fn open<P: ToUnicode>(path: P) -> Result<Self, FileError> {
         let mut opts = FileOptions::new();
         opts.read().share_read().synchronous();
         Self::open_with_options(path, &opts)
     }
 
-    pub fn create<const N: usize>(path: &U16CStackString::<N>) -> Result<Self, FileError> {
+    pub fn create<P: ToUnicode>(path: P) -> Result<Self, FileError> {
         let mut opts = FileOptions::new();
         opts.read_write().share_all().truncate_always().synchronous();
         Self::create_with_options(path, &opts)
     }
 
-    pub fn open_with_options<const N: usize>(path: &U16CStackString::<N>, opts: &FileOptions) -> Result<Self, FileError> {
-        let mut path_uc = path.to_unicode_string();
+    pub fn open_with_options<P: ToUnicode>(path: P, opts: &FileOptions) -> Result<Self, FileError> {
+        let mut path_uc = path.as_unicode();
 
         let mut object_attributes = OBJECT_ATTRIBUTES {
             Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
@@ -64,8 +65,8 @@ impl File {
         }
     }
 
-    pub fn create_with_options<const N: usize>(path: &U16CStackString::<N>, opts: &FileOptions) -> Result<Self, FileError> {
-        let mut path_uc = path.to_unicode_string();
+    pub fn create_with_options<P: ToUnicode>(path: P, opts: &FileOptions) -> Result<Self, FileError> {
+        let mut path_uc = path.as_unicode();
         
         let mut object_attributes = OBJECT_ATTRIBUTES {
             Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
@@ -104,7 +105,7 @@ impl File {
         }
     }
 
-    pub fn open_with_flags(path: &U16CStackString::<260>, access: u32, share: u32) -> Result<Self, FileError> {
+    pub fn open_with_flags<P: ToUnicode>(path: P, access: u32, share: u32) -> Result<Self, FileError> {
         let mut opts = FileOptions::new();
         opts.access = access;
         opts.share = share;

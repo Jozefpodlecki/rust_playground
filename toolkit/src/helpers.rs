@@ -1,9 +1,9 @@
 use core::fmt::{self, Display, Formatter};
 
-use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{NtProtectVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
-use winapi::{shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
+use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{MemoryBasicInformation, MemoryMappedFilenameInformation, NtProtectVirtualMemory, NtQueryVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
+use winapi::{ctypes::c_void, shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
 
-use crate::{HEAP, MemoryRegionIterator, U16CStackString};
+use crate::{MemoryRegionIterator, U16CStackString, print, println, types::{ByteBlock, HEAP}};
 
 
 
@@ -34,6 +34,10 @@ impl ProcessEnvironmentBlock {
     pub fn process_params(&self) -> *mut RTL_USER_PROCESS_PARAMETERS {
         unsafe { (*self.0).ProcessParameters }
     }
+    
+    pub fn image_base(&self) -> *mut c_void {
+        unsafe { (*self.0).ImageBaseAddress }
+    }
 
     pub fn process_heap(&self) -> *mut HEAP {
         unsafe {
@@ -52,113 +56,33 @@ impl ProcessEnvironmentBlock {
 
 }
 
-#[repr(transparent)]
-pub struct ProcessMemoryBytes<const N: usize>([u8; N]);
-
-impl<const N: usize> ProcessMemoryBytes<N> {
-    pub fn new() -> Self {
-        Self([0u8; N])
-    }
-    
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-    
-    pub fn as_mut_bytes(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-    
-    pub fn len(&self) -> usize {
-        N
-    }
-    
-    pub fn is_empty(&self) -> bool {
-        N == 0
-    }
-    
-    pub fn get(&self, index: usize) -> Option<u8> {
-        if index < N {
-            Some(self.0[index])
-        } else {
-            None
-        }
-    }
-}
-
-impl<const N: usize> Default for ProcessMemoryBytes<N> {
-    fn default() -> Self {
-        Self([0u8; N])
-    }
-}
-
-impl<const N: usize> Display for ProcessMemoryBytes<N> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "ProcessMemoryBytes ({} bytes):", N)?;
-        
-        for (i, chunk) in self.0.chunks(16).enumerate() {
-            // Hex part
-            write!(f, "{:04X}: ", i * 16)?;
-            
-            for byte in chunk.iter() {
-                write!(f, "{:02X} ", byte)?;
-            }
-            
-            let padding = 16 - chunk.len();
-            for _ in 0..padding {
-                write!(f, "   ")?;
-            }
-            
-            write!(f, " |")?;
-            for byte in chunk.iter() {
-                let c = *byte;
-                if c >= 0x20 && c <= 0x7E {
-                    write!(f, "{}", c as char)?;
-                } else {
-                    write!(f, ".")?;
-                }
-            }
-            for _ in 0..padding {
-                write!(f, " ")?;
-            }
-            writeln!(f, "|")?;
-        }
-        
-        Ok(())
-    }
-}
-
-impl<const N: usize> AsRef<[u8]> for ProcessMemoryBytes<N> {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl<const N: usize> AsMut<[u8]> for ProcessMemoryBytes<N> {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl<const N: usize> core::ops::Deref for ProcessMemoryBytes<N> {
-    type Target = [u8; N];
-    
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<const N: usize> core::ops::DerefMut for ProcessMemoryBytes<N> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 pub struct ProcessMemoryBytesReader;
 
 impl ProcessMemoryBytesReader {
-    pub fn read<const N: usize>(address: PVOID) -> Result<ProcessMemoryBytes<N>, NTSTATUS> {
+    pub fn read_remote<const N: usize>(handle: *mut c_void, address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
+        let mut buffer = ByteBlock::<N>::new();
+        let mut bytes_read: usize = 0;
+        
+        let status = unsafe {
+            NtReadVirtualMemory(
+                handle,
+                address,
+                buffer.as_mut_bytes().as_mut_ptr() as _,
+                buffer.len(),
+                &mut bytes_read,
+            )
+        };
+
+        if NT_SUCCESS(status) {
+            Ok(buffer)
+        } else {
+            Err(status)
+        }
+    }
+
+    pub fn read<const N: usize>(address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
         let handle = NtCurrentProcess;
-        let mut buffer = ProcessMemoryBytes::<N>::new();
+        let mut buffer = ByteBlock::<N>::new();
         let mut bytes_read: usize = 0;
         
         let status = unsafe {
@@ -182,8 +106,7 @@ impl ProcessMemoryBytesReader {
 pub struct ProcessMemoryBytesWriter;
 
 impl ProcessMemoryBytesWriter {
-    pub fn write(address: PVOID, buffer: &mut [u8]) -> Result<(), NTSTATUS> {
-        let handle = NtCurrentProcess;
+    pub fn write_remote(handle: *mut c_void ,address: PVOID, buffer: &mut [u8]) -> Result<(), NTSTATUS> {
         let mut bytes_read: usize = 0;
         let status = unsafe {
             NtWriteVirtualMemory(
@@ -201,82 +124,31 @@ impl ProcessMemoryBytesWriter {
             Err(status)
         }
     }
+
+    pub fn write(address: PVOID, buffer: &mut [u8]) -> Result<(), NTSTATUS> {
+        let handle = NtCurrentProcess;
+        Self::write_remote(handle, address, buffer)
+    }
 }
 
-pub struct ProcessMemoryProtector {
+pub struct ProcessMemoryProtector(*mut c_void);
+
+pub struct ProcessMemoryProtectorSession {
+    handle: *mut c_void,
     address: PVOID,
     size: usize,
     old_protect: u32,
 }
 
-impl ProcessMemoryProtector {
-    pub fn make_writable(address: PVOID, size: usize) -> Result<Self, NTSTATUS> {
-        let page_size = 0x1000;
-        let page_address = (address as usize & !(page_size - 1)) as PVOID;
-        let region_size = ((address as usize + size - 1) & !(page_size - 1)) + page_size - (address as usize & !(page_size - 1));
-        let mut region_size = region_size;
-        let mut old_protect: u32 = 0;
-        let mut temp_address = page_address;
-        
-        let status = unsafe {
-            NtProtectVirtualMemory(
-                NtCurrentProcess,
-                &mut temp_address,
-                &mut region_size,
-                PAGE_EXECUTE_READWRITE,
-                &mut old_protect,
-            )
-        };
-        
-        if !NT_SUCCESS(status) {
-            return Err(status);
-        }
-        
-        Ok(Self {
-            address: page_address,
-            size: region_size,
-            old_protect,
-        })
-    }
-    
-    pub fn make_writable_with(address: PVOID, size: usize, protect: u32) -> Result<Self, NTSTATUS> {
-        let page_size = 0x1000;
-        let page_address = (address as usize & !(page_size - 1)) as PVOID;
-        let region_size = ((address as usize + size - 1) & !(page_size - 1)) + page_size - (address as usize & !(page_size - 1));
-        let mut region_size = region_size;
-        let mut old_protect: u32 = 0;
-        let mut temp_address = page_address;
-        
-        let status = unsafe {
-            NtProtectVirtualMemory(
-                NtCurrentProcess,
-                &mut temp_address,
-                &mut region_size,
-                protect,
-                &mut old_protect,
-            )
-        };
-        
-        if !NT_SUCCESS(status) {
-            return Err(status);
-        }
-        
-        Ok(Self {
-            address: page_address,
-            size: region_size,
-            old_protect,
-        })
-    }
-    
-    /// Restores the original page protection
-    pub fn restore(&mut self) -> Result<(), NTSTATUS> {
+impl ProcessMemoryProtectorSession {
+    pub fn restore(self) -> Result<(), NTSTATUS> {
         let mut address = self.address;
         let mut size = self.size;
         let mut new_protect: u32 = 0;
         
         let status = unsafe {
             NtProtectVirtualMemory(
-                NtCurrentProcess,
+                self.handle,
                 &mut address,
                 &mut size,
                 self.old_protect,
@@ -292,6 +164,76 @@ impl ProcessMemoryProtector {
     }
 }
 
+impl ProcessMemoryProtector {
+    pub fn current() -> Self {
+        Self(NtCurrentProcess)
+    }
+
+    pub fn remote(handle: *mut c_void) -> Self {
+        Self(handle)
+    }
+
+    pub fn make_writable(&self, address: PVOID, size: usize) -> Result<ProcessMemoryProtectorSession, NTSTATUS> {
+        let page_size = 0x1000;
+        let page_address = (address as usize & !(page_size - 1)) as PVOID;
+        let region_size = ((address as usize + size - 1) & !(page_size - 1)) + page_size - (address as usize & !(page_size - 1));
+        let mut region_size = region_size;
+        let mut old_protect: u32 = 0;
+        let mut temp_address = page_address;
+        
+        let status = unsafe {
+            NtProtectVirtualMemory(
+                self.0,
+                &mut temp_address,
+                &mut region_size,
+                PAGE_EXECUTE_READWRITE,
+                &mut old_protect,
+            )
+        };
+        
+        if !NT_SUCCESS(status) {
+            return Err(status);
+        }
+        
+        Ok(ProcessMemoryProtectorSession {
+            handle: self.0,
+            address: page_address,
+            size: region_size,
+            old_protect,
+        })
+    }
+    
+    pub fn make_writable_with(&self, address: PVOID, size: usize, protect: u32) -> Result<ProcessMemoryProtectorSession, NTSTATUS> {
+        let page_size = 0x1000;
+        let page_address = (address as usize & !(page_size - 1)) as PVOID;
+        let region_size = ((address as usize + size - 1) & !(page_size - 1)) + page_size - (address as usize & !(page_size - 1));
+        let mut region_size = region_size;
+        let mut old_protect: u32 = 0;
+        let mut temp_address = page_address;
+        
+        let status = unsafe {
+            NtProtectVirtualMemory(
+                self.0,
+                &mut temp_address,
+                &mut region_size,
+                protect,
+                &mut old_protect,
+            )
+        };
+        
+        if !NT_SUCCESS(status) {
+            return Err(status);
+        }
+        
+        Ok(ProcessMemoryProtectorSession {
+            handle: self.0,
+            address: page_address,
+            size: region_size,
+            old_protect,
+        })
+    }
+}
+
 pub struct Sleeper;
 
 impl Sleeper {
@@ -300,6 +242,59 @@ impl Sleeper {
         unsafe {
             *delay.QuadPart_mut() = -(milliseconds as i64) * 10_000;
             NtDelayExecution(0, &mut delay);
+        }
+    }
+}
+
+pub struct ProcessMemoryQuery;
+
+impl ProcessMemoryQuery {
+    pub fn query_basic(address: PVOID) -> Result<MEMORY_BASIC_INFORMATION, NTSTATUS> {
+        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { core::mem::zeroed() };
+        let mut return_length: usize = 0;
+        
+        let status = unsafe {
+            NtQueryVirtualMemory(
+                NtCurrentProcess,
+                address,
+                MemoryBasicInformation,
+                &mut mbi as *mut _ as PVOID,
+                core::mem::size_of::<MEMORY_BASIC_INFORMATION>(),
+                &mut return_length,
+            )
+        };
+        
+        if NT_SUCCESS(status) {
+            Ok(mbi)
+        } else {
+            Err(status)
+        }
+    }
+
+    pub fn query_mapped_filename(address: PVOID) -> Result<U16CStackString<260>, NTSTATUS> {
+        let mut return_length: usize = 0;
+        let mut buffer: [u16; 260] = [0; 260];
+
+        let status = unsafe {
+            NtQueryVirtualMemory(
+                NtCurrentProcess,
+                address,
+                MemoryMappedFilenameInformation as u32,
+                buffer.as_mut_ptr() as PVOID,
+                buffer.len() * 2,
+                &mut return_length,
+            )
+        };
+
+        if NT_SUCCESS(status) && return_length > 0 {
+            let unicode_string = unsafe {
+                let ptr = buffer.as_ptr() as *const UNICODE_STRING;
+                &*ptr
+            };
+            
+            unsafe { Ok(U16CStackString::from_raw_parts(unicode_string.Buffer as _, unicode_string.Length as _).unwrap()) }
+        } else {
+            Err(status)
         }
     }
 }

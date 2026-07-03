@@ -2,13 +2,19 @@ use core::fmt;
 
 use winapi::shared::ntdef::UNICODE_STRING;
 
-use crate::U8CStackString;
+use crate::{U8CStackString, println, types::ToUnicode};
 
 const MAX_PAT_LEN: usize = 128;
 
 pub struct U16CStackString<const N: usize> {
     buf: [u16; N],
     len: usize,
+}
+
+impl<const N: usize> ToUnicode for U16CStackString<N> {
+    fn as_unicode(&self) -> UNICODE_STRING {
+        self.to_unicode_string()
+    }
 }
 
 impl<const N: usize> Clone for U16CStackString<N> {
@@ -25,7 +31,7 @@ impl<const N: usize> fmt::Display for U16CStackString<N> {
             return write!(f, "");
         }
         let slice = self.as_slice();
-        let string = U8CStackString::<128>::from_utf16_lossy(slice);
+        let string = U8CStackString::<N>::from_utf16_lossy(slice);
         write!(f, "{}", string)
     }
 }
@@ -36,7 +42,7 @@ impl<const N: usize> fmt::Debug for U16CStackString<N> {
             return write!(f, "\"\"");
         }
         let slice = self.as_slice();
-        let string = U8CStackString::<128>::from_utf16_lossy(slice);
+        let string = U8CStackString::<N>::from_utf16_lossy(slice);
         write!(f, "{:?}", string)
     }
 }
@@ -102,6 +108,15 @@ impl<const N: usize> U16CStackString<N> {
     //     Self { buf, len }
     // }
 
+    pub fn from_utf8_bytes(bytes: &[u8]) -> Option<Self> {
+        let effective_len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+        let trimmed = &bytes[..effective_len];
+
+        let s = core::str::from_utf8(trimmed).ok()?;
+
+        Self::from_str(s)
+    }
+
     pub fn from_str(value: &str) -> Option<Self> {
         let mut buf = [0u16; N];
         let mut len = 0;
@@ -148,7 +163,25 @@ impl<const N: usize> U16CStackString<N> {
         Some(Self { buf, len })
     }
 
-     pub fn as_u8_stack_string<const M: usize>(&self) -> U8CStackString<M> {
+    pub unsafe fn from_raw_parts(ptr: *const u16, len: usize) -> Option<Self> {
+        if ptr.is_null() {
+            return None;
+        }
+        
+        if len >= N {
+            return None;
+        }
+        
+        let mut buf = [0u16; N];
+        let slice = unsafe { core::slice::from_raw_parts(ptr, len) };
+        buf[..len].copy_from_slice(slice);
+        buf[len] = 0; // Null terminate
+        
+        Some(Self { buf, len })
+    }
+
+
+    pub fn as_u8_stack_string<const M: usize>(&self) -> U8CStackString<M> {
         let slice = self.as_slice();
         U8CStackString::<M>::from_utf16_lossy(slice)
     }
@@ -177,6 +210,29 @@ impl<const N: usize> U16CStackString<N> {
         self.buf[self.len] = ch;
         self.len += 1;
         self.buf[self.len] = 0;
+        true
+    }
+
+    pub fn prepend(&mut self, prefix: &str) -> bool {
+        let prefix_len = prefix.encode_utf16().count();
+        
+        if self.len + prefix_len + 1 > N {
+            return false;
+        }
+        
+        for i in (0..self.len).rev() {
+            self.buf[i + prefix_len] = self.buf[i];
+        }
+        
+        let mut idx = 0;
+        for ch in prefix.encode_utf16() {
+            self.buf[idx] = ch;
+            idx += 1;
+        }
+        
+        self.len += prefix_len;
+        self.buf[self.len] = 0;
+        
         true
     }
     
