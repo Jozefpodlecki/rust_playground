@@ -8,7 +8,8 @@ edition = "2024"
 [dependencies]
 ntapi = "0.4.3"
 emballoc = "0.3.0"
-utils = { path = "../../utils" }
+builtins = { path = "../../builtins" }
+toolkit = { path = "../../toolkit" }
 winapi = { version = "*", features = ["errhandlingapi", "minwinbase", "winbase", "libloaderapi", "synchapi"] }
 
 [features]

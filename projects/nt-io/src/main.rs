@@ -1,12 +1,15 @@
 #![no_std]
 #![no_main]
 #![windows_subsystem = "console"]
+#![allow(unused)]
 
 use core::panic::PanicInfo;
 
-use ::utils::{U16CStackString, println};
+extern crate builtins;
 
-use crate::{fs::File, io::Read};
+use toolkit::{U16CStackString, println};
+
+use crate::{fs::{File, remove_file}, io::Read};
 
 mod io;
 mod fs;
@@ -30,6 +33,10 @@ fn panic(info: &PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn mainCRTStartup() -> i32 {
 
+    let path = r#"\??\C:\repos\rust_playground\projects\win-veh\target\.rustc_info.json"#;
+    if let Err(err) = remove_file(path) {
+        println!("{}", err);
+    }
     
     // let mut file = File::open().unwrap();
 
@@ -38,9 +45,9 @@ pub extern "C" fn mainCRTStartup() -> i32 {
 
     // let mut out_file = File::create().unwrap();
 
-    let src = r#"\??\C:\Users\jozef\Downloads\ghidra_12.1.2_PUBLIC_20260605\ghidra_12.1.2_PUBLIC\bom.json"#;
-    let dest = r#"\??\C:\repos\rust_playground\test.json"#;
-    fs::manual_copy(src, dest).unwrap();
+    // let src = r#"\??\C:\Users\jozef\Downloads\ghidra_12.1.2_PUBLIC_20260605\ghidra_12.1.2_PUBLIC\bom.json"#;
+    // let dest = r#"\??\C:\repos\rust_playground\test.json"#;
+    // fs::manual_copy(src, dest).unwrap();
     // let metadata = file.metadata().unwrap();
     // println!("{}", metadata);
     

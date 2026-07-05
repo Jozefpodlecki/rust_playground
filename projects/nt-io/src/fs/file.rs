@@ -6,7 +6,7 @@ use ntapi::ntioapi::{
 use ntapi::ntobapi::NtClose;
 use winapi::shared::ntdef::{HANDLE, OBJECT_ATTRIBUTES, UNICODE_STRING, OBJ_CASE_INSENSITIVE};
 use winapi::um::winnt::{FILE_READ_ATTRIBUTES, FILE_READ_DATA, FILE_SHARE_READ, FILE_SHARE_WRITE, FILE_WRITE_DATA, LARGE_INTEGER, SYNCHRONIZE};
-use utils::{U16CStackString, println};
+use toolkit::{U16CStackString, println};
 
 use crate::error::FileError;
 use crate::fs::options::FileOptions;
