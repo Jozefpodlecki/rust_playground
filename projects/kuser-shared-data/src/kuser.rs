@@ -1,7 +1,7 @@
 use core::{fmt, ptr::{self, addr_of}};
 
 use ntapi::ntexapi::KUSER_SHARED_DATA;
-use utils::U16CStackString;
+use toolkit::U16CStackString;
 
 use crate::types::*;
 

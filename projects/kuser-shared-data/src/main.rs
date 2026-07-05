@@ -6,11 +6,12 @@
 use core::panic::PanicInfo;
 
 use ntapi::ntexapi::KUSER_SHARED_DATA;
+use toolkit::{Sleeper, println};
 
 mod kuser;
 mod types;
 
-use utils::*;
+extern crate builtins;
 
 use crate::kuser::KUserSharedData;
 

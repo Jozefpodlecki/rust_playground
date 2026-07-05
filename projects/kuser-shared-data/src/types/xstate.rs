@@ -1,7 +1,7 @@
 use core::{fmt, ptr::{self, addr_of}};
 
 use ntapi::ntexapi::{KUSER_SHARED_DATA, PROCESSOR_FEATURE_MAX};
-use utils::U16CStackString;
+use toolkit::U16CStackString;
 use winapi::{shared::{basetsd::DWORD64, minwindef::DWORD}, um::winnt::{MAXIMUM_XSTATE_FEATURES, XSTATE_CONFIGURATION, XSTATE_FEATURE}};
 
 
