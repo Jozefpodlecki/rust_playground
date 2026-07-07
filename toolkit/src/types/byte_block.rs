@@ -15,9 +15,27 @@ impl<const N: usize> From<Vec<u8, N>> for ByteBlock<N> {
     }
 }
 
+impl<const N: usize> From<&[u8]> for ByteBlock<N> {
+    fn from(slice: &[u8]) -> Self {
+        let mut arr = [0u8; N];
+        let copy_len = slice.len().min(N);
+        arr[..copy_len].copy_from_slice(&slice[..copy_len]);
+        ByteBlock(arr)
+    }
+}
+
 impl<const N: usize> ByteBlock<N> {
     pub fn new() -> Self {
         Self([0u8; N])
+    }
+
+    pub fn from_ptr(ptr: *const u8, len: usize) -> Self {
+        let mut arr = [0u8; N];
+        let copy_len = len.min(N);
+        unsafe {
+            core::ptr::copy_nonoverlapping(ptr, arr.as_mut_ptr(), copy_len);
+        }
+        ByteBlock(arr)
     }
     
     pub fn as_bytes(&self) -> &[u8] {
@@ -53,7 +71,7 @@ impl<const N: usize> Default for ByteBlock<N> {
 
 impl<const N: usize> Display for ByteBlock<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(f, "ProcessMemoryBytes ({} bytes):", N)?;
+        writeln!(f, "ByteBlock ({} bytes):", N)?;
         
         for (i, chunk) in self.0.chunks(16).enumerate() {
             // Hex part

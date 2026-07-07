@@ -5,9 +5,14 @@
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(static_mut_refs)]
 #![allow(non_snake_case)]
-#![allow(unused, internal_features)]
+#![allow(internal_features)]
+#![allow(unused)]
 #![feature(arbitrary_self_types_pointers)]
 #![feature(generic_const_exprs)]
+#![feature(unsize)]
+#![feature(allocator_api)]
+#![feature(slice_ptr_get)]
+#![feature(generic_atomic)]
 
 mod fs;
 mod io;
@@ -19,9 +24,11 @@ mod u8_stack_string;
 mod helpers;
 mod memory;
 mod ntdll;
+pub mod futex;
 mod mutex;
 mod static_vec;
 pub mod types;
+pub mod stack_trait;
 
 pub use fs::*;
 pub use io::*;

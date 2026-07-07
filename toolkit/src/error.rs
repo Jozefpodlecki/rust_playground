@@ -22,6 +22,40 @@ pub enum ThreadError {
     InvalidArgument,
 }
 
+impl core::fmt::Display for ThreadError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ThreadError::CreationFailed(status) => {
+                write!(f, "Thread creation failed with NTSTATUS: 0x{:08X}", status)
+            }
+            ThreadError::InvalidHandle => {
+                write!(f, "Thread handle is invalid or null")
+            }
+            ThreadError::WaitFailed(status) => {
+                write!(f, "Failed to wait for thread with NTSTATUS: 0x{:08X}", status)
+            }
+            ThreadError::NoResult => {
+                write!(f, "Thread exited but did not return a result")
+            }
+            ThreadError::ThreadRunning => {
+                write!(f, "Thread is still running")
+            }
+            ThreadError::ThreadTerminated => {
+                write!(f, "Thread was terminated before returning a result")
+            }
+            ThreadError::NotJoinable => {
+                write!(f, "Thread is not joinable")
+            }
+            ThreadError::Timeout => {
+                write!(f, "Operation timed out")
+            }
+            ThreadError::InvalidArgument => {
+                write!(f, "Invalid argument provided")
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FileError {
     Success = 0,

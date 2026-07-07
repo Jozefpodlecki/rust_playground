@@ -1,0 +1,53 @@
+use core::fmt::{self, Display, Formatter};
+
+use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{MemoryBasicInformation, MemoryMappedFilenameInformation, NtProtectVirtualMemory, NtQueryVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
+use winapi::{ctypes::c_void, shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
+
+use crate::{MemoryRegionIterator, U16CStackString, print, println, types::{ByteBlock, HEAP}};
+
+pub struct ProcessMemoryBytesReader;
+
+impl ProcessMemoryBytesReader {
+    pub fn read_remote<const N: usize>(handle: *mut c_void, address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
+        let mut buffer = ByteBlock::<N>::new();
+        let mut bytes_read: usize = 0;
+        
+        let status = unsafe {
+            NtReadVirtualMemory(
+                handle,
+                address,
+                buffer.as_mut_bytes().as_mut_ptr() as _,
+                buffer.len(),
+                &mut bytes_read,
+            )
+        };
+
+        if NT_SUCCESS(status) {
+            Ok(buffer)
+        } else {
+            Err(status)
+        }
+    }
+
+    pub fn read<const N: usize>(address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
+        let handle = NtCurrentProcess;
+        let mut buffer = ByteBlock::<N>::new();
+        let mut bytes_read: usize = 0;
+        
+        let status = unsafe {
+            NtReadVirtualMemory(
+                handle,
+                address,
+                buffer.as_mut_bytes().as_mut_ptr() as _,
+                buffer.len(),
+                &mut bytes_read,
+            )
+        };
+
+        if NT_SUCCESS(status) {
+            Ok(buffer)
+        } else {
+            Err(status)
+        }
+    }
+}

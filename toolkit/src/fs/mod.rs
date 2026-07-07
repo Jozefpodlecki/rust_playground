@@ -4,12 +4,20 @@ mod file;
 
 use core::ptr::null_mut;
 
+use heapless::Vec;
 use ntapi::ntrtl::{RtlDosPathNameToNtPathName_U, RtlFreeUnicodeString};
 pub use types::*;
 pub use file::*;
 use winapi::shared::ntdef::UNICODE_STRING;
 
 use crate::{U16CStackString, error::FileError, io::{Read, Seek, Write}};
+
+pub fn read<const N: usize, const M: usize>(path: U16CStackString<N>) -> Result<Vec<u8, M>, FileError> {
+    let mut file = File::open(path).unwrap();
+    let mut buffer: Vec<u8, M> = Vec::new();
+    file.read_to_end_fixed(&mut buffer)?;
+    Ok(buffer)
+}
 
 pub fn manual_copy(src: &str, dest: &str) -> Result<u64, FileError> {
     let src = U16CStackString::<260>::from_str(src).unwrap();

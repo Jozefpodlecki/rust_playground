@@ -3,6 +3,8 @@ use core::mem;
 use core::ops::{Deref, DerefMut};
 use core::sync::atomic::{AtomicU8, Ordering};
 
+use crate::futex::{wait_on_address, wake_by_address_single};
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MutexState {
@@ -67,33 +69,43 @@ impl<T> Mutex<T> {
 
     #[cold]
     fn lock_contended(&self) {
-        let mut spin_count = 100;
-        loop {
-            match self.state.load() {
-                MutexState::Unlocked => {
-                    if self.state.try_acquire() {
-                        return;
-                    }
-                }
-                MutexState::Locked => {
-                    if spin_count == 0 {
-                        if self.state.mark_contended() {
-                            return;
-                        }
-                    }
-                    spin_count -= 1;
-                    core::hint::spin_loop();
-                }
-                MutexState::Contended => {
-                    core::hint::spin_loop();
-                }
+        let mut state = self.spin();
+
+        if state == MutexState::Unlocked {
+            if self.state.try_acquire() {
+                return;
             }
+            state = self.state.load();
+        }
+
+        loop {
+            if state != MutexState::Contended && self.state.mark_contended() {
+                return;
+            }
+
+            wait_on_address(&self.state.0, MutexState::Contended as u8, None);
+
+            state = self.spin();
+        }
+    }
+
+     fn spin(&self) -> MutexState {
+        let mut spin = 100;
+        loop {
+            let state = self.state.load();
+
+            if state != MutexState::Locked || spin == 0 {
+                return state;
+            }
+
+            core::hint::spin_loop();
+            spin -= 1;
         }
     }
 
     pub unsafe fn unlock(&self) {
         if self.state.unlock() {
-            // futex_wake()
+            wake_by_address_single(&self.state.0);
         }
     }
 }

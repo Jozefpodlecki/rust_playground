@@ -5,10 +5,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-winapi = { version = "0.3.9", features = ["consoleapi", "winbase", "fileapi", "errhandlingapi", "minwinbase", "libloaderapi"] }
+winapi = { version = "0.3.9", features = ["synchapi", "securitybaseapi", "consoleapi", "winbase", "fileapi", "errhandlingapi", "minwinbase", "libloaderapi"] }
 ntapi = { version = "0.4.3"}
 heapless = "0.9.3"
 
 [features]
 default = []
 alloc = []
+inline_syscalls = []

@@ -1,5 +1,4 @@
-use core::cell::UnsafeCell;
-use core::ptr;
+use core::{cell::UnsafeCell, ptr};
 use core::sync::atomic::{AtomicBool, Ordering};
 use alloc::boxed::Box;
 use ntapi::ntobapi::{NtClose, NtWaitForSingleObject};
@@ -7,6 +6,7 @@ use ntapi::ntpsapi::NtCurrentProcess;
 use winapi::shared::ntdef::{NTSTATUS, HANDLE};
 use winapi::shared::ntstatus::STATUS_SUCCESS;
 use winapi::um::winnt::{THREAD_ALL_ACCESS, LARGE_INTEGER};
+use crate::ArcInner;
 use crate::arc::Arc;
 
 struct PacketInner<T> {
@@ -68,7 +68,7 @@ impl<T> Packet<T> {
         unsafe { let _ = Box::from_raw(self); }
     }
 
-    pub fn leak(&self) -> *mut Self {
+    pub fn into_raw(&self) -> *mut Self {
         let leaked: &mut Self = Box::leak(Box::new(self.clone()));
         leaked as *mut Self
     }

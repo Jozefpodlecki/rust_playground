@@ -9,6 +9,7 @@ use crate::arc::Arc;
 pub struct JoinHandle<T> {
     pub handle: HANDLE,
     pub packet: Packet<T>,
+    pub stack: Option<ThreadStack>
 }
 
 impl<T> JoinHandle<T> {

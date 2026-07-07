@@ -55,6 +55,15 @@ impl<const N: usize> Default for U16CStackString<N> {
     }
 }
 
+impl<const N: usize> core::fmt::Write for U16CStackString<N> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        if !self.push_str(s) {
+            return Err(core::fmt::Error);
+        }
+        Ok(())
+    }
+}
+
 impl<const N: usize> U16CStackString<N> {
     pub fn new() -> Self {
         Self::default()

@@ -2,13 +2,12 @@ use core::cell::SyncUnsafeCell;
 use core::fmt::{self, Write};
 use core::sync::atomic::{AtomicBool, Ordering};
 use ntapi::ntioapi::{IO_STATUS_BLOCK, NtWriteFile};
-use ntapi::ntpebteb::PEB;
 use winapi::shared::minwindef::{BOOL, DWORD};
 use winapi::shared::ntdef::{HANDLE, NTSTATUS, PVOID};
 use winapi::shared::ntstatus::STATUS_INVALID_HANDLE;
 use winapi::um::consoleapi::{GetConsoleMode, GetConsoleOutputCP, WriteConsoleW};
 use winapi::um::fileapi::GetFileType;
-use crate::get_peb;
+use crate::{Mutex, get_peb};
 use crate::{println, u16_stack_string::U16CStackString};
 use winapi::um::winbase::FILE_TYPE_CHAR;
 
@@ -17,34 +16,7 @@ pub const CP_UTF8: u32 = 65001;
 
 pub static mut OUTPUT_HANDLE: SyncUnsafeCell<HANDLE> = SyncUnsafeCell::new(core::ptr::null_mut());
 
-pub struct ConsoleMutex(AtomicBool);
-
-impl ConsoleMutex {
-    pub const fn new() -> Self {
-        Self(AtomicBool::new(false))
-    }
-
-    pub fn lock<'a>(&'a self) -> MutexGuard<'a> {
-        while self.0.swap(true, Ordering::Acquire) {
-            core::hint::spin_loop();
-        }
-        MutexGuard(self)
-    }
-
-    pub fn unlock(&self) {
-        self.0.store(false, Ordering::Release);
-    }
-}
-
-pub struct MutexGuard<'a>(&'a ConsoleMutex);
-
-impl Drop for MutexGuard<'_> {
-    fn drop(&mut self) {
-        self.0.unlock();
-    }
-}
-
-pub static CONSOLE_MUTEX: ConsoleMutex = ConsoleMutex::new();
+pub static CONSOLE_MUTEX: Mutex<()> = Mutex::new(());
 
 pub fn get_output_handle() -> HANDLE {
     unsafe {
@@ -97,6 +69,46 @@ pub fn write_console_utf8_with_nt_write(
         status
     }
 }
+// 
+
+pub fn write_console_utf16_with_device_io_control(
+    handle: HANDLE,
+    // buffer: *const u8,
+    buffer: *const u16,
+    chars_to_write: u32,
+    chars_written: *mut u32,
+) -> NTSTATUS {
+    unsafe {
+        let mut io_status_block: IO_STATUS_BLOCK = core::mem::zeroed();
+        
+        if handle.is_null() || buffer.is_null() || chars_to_write == 0 {
+            return STATUS_INVALID_HANDLE;
+        }
+        
+        let bytes_to_write = chars_to_write;
+        
+        // let status = crate::syscalls::NtDeviceIoControlFile(
+        let status = ntapi::ntioapi::NtDeviceIoControlFile(
+            handle,
+            core::ptr::null_mut(),
+            None,
+            core::ptr::null_mut(),
+            &mut io_status_block,
+            0x00500016,
+            buffer as PVOID,
+            bytes_to_write,
+            core::ptr::null_mut(),
+            0,
+        );
+        
+        if status >= 0 && !chars_written.is_null() {
+            let bytes_written = io_status_block.Information as u32;
+            *chars_written = bytes_written / 2;
+        }
+        
+        status
+    }
+}
 
 pub fn write_console_utf16_with_nt_write(
     handle: HANDLE,
@@ -113,7 +125,7 @@ pub fn write_console_utf16_with_nt_write(
         
         let bytes_to_write = chars_to_write * 2;
         
-        let status = NtWriteFile(
+        let status = crate::syscalls::NtWriteFile(
             handle,
             core::ptr::null_mut(),
             None,
@@ -224,6 +236,7 @@ impl NtConsole {
         let mut written = 0;
         let status = unsafe {
             write_console_utf16_with_nt_write(
+            // write_console_utf16_with_device_io_control(
                 handle,
                 str.as_ptr(),
                 str.len() as u32,
@@ -257,6 +270,9 @@ macro_rules! print {
 
 #[macro_export]
 macro_rules! println {
+    () => {
+        $crate::print!("\r\n")
+    };
     ($($arg:tt)*) => {{
         use core::fmt::Write;
         let mut console = $crate::NtConsole;
