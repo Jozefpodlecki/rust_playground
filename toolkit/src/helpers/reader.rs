@@ -5,15 +5,15 @@ use winapi::{ctypes::c_void, shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTS
 
 use crate::{MemoryRegionIterator, U16CStackString, print, println, types::{ByteBlock, HEAP}};
 
-pub struct ProcessMemoryBytesReader;
+pub struct ProcessMemoryReader;
 
-impl ProcessMemoryBytesReader {
-    pub fn read_remote<const N: usize>(handle: *mut c_void, address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
+impl ProcessMemoryReader {
+    pub fn read_remote_bytes_fixed<const N: usize>(handle: *mut c_void, address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
         let mut buffer = ByteBlock::<N>::new();
         let mut bytes_read: usize = 0;
         
         let status = unsafe {
-            NtReadVirtualMemory(
+            crate::syscalls::NtReadVirtualMemory(
                 handle,
                 address,
                 buffer.as_mut_bytes().as_mut_ptr() as _,
@@ -29,13 +29,13 @@ impl ProcessMemoryBytesReader {
         }
     }
 
-    pub fn read<const N: usize>(address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
+    pub fn read_bytes_fixed<const N: usize>(address: PVOID) -> Result<ByteBlock<N>, NTSTATUS> {
         let handle = NtCurrentProcess;
         let mut buffer = ByteBlock::<N>::new();
         let mut bytes_read: usize = 0;
         
         let status = unsafe {
-            NtReadVirtualMemory(
+            crate::syscalls::NtReadVirtualMemory(
                 handle,
                 address,
                 buffer.as_mut_bytes().as_mut_ptr() as _,

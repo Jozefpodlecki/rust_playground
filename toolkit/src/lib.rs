@@ -7,6 +7,7 @@
 #![allow(non_snake_case)]
 #![allow(internal_features)]
 #![allow(unused)]
+#![allow(incomplete_features)]
 #![feature(arbitrary_self_types_pointers)]
 #![feature(generic_const_exprs)]
 #![feature(unsize)]
@@ -46,6 +47,9 @@ mod thread;
 
 #[cfg(feature = "alloc")]
 mod arc;
+
+#[cfg(feature = "alloc")]
+pub mod hook;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

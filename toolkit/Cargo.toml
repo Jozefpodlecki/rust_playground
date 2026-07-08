@@ -8,8 +8,9 @@ edition = "2024"
 winapi = { version = "0.3.9", features = ["synchapi", "securitybaseapi", "consoleapi", "winbase", "fileapi", "errhandlingapi", "minwinbase", "libloaderapi"] }
 ntapi = { version = "0.4.3"}
 heapless = "0.9.3"
+iced-x86 = { version = "1.21.0", default-features = false, features = ["encoder", "decoder", "no_std"], optional = true }
 
 [features]
 default = []
-alloc = []
+alloc = ["dep:iced-x86"]
 inline_syscalls = []

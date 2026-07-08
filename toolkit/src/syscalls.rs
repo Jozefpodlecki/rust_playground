@@ -68,3 +68,48 @@ pub extern "system" fn NtWriteVirtualMemory(
         "ret"
     );
 }
+
+#[unsafe(naked)]
+pub extern "system" fn NtReadVirtualMemory(
+    ProcessHandle: HANDLE,
+    BaseAddress: PVOID,
+    Buffer: PVOID,
+    BufferSize: SIZE_T,
+    NumberOfBytesRead: PSIZE_T,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x3F",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtProtectVirtualMemory(
+    ProcessHandle: HANDLE,
+    BaseAddress: *mut PVOID,
+    RegionSize: PSIZE_T,
+    NewProtect: ULONG,
+    OldProtect: PULONG,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x50",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtTerminateProcess(
+    ProcessHandle: HANDLE,
+    ExitStatus: NTSTATUS,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x2C",
+        "syscall",
+        "ret"
+    );
+}

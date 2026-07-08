@@ -6,8 +6,17 @@ use heapless::Vec;
 #[repr(transparent)]
 pub struct ByteBlock<const N: usize>([u8; N]);
 
-impl<const N: usize> From<Vec<u8, N>> for ByteBlock<N> {
-    fn from(vec: Vec<u8, N>) -> Self {
+// impl<const N: usize> From<Vec<u8, N>> for ByteBlock<N> {
+//     fn from(vec: Vec<u8, N>) -> Self {
+//         let mut arr = [0u8; N];
+//         let copy_len = vec.len().min(N);
+//         arr[..copy_len].copy_from_slice(&vec[..copy_len]);
+//         ByteBlock(arr)
+//     }
+// }
+
+impl<const N: usize, const M: usize> From<Vec<u8, M>> for ByteBlock<N> {
+    fn from(vec: Vec<u8, M>) -> Self {
         let mut arr = [0u8; N];
         let copy_len = vec.len().min(N);
         arr[..copy_len].copy_from_slice(&vec[..copy_len]);
