@@ -6,7 +6,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-utils = { path = "../../utils" }
+toolkit = { path = "../../toolkit" }
+builtins = { path = "../../builtins" }
 
 [profile.dev]
 panic = "abort"

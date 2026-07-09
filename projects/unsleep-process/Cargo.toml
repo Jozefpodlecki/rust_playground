@@ -6,7 +6,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-utils = { path = "../../utils", features = ["alloc"] }
+builtins = { path = "../../builtins" }
+toolkit = { path = "../../toolkit", features = ["alloc"] }
 ntapi = "0.4.3"
 winapi = { version = "0.3.9", features = [] }
 emballoc = "0.3.0"

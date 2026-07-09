@@ -7,14 +7,15 @@ edition = "2024"
 [dependencies]
 winapi = { version = "0.3.9", features = ["errhandlingapi", "minwinbase", "libloaderapi", "synchapi"] }
 ntapi = { version = "0.4.3"}
-iced-x86 = "1.21.0"
-utils = { path = "../../utils" }
+iced-x86 = { version = "1.21.0", default-features = false, features = ["encoder", "decoder", "no_std"] }
+toolkit = { path = "../../toolkit" }
+builtins = { path = "../../builtins" }
 
 [profile.dev]
-# panic = "abort"
+panic = "abort"
 
 [profile.release]
-# panic = "abort"
+panic = "abort"
 opt-level = "z"          
 lto = false
 codegen-units = 1        

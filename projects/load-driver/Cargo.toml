@@ -1,0 +1,35 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "load-driver"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ntapi = "0.4.3"
+winapi = { version = "0.3.9", features = [ "winsvc", "shellapi", "securitybaseapi", "winbase", "winuser", "handleapi", "processthreadsapi"] }
+builtins = { path = "../../builtins" }
+toolkit = { path = "../../toolkit" }
+wmi = { version = "0.18.4" }
+serde = { version = "*" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
+rustflags = [
+    "-C", "link-arg=/DEBUG:NONE",
+    "-C", "link-arg=/EMITPOGOPHASEINFO",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
+]

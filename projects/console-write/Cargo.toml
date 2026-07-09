@@ -1,0 +1,36 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "console-write"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ntapi = "0.4.3"
+toolkit = { path = "../../toolkit", features = ["alloc"] }
+builtins = { path = "../../builtins" }
+winapi = { version = "*", features = ["processenv", "profileapi", "errhandlingapi", "minwinbase", "winbase", "libloaderapi", "synchapi"] }
+iced-x86 = { version = "1.21.0", default-features = false, features = ["encoder", "decoder", "no_std"] }
+heapless = "0.9.3"
+emballoc = "0.3.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
+rustflags = [
+    "-C", "link-arg=/DEBUG:NONE",
+    "-C", "link-arg=/EMITPOGOPHASEINFO",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
+]

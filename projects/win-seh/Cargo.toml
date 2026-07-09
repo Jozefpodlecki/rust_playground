@@ -8,7 +8,8 @@ edition = "2024"
 winapi = { version = "0.3.9", features = ["errhandlingapi", "minwinbase", "libloaderapi", "impl-debug"] }
 ntapi = { version = "0.4.3"}
 emballoc = "0.3.0"
-utils = { path = "../../utils" }
+builtins = { path = "../../builtins" }
+toolkit = { path = "../../toolkit" }
 
 [profile.dev]
 panic = "abort"
