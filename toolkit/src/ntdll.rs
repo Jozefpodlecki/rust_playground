@@ -7,6 +7,19 @@ use crate::MemoryRegionIterator;
 pub struct NtDll(PVOID);
 
 impl NtDll {
+    pub fn from_remote_process(handle: *mut winapi::ctypes::c_void) -> Self {
+        
+        for mbi in MemoryRegionIterator::new(handle) {
+            if !mbi.mapped_name.is_empty() {
+                if mbi.mapped_name.contains("ntdll") {
+                    return Self(mbi.allocation_base())
+                }
+            }
+        }
+        
+        unreachable!("ntdll not found");
+    }
+
     pub fn from_current_process() -> Self {
         
         for mbi in MemoryRegionIterator::new(NtCurrentProcess) {

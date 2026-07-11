@@ -1,5 +1,42 @@
 use core::fmt;
 
+pub struct HexDisplay<'a>(pub &'a [u8]);
+
+impl<'a> fmt::Display for HexDisplay<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "0x")?;
+        for &b in self.0 {
+            write!(f, "{:02x}", b)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'a> fmt::Debug for HexDisplay<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "b\"")?;
+        for &b in self.0 {
+            if b.is_ascii_alphanumeric() || b == b'_' {
+                write!(f, "{}", b as char)?;
+            } else {
+                write!(f, "\\x{:02x}", b)?;
+            }
+        }
+        write!(f, "\"")
+    }
+}
+
+impl<const N: usize> U8CStackString<N> {
+    pub fn to_hex(&self) -> HexDisplay<'_> {
+        HexDisplay(self.as_slice())
+    }
+
+    pub fn to_hex_full(&self) -> HexDisplay<'_> {
+        HexDisplay(&self.buf[..self.len])
+    }
+}
+
+#[repr(C)]
 pub struct U8CStackString<const N: usize> {
     buf: [u8; N],
     len: usize,

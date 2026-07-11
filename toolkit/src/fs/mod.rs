@@ -1,5 +1,6 @@
 mod types;
 mod options;
+mod buf_writer;
 mod file;
 
 use core::ptr::null_mut;
@@ -7,6 +8,7 @@ use core::ptr::null_mut;
 use heapless::Vec;
 use ntapi::ntrtl::{RtlDosPathNameToNtPathName_U, RtlFreeUnicodeString};
 pub use types::*;
+pub use buf_writer::*;
 pub use file::*;
 use winapi::shared::ntdef::UNICODE_STRING;
 

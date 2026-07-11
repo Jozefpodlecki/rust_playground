@@ -1,12 +1,12 @@
 use core::ptr::null_mut;
 use core::mem::size_of;
-use ntapi::ntioapi::*;
-use ntapi::ntobapi::NtClose;
+use ntapi::ntioapi::{FILE_BASIC_INFORMATION, FILE_NON_DIRECTORY_FILE, FILE_POSITION_INFORMATION, FILE_STANDARD_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT, FileBasicInformation, FilePositionInformation, FileStandardInformation, IO_STATUS_BLOCK};
 use winapi::shared::ntdef::{HANDLE, OBJECT_ATTRIBUTES, OBJ_CASE_INSENSITIVE};
 use winapi::um::winnt::LARGE_INTEGER;
 
 use crate::error::FileError;
 use crate::fs::options::FileOptions;
+use crate::syscalls::*;
 use crate::types::ToUnicode;
 use crate::{U16CStackString, fs::*};
 use crate::io::*;

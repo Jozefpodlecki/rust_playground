@@ -1,7 +1,20 @@
+use core::{mem, ops::{Deref, DerefMut}};
+
 use ntapi::ntpsapi::*;
 use winapi::{ctypes::c_void, shared::{ntdef::{HANDLE, NTSTATUS, OBJECT_ATTRIBUTES}, ntstatus::STATUS_SUCCESS}, um::winnt::*};
 
 use crate::ThreadError;
+
+const THREAD_SUSPEND_COUNT: u32 = 35;
+const ThreadWaitReason: u32 = 37;
+const DELAY_EXECUTION_WAIT: u32 = 4;
+const WR_DELAY_EXECUTION_WAIT: u32 = 11;
+
+pub enum ThreadState {
+    Active,
+    Suspended,
+    NtDelayExecution
+}
 
 #[repr(align(16))]
 pub struct AlignedContext(CONTEXT);
@@ -9,6 +22,20 @@ pub struct AlignedContext(CONTEXT);
 impl Default for AlignedContext {
     fn default() -> Self {
         Self(unsafe { core::mem::zeroed() })
+    }
+}
+
+impl Deref for AlignedContext {
+    type Target = CONTEXT;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for AlignedContext {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -152,6 +179,48 @@ impl ThreadHandle {
         }
 
         Ok(())
+    }
+
+     pub fn get_state(&self) -> Result<ThreadState, SystemError> {
+        let mut suspend_count: u32 = 0;
+        let status = unsafe {
+            NtQueryInformationThread(
+                self.0,
+                ThreadSuspendCount,
+                &mut suspend_count as *mut _ as *mut _,
+                mem::size_of::<u32>() as u32,
+                core::ptr::null_mut(),
+            )
+        };
+
+        if status != STATUS_SUCCESS {
+            return Err(SystemError::NtStatus(status));
+        }
+
+        if suspend_count > 0 {
+            return Ok(ThreadState::Suspended);
+        }
+
+        let mut wait_reason: u32 = 0;
+        let status = unsafe {
+            NtQueryInformationThread(
+                self.0,
+                ThreadWaitReason,
+                &mut wait_reason as *mut _ as *mut _,
+                mem::size_of::<u32>() as u32,
+                core::ptr::null_mut(),
+            )
+        };
+
+        if status != STATUS_SUCCESS {
+            return Err(SystemError::NtStatus(status));
+        }
+
+        if wait_reason == DELAY_EXECUTION_WAIT || wait_reason == WR_DELAY_EXECUTION_WAIT {
+            return Ok(ThreadState::NtDelayExecution);
+        }
+
+        Ok(ThreadState::Active)
     }
 
     pub fn terminate(&self, exit_code: i32) -> Result<(), SystemError> {

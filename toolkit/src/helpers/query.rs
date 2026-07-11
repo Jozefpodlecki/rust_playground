@@ -1,9 +1,9 @@
 use core::fmt::{self, Display, Formatter};
 
-use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{MemoryBasicInformation, MemoryMappedFilenameInformation, NtProtectVirtualMemory, NtQueryVirtualMemory, NtReadVirtualMemory, NtWriteVirtualMemory}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
+use ntapi::{ntmmapi::{MemoryBasicInformation, MemoryMappedFilenameInformation}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
 use winapi::{ctypes::c_void, shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
 
-use crate::{MemoryRegionIterator, U16CStackString, print, println, types::{ByteBlock, HEAP}};
+use crate::{MemoryRegionIterator, U16CStackString, print, println, syscalls::{NtDelayExecution, NtQueryVirtualMemory}, types::{ByteBlock, HEAP}};
 
 pub struct Sleeper;
 

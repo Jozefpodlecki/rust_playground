@@ -4,7 +4,7 @@ use heapless::Vec;
 use iced_x86::*;
 use winapi::shared::ntdef::NTSTATUS;
 
-pub fn trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, IcedError> {
+pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, IcedError> {
     let mut encoder = Encoder::new(64);
     let mut rip = 0;
 

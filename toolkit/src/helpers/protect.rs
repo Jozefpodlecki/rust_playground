@@ -106,4 +106,38 @@ impl ProcessMemoryProtector {
             old_protect,
         })
     }
+
+    pub fn make_readonly(&self, address: PVOID, size: usize) -> Result<ProcessMemoryProtectorSession, NTSTATUS> {
+        self.make_readonly_with(address, size, winapi::um::winnt::PAGE_EXECUTE_READ)
+    }
+
+    pub fn make_readonly_with(&self, address: PVOID, size: usize, protect: u32) -> Result<ProcessMemoryProtectorSession, NTSTATUS> {
+        let page_size = 0x1000;
+        let page_address = (address as usize & !(page_size - 1)) as PVOID;
+        let region_size = ((address as usize + size - 1) & !(page_size - 1)) + page_size - (address as usize & !(page_size - 1));
+        let mut region_size = region_size;
+        let mut old_protect: u32 = 0;
+        let mut temp_address = page_address;
+        
+        let status = unsafe {
+            NtProtectVirtualMemory(
+                self.0,
+                &mut temp_address,
+                &mut region_size,
+                protect,
+                &mut old_protect,
+            )
+        };
+        
+        if !NT_SUCCESS(status) {
+            return Err(status);
+        }
+        
+        Ok(ProcessMemoryProtectorSession {
+            handle: self.0,
+            address: page_address,
+            size: region_size,
+            old_protect,
+        })
+    }
 }

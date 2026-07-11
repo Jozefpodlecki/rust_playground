@@ -293,3 +293,115 @@ impl Iterator for MemoryRegionIterator {
         }
     }
 }
+
+pub struct MemoryRegionReverseIterator {
+    handle: HANDLE,
+    address: PVOID,
+    max_address: usize,
+    initialized: bool,
+}
+
+impl MemoryRegionReverseIterator {
+    pub fn new(handle: HANDLE, start_address: PVOID) -> Self {
+        let max_address = if start_address.is_null() {
+            0x00007FFFFFFFFFFFusize
+        } else {
+            start_address as usize
+        };
+        
+        Self {
+            handle,
+            address: max_address as PVOID,
+            max_address,
+            initialized: false,
+        }
+    }
+
+    pub fn from_max_address(handle: HANDLE) -> Self {
+        Self::new(handle, core::ptr::null_mut())
+    }
+
+    fn query_region_at(&self, address: PVOID) -> Option<MemoryInformation> {
+        unsafe {
+            let mut mbi: MEMORY_BASIC_INFORMATION = core::mem::zeroed();
+            let mut return_length: SIZE_T = 0;
+            
+            let status = NtQueryVirtualMemory(
+                self.handle,
+                address,
+                MemoryBasicInformation,
+                &mut mbi as *mut _ as PVOID,
+                core::mem::size_of::<MEMORY_BASIC_INFORMATION>() as SIZE_T,
+                &mut return_length,
+            );
+            
+            if status < 0 {
+                return None;
+            }
+            
+            if mbi.RegionSize == 0 {
+                return None;
+            }
+            
+            Some(MemoryInformation::new(self.handle, mbi))
+        }
+    }
+}
+
+impl Iterator for MemoryRegionReverseIterator {
+    type Item = MemoryInformation;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.address.is_null() || self.address as usize == 0 {
+            return None;
+        }
+        
+        if !self.initialized {
+            self.initialized = true;
+            if let Some(info) = self.query_region_at(self.address) {
+                let base = info.base_address();
+                if base == 0 {
+                    return Some(info);
+                }
+                self.address = (base - 1) as PVOID;
+                return Some(info);
+            }
+            return None;
+        }
+        
+        if self.address.is_null() || self.address as usize == 0 {
+            return None;
+        }
+        
+        let info = self.query_region_at(self.address)?;
+        let base = info.base_address();
+        
+        if base == 0 {
+            self.address = core::ptr::null_mut();
+        } else {
+            self.address = (base - 1) as PVOID;
+        }
+        
+        Some(info)
+    }
+}
+
+impl MemoryRegionIterator {
+    pub fn rev(self) -> MemoryRegionReverseIterator {
+        let mut iter = self;
+        let mut last_address = 0usize;
+        
+        for region in iter.by_ref() {
+            let end = region.range_end();
+            if end > last_address {
+                last_address = end;
+            }
+        }
+        
+        if last_address == 0 {
+            MemoryRegionReverseIterator::new(iter.handle, core::ptr::null_mut())
+        } else {
+            MemoryRegionReverseIterator::new(iter.handle, (last_address - 1) as PVOID)
+        }
+    }
+}

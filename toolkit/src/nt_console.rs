@@ -34,43 +34,6 @@ pub fn get_output_handle() -> HANDLE {
     }
 }
 
-pub fn write_console_utf8_with_nt_write(
-    handle: HANDLE,
-    buffer: *const u8,
-    chars_to_write: u32,
-    chars_written: *mut u32,
-) -> NTSTATUS {
-    unsafe {
-        let mut io_status_block: IO_STATUS_BLOCK = core::mem::zeroed();
-        
-        if handle.is_null() || buffer.is_null() || chars_to_write == 0 {
-            return STATUS_INVALID_HANDLE;
-        }
-        
-        let bytes_to_write = chars_to_write;
-        
-        let status = NtWriteFile(
-            handle,
-            core::ptr::null_mut(),
-            None,
-            core::ptr::null_mut(),
-            &mut io_status_block,
-            buffer as PVOID,
-            bytes_to_write,
-            core::ptr::null_mut(),
-            core::ptr::null_mut(),
-        );
-        
-        if status >= 0 && !chars_written.is_null() {
-            let bytes_written = io_status_block.Information as u32;
-            *chars_written = bytes_written / 2;
-        }
-        
-        status
-    }
-}
-// 
-
 pub fn write_console_utf16_with_device_io_control(
     handle: HANDLE,
     // buffer: *const u8,

@@ -46,6 +46,10 @@ impl<const N: usize> ByteBlock<N> {
         }
         ByteBlock(arr)
     }
+
+    pub fn into_inner(self) -> [u8; N] {
+        self.0
+    }
     
     pub fn as_bytes(&self) -> &[u8] {
         &self.0

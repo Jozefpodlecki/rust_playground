@@ -1,15 +1,25 @@
 mod process;
 mod protect;
+mod alloc;
 mod reader;
 mod writer;
 mod peb;
 mod query;
 mod thread_handle;
+mod unicode_string;
+mod cmd_args;
+mod environment;
+mod exec_path;
 
 pub use process::*;
 pub use protect::*;
+pub use alloc::*;
 pub use reader::*;
 pub use writer::*;
 pub use peb::*;
 pub use query::*;
 pub use thread_handle::*;
+pub use unicode_string::*;
+pub use cmd_args::*;
+pub use environment::*;
+pub use exec_path::*;

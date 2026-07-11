@@ -14,6 +14,7 @@
 #![feature(allocator_api)]
 #![feature(slice_ptr_get)]
 #![feature(generic_atomic)]
+#![feature(utf16_extra)]
 
 mod fs;
 mod io;
@@ -30,6 +31,7 @@ mod mutex;
 mod static_vec;
 pub mod types;
 pub mod stack_trait;
+pub mod rand;
 
 pub use fs::*;
 pub use io::*;
