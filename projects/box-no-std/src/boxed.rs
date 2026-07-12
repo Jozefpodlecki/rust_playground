@@ -2,13 +2,15 @@ use core::{
     alloc::Layout, borrow::{Borrow, BorrowMut}, cmp::Ordering, fmt, hash::{Hash, Hasher}, marker::Unsize, mem::{self, ManuallyDrop, MaybeUninit}, ops::{CoerceUnsized, Deref, DerefMut}, ptr::{self, NonNull, Unique}, slice,
 };
 use crate::alloc::{allocate, deallocate};
+use core::mem::SizedTypeProperties;
 
 pub struct Box<T: ?Sized>(pub(crate) Unique<T>);
 
 impl<T> Box<T> {
     pub fn new(value: T) -> Self {
         unsafe {
-            let layout = Layout::new::<T>();
+            // let layout = Layout::new::<T>();
+            let layout = <T as SizedTypeProperties>::LAYOUT;
             let ptr = allocate(layout);
             if ptr.is_null() {
                 panic!("allocation failed");

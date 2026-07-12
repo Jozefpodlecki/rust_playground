@@ -7,6 +7,7 @@
 #![feature(unsize)]
 #![feature(layout_for_ptr)]
 #![allow(static_mut_refs)]
+#![allow(unused, internal_features)]
 
 #[cfg(test)]
 #[macro_use]
@@ -16,7 +17,7 @@ use core::panic::PanicInfo;
 
 use crate::alloc::init_allocator;
 
-use utils::*;
+extern crate builtins;
 
 mod alloc;
 mod boxed;
