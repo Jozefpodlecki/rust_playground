@@ -1,0 +1,14 @@
+[package]
+name = "imgui-app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+winit = "0.30.13"   
+imgui = "0.12.0"
+imgui-winit-support = "0.13.0"
+imgui-wgpu = "0.28.0"
+glow = "0.18"
+# wgpu = "30.0.0"
+wgpu = "29.0.4"
+pollster = "1.0.1"
