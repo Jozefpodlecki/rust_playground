@@ -40,7 +40,7 @@ impl DerefMut for AlignedContext {
 }
 
 #[derive(Clone, Copy)]
-pub struct ThreadHandle(*mut winapi::ctypes::c_void, ThreadOpenFlags);
+pub struct ThreadHandle(pub *mut winapi::ctypes::c_void, ThreadOpenFlags);
 
 unsafe impl Send for ThreadHandle {}
 unsafe impl Sync for ThreadHandle {}
@@ -53,9 +53,14 @@ impl ThreadOpenFlags {
     pub const GET_CONTEXT: Self = Self(THREAD_GET_CONTEXT);
     pub const SET_CONTEXT: Self = Self(THREAD_SET_CONTEXT);
     pub const TERMINATE: Self = Self(THREAD_TERMINATE);
+    pub const QUERY_INFORMATION: Self = Self(THREAD_QUERY_INFORMATION);
 
     pub const ALL: Self = Self(
-        THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_SET_CONTEXT | THREAD_TERMINATE,
+        THREAD_SUSPEND_RESUME 
+        | THREAD_GET_CONTEXT 
+        | THREAD_SET_CONTEXT 
+        | THREAD_TERMINATE
+        | THREAD_QUERY_INFORMATION
     );
 
     pub fn contains(&self, flags: Self) -> bool {
@@ -156,7 +161,8 @@ impl ThreadHandle {
         }
         
         let mut context = AlignedContext::default();
-        context.0.ContextFlags = CONTEXT_ALL;
+        // context.0.ContextFlags = CONTEXT_ALL;
+        context.0.ContextFlags = CONTEXT_FULL;
         let status = unsafe { NtGetContextThread(self.0, &mut context.0) };
         
         if status != STATUS_SUCCESS {
@@ -223,7 +229,7 @@ impl ThreadHandle {
         Ok(ThreadState::Active)
     }
 
-    pub fn terminate(&self, exit_code: i32) -> Result<(), SystemError> {
+    pub fn terminate(self, exit_code: i32) -> Result<(), SystemError> {
         
         if !self.1.contains(ThreadOpenFlags::TERMINATE) {
             return Err(SystemError::InvalidFlags);
@@ -238,6 +244,26 @@ impl ThreadHandle {
         Ok(())
     }
 
+    pub fn tid(&self) -> usize {
+        unsafe {
+            let mut basic_info: THREAD_BASIC_INFORMATION = core::mem::zeroed();
+            let mut return_length: u32 = 0;
+
+            let status = NtQueryInformationThread(
+                self.0,
+                ThreadBasicInformation,
+                &mut basic_info as *mut _ as *mut _,
+                core::mem::size_of::<THREAD_BASIC_INFORMATION>() as u32,
+                &mut return_length,
+            );
+
+            if status != STATUS_SUCCESS {
+                return 0;
+            }
+
+            basic_info.ClientId.UniqueThread as usize
+        }
+    }
    
     pub fn handle(&self) -> HANDLE {
         self.0

@@ -1,8 +1,10 @@
+use core::ptr::null_mut;
 use core::{mem, ptr};
 use ntapi::ntapi_base::CLIENT_ID;
-use ntapi::ntpsapi::{NtCreateThread, NtCreateThreadEx, NtCurrentProcess};
+use ntapi::ntpsapi::{NtCreateThread, NtCreateThreadEx, NtCurrentProcess, NtQueryInformationThread, THREAD_BASIC_INFORMATION, ThreadBasicInformation};
 use ntapi::ntrtl::RtlExitUserThread;
 use winapi::shared::{ntdef::HANDLE, ntstatus::STATUS_SUCCESS};
+use winapi::um::winbase::CREATE_SUSPENDED;
 use winapi::um::winnt::THREAD_ALL_ACCESS;
 use crate::*;
 use crate::arc::Arc;

@@ -1,11 +1,13 @@
 
-use ntapi::{ntmmapi::NtWriteVirtualMemory, ntpsapi::NtCurrentProcess};
+use ntapi::{ntpsapi::NtCurrentProcess};
 use winapi::{ctypes::c_void, shared::ntdef::{NT_SUCCESS, NTSTATUS, PVOID}};
+
+use crate::{println, syscalls::NtWriteVirtualMemory};
 
 pub struct ProcessMemoryWriter;
 
 impl ProcessMemoryWriter {
-    pub fn write_remote(handle: *mut c_void ,address: PVOID, buffer: &[u8]) -> Result<(), NTSTATUS> {
+    pub fn write_remote(handle: *mut c_void, address: PVOID, buffer: &[u8]) -> Result<(), NTSTATUS> {
         let mut bytes_read: usize = 0;
         let status = unsafe {
             NtWriteVirtualMemory(

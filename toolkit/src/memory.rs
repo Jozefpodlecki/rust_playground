@@ -1,9 +1,9 @@
 use core::{fmt, slice};
 
-use ntapi::ntmmapi::{MEMORY_INFORMATION_CLASS, MemoryBasicInformation, MemoryMappedFilenameInformation, NtQueryVirtualMemory};
+use ntapi::{ntexapi::{NtQuerySystemInformation, SYSTEM_BASIC_INFORMATION, SystemBasicInformation}, ntmmapi::{MEMORY_INFORMATION_CLASS, MemoryBasicInformation, MemoryMappedFilenameInformation, NtQueryVirtualMemory}};
 use winapi::{shared::{basetsd::SIZE_T, ntdef::UNICODE_STRING}, um::winnt::*};
 
-use crate::U16CStackString;
+use crate::{U16CStackString, println};
 
 const MAX_MODULE_NAME_LEN: usize = 260;
 
@@ -304,7 +304,7 @@ pub struct MemoryRegionReverseIterator {
 impl MemoryRegionReverseIterator {
     pub fn new(handle: HANDLE, start_address: PVOID) -> Self {
         let max_address = if start_address.is_null() {
-            0x00007FFFFFFFFFFFusize
+            0x7FFFFFFEFFFFusize
         } else {
             start_address as usize
         };
@@ -334,7 +334,6 @@ impl MemoryRegionReverseIterator {
                 core::mem::size_of::<MEMORY_BASIC_INFORMATION>() as SIZE_T,
                 &mut return_length,
             );
-            
             if status < 0 {
                 return None;
             }
@@ -352,36 +351,22 @@ impl Iterator for MemoryRegionReverseIterator {
     type Item = MemoryInformation;
     
     fn next(&mut self) -> Option<Self::Item> {
-        if self.address.is_null() || self.address as usize == 0 {
+        let address = self.address as usize;
+
+        if address == 0 {
             return None;
         }
-        
-        if !self.initialized {
-            self.initialized = true;
-            if let Some(info) = self.query_region_at(self.address) {
-                let base = info.base_address();
-                if base == 0 {
-                    return Some(info);
-                }
-                self.address = (base - 1) as PVOID;
-                return Some(info);
-            }
-            return None;
-        }
-        
-        if self.address.is_null() || self.address as usize == 0 {
-            return None;
-        }
-        
-        let info = self.query_region_at(self.address)?;
+
+        let info = self.query_region_at(address as PVOID)?;
+
         let base = info.base_address();
-        
+
         if base == 0 {
             self.address = core::ptr::null_mut();
         } else {
-            self.address = (base - 1) as PVOID;
+            self.address = info.base_address().saturating_sub(1) as _;
         }
-        
+
         Some(info)
     }
 }
@@ -403,5 +388,24 @@ impl MemoryRegionIterator {
         } else {
             MemoryRegionReverseIterator::new(iter.handle, (last_address - 1) as PVOID)
         }
+    }
+}
+
+pub fn maximum_user_address() -> usize {
+    unsafe {
+        let mut info: SYSTEM_BASIC_INFORMATION = core::mem::zeroed();
+
+        let status = NtQuerySystemInformation(
+            SystemBasicInformation,
+            &mut info as *mut _ as _,
+            core::mem::size_of::<SYSTEM_BASIC_INFORMATION>() as u32,
+            core::ptr::null_mut(),
+        );
+
+        if status < 0 {
+            panic!("NtQuerySystemInformation failed {:X}", status);
+        }
+
+        info.MaximumUserModeAddress as usize
     }
 }

@@ -18,6 +18,7 @@
 
 mod fs;
 mod io;
+mod time;
 mod error;
 pub mod syscalls;
 mod nt_console;
@@ -32,6 +33,9 @@ mod static_vec;
 pub mod types;
 pub mod stack_trait;
 pub mod rand;
+
+#[cfg(feature = "log")]
+pub mod logger;
 
 pub use fs::*;
 pub use io::*;

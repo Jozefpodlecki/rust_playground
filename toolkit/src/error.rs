@@ -20,6 +20,7 @@ pub enum ThreadError {
     Timeout,
     /// An invalid argument was provided
     InvalidArgument,
+    QueryFailed(NTSTATUS)
 }
 
 impl core::fmt::Display for ThreadError {
@@ -52,6 +53,7 @@ impl core::fmt::Display for ThreadError {
             ThreadError::InvalidArgument => {
                 write!(f, "Invalid argument provided")
             }
+            ThreadError::QueryFailed(_) => write!(f, "Query failed"),
         }
     }
 }
