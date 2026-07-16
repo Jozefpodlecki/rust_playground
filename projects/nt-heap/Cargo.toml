@@ -8,6 +8,10 @@ edition = "2024"
 [dependencies]
 toolkit = { path = "../../toolkit" }
 builtins = { path = "../../builtins" }
+ntapi = "0.4.3"
+winapi = { version = "0.3.9", features = ["errhandlingapi", "minwinbase", "winbase", "libloaderapi", "synchapi"] }
+bitflags = "2.13.1"
+heapless = "*"
 
 [profile.dev]
 panic = "abort"
