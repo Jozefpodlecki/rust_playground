@@ -6,7 +6,7 @@ use winapi::{ctypes::c_void, shared::{ntdef::{HANDLE, NTSTATUS, OBJECT_ATTRIBUTE
 use crate::ThreadError;
 
 const THREAD_SUSPEND_COUNT: u32 = 35;
-const ThreadWaitReason: u32 = 37;
+const THREAD_WAIT_REASON: u32 = 37;
 const DELAY_EXECUTION_WAIT: u32 = 4;
 const WR_DELAY_EXECUTION_WAIT: u32 = 11;
 
@@ -211,7 +211,7 @@ impl ThreadHandle {
         let status = unsafe {
             NtQueryInformationThread(
                 self.0,
-                ThreadWaitReason,
+                THREAD_WAIT_REASON,
                 &mut wait_reason as *mut _ as *mut _,
                 mem::size_of::<u32>() as u32,
                 core::ptr::null_mut(),

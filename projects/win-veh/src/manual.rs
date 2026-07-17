@@ -1,5 +1,5 @@
 use ntapi::ntrtl::*;
-use utils::NtDll;
+use toolkit::NtDll;
 use winapi::{shared::ntdef::HANDLE, um::winnt::{PAGE_EXECUTE_READWRITE, PAGE_READWRITE}};
 
 use crate::{api::*, types::*};

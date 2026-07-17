@@ -358,3 +358,17 @@ pub extern "system"  fn NtWaitForSingleObject(
         "ret"
     );
 }
+
+#[unsafe(naked)]
+pub extern "system" fn NtSuspendThread(
+    ThreadHandle: HANDLE,
+    PreviousSuspendCount: PULONG,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
+        "mov eax, 0x1CF",
+        "syscall",
+        "ret"
+    );
+}

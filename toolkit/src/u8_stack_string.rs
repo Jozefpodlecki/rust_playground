@@ -91,6 +91,17 @@ impl<const N: usize> U8CStackString<N> {
         Self::default()
     }
 
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() >= N {
+            return None; // too long
+        }
+        let mut s = Self::new();
+        s.buf[..bytes.len()].copy_from_slice(bytes);
+        s.len = bytes.len();
+        s.buf[s.len] = 0;
+        Some(s)
+    }
+
     pub fn from_utf16_lossy(utf16: &[u16]) -> Self {
         let mut result = Self::new();
     

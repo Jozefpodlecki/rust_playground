@@ -69,6 +69,31 @@ impl<const N: usize> U16CStackString<N> {
         Self::default()
     }
 
+    pub fn from_u16_slice(slice: &[u16]) -> Option<Self> {
+        if slice.is_empty() {
+            return None;
+        }
+
+        let mut buf = [0u16; N];
+        let mut len = 0;
+
+        for &value in slice {
+            if len >= N - 1 {
+                return None;
+            }
+
+            if value == 0 {
+                break;
+            }
+
+            buf[len] = value;
+            len += 1;
+        }
+
+        buf[len] = 0;
+        Some(Self { buf, len })
+    }
+
     // pub fn from_utf16_lossy(utf16: &[u16]) -> Self {
     //     let mut buf = [0u8; N];
     //     let mut len = 0;
@@ -394,5 +419,40 @@ impl<const N: usize> U16CStackString<N> {
         }
         
         i == self.len && j == other_bytes.len()
+    }
+
+    pub fn get_filename(&self) -> Option<Self> {
+        let slice = self.as_slice();
+        if slice.is_empty() {
+            return None;
+        }
+
+        // Find last backslash or forward slash
+        let mut last_sep = None;
+        for (i, &ch) in slice.iter().enumerate() {
+            if ch == '\\' as u16 || ch == '/' as u16 {
+                last_sep = Some(i);
+            }
+        }
+
+        let start = match last_sep {
+            Some(pos) => pos + 1,
+            None => 0,
+        };
+
+        if start >= slice.len() {
+            return None;
+        }
+
+        let mut result = Self::new();
+        for &ch in &slice[start..] {
+            if ch == 0 {
+                break;
+            }
+            if !result.push(ch) {
+                return None;
+            }
+        }
+        Some(result)
     }
 }
