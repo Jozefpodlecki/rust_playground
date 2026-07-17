@@ -1,5 +1,5 @@
 #![no_std]
-#![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unsafe_op_in_unsafe_fn, internal_features)]
 #![feature(core_intrinsics)]
 
 mod x86_64;
