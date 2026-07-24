@@ -6,6 +6,31 @@ use core::ptr;
 
 use crate::data_buf::{DataBuf, Pod};
 
+/// A container that stores a dynamically sized type (DST) in a fixed-size buffer.
+///
+/// # Type Parameters
+/// * `T` - The dynamically sized type to store (e.g., `dyn Error`, `[u8]`, `str`)
+/// * `D` - The buffer type that implements `DataBuf` (e.g., `Buf<u8, 64>`)
+///
+/// # Memory Layout
+/// The container stores the DST in the following format:
+/// ```text
+/// +---------------------------+------------------+
+/// |   Data (T)               | Metadata (vtable) |
+/// |   (variable size)        | (fixed size)      |
+/// +---------------------------+------------------+
+/// ```
+/// - The data portion contains the actual value
+/// - The metadata portion stores the vtable pointer and other DST metadata
+///
+/// # How It Works
+/// 1. When creating a new instance, the data and metadata are written to the buffer
+/// 2. The `Deref` implementation reconstructs a fat pointer to access the DST
+/// 3. The buffer is self-contained - no heap allocation is needed
+///
+/// # Safety
+/// This type uses unsafe code to manipulate raw pointers and memory.
+/// The invariants are maintained through careful construction and access patterns.
 #[repr(C)]
 pub struct Stacked<T: ?Sized, D: DataBuf> {
     data: D,

@@ -228,6 +228,10 @@ impl ExecutablePath {
         }
     }
 
+    pub fn as_slice(&self) -> &[u16] {
+        unsafe { core::slice::from_raw_parts(self.0.data, self.0.length) }
+    }
+
     pub fn as_ptr(&self) -> *const u16 {
         self.0.data
     }

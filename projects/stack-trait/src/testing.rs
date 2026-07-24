@@ -1,7 +1,9 @@
-use utils::println;
+use toolkit::println;
 
-use crate::{data_buf::Buf, stack_trait::Stacked};
-use core::fmt;
+use crate::{data_buf::{Buf, DataBuf}, stack_trait::Stacked};
+use core::{error::Error, fmt};
+
+pub type Buf64 = Buf<u8, 64>;
 
 trait Animal: fmt::Debug {
     fn speak(&self) -> &'static str;
@@ -49,7 +51,10 @@ impl Animal for Cat {
 }
 
 pub fn test_stacked() {
-    type Buf64 = Buf<u8, 64>;
+
+    if let Err(err) = would_err() {
+        println!("{}", err);
+    }
     
     let obj = Stacked::<dyn Animal, Buf64 >::new(Dog::new("test")).unwrap();
     println!("capacity {}", obj.capacity());
@@ -103,4 +108,32 @@ pub fn test_stacked() {
     println!("   counter.get(): {}", counter.get());
     println!("   Expected: 3");
 
+}
+
+pub fn would_err() -> Result<(), Stacked<dyn Error, Buf64>> {
+    let error = SimpleError {
+        message: "stacked error!"
+    };
+    Err(Stacked::new(error).unwrap())
+}
+
+#[derive(Debug, Clone)]
+pub struct SimpleError {
+    message: &'static str,
+}
+
+impl fmt::Display for SimpleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl core::error::Error for SimpleError {}
+
+use core::ops::Deref;
+
+impl<D: DataBuf> fmt::Display for Stacked<dyn core::error::Error, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.deref(), f)
+    }
 }

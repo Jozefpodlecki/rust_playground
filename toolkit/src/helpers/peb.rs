@@ -1,5 +1,5 @@
 
-use core::{fmt, slice};
+use core::{fmt, ops::Deref, slice};
 
 use ntapi::{ntpebteb::PEB, ntrtl::RTL_USER_PROCESS_PARAMETERS};
 use winapi::{ctypes::c_void, shared::ntdef::UNICODE_STRING};
@@ -32,8 +32,8 @@ impl ProcessEnvironmentBlock {
         Self(peb)
     }
 
-    pub fn process_params(&self) -> *mut RTL_USER_PROCESS_PARAMETERS {
-        unsafe { (*self.0).ProcessParameters }
+    pub fn process_params(&self) -> ProcessParameters {
+        ProcessParameters(unsafe { (*self.0).ProcessParameters })
     }
     
     pub fn image_base(&self) -> *mut c_void {
@@ -110,5 +110,21 @@ impl fmt::Display for ProcessEnvironmentBlock {
         }
         
         Ok(())
+    }
+}
+
+pub struct ProcessParameters(*mut RTL_USER_PROCESS_PARAMETERS);
+
+impl ProcessParameters {
+    pub fn as_ptr(&self) -> *mut RTL_USER_PROCESS_PARAMETERS {
+        self.0
+    }
+}
+
+impl Deref for ProcessParameters {
+    type Target = RTL_USER_PROCESS_PARAMETERS;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0 }
     }
 }

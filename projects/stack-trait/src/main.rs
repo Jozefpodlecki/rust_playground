@@ -9,6 +9,8 @@ use core::panic::PanicInfo;
 
 use crate::testing::test_stacked;
 
+extern crate builtins;
+
 mod data_buf;
 mod stack_trait;
 mod testing;

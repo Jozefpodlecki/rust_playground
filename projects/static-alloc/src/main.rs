@@ -13,7 +13,8 @@
 extern crate alloc;
 
 mod static_alloc;
-mod crt;
+
+extern crate builtins;
 
 use crate::static_alloc::{ARENA, FreeListAllocator};
 

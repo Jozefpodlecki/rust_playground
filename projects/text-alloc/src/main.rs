@@ -6,6 +6,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs, core_intrinsics)]
 #![allow(unsafe_op_in_unsafe_fn)]
+#![allow(unused)]
 
 use core::{arch::{asm, naked_asm}, mem, panic::PanicInfo, ptr::{self, null_mut}, sync::atomic::{AtomicUsize, Ordering}};
 
