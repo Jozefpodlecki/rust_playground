@@ -13,12 +13,17 @@ pub struct FileOptions {
 impl FileOptions {
     pub fn new() -> Self {
         Self {
-            access: FILE_READ_DATA | SYNCHRONIZE,
-            share: FILE_SHARE_READ,
+            access: 0,
+            share: 0,
             create_options: 0,
             create_disposition: FILE_OPEN,
             attributes: 0,
         }
+    }
+
+    pub fn attributes_only(&mut self) -> &mut Self {
+        self.access = FILE_READ_ATTRIBUTES | SYNCHRONIZE;
+        self
     }
 
     pub fn read(&mut self) -> &mut Self {

@@ -53,7 +53,7 @@ impl ProcessEnvironmentBlock {
 
     pub fn command_line(&self) -> CommandLineArgs {
         let params = unsafe { &*(*self.0).ProcessParameters };
-        CommandLineArgs(params.CommandLine)
+        CommandLineArgs::new(params.CommandLine)
     }
 
     pub fn executable_path(&self) -> ExecutablePath {

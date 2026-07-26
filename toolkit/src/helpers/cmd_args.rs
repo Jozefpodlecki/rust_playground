@@ -2,11 +2,28 @@ use core::{fmt, slice};
 
 use winapi::shared::ntdef::UNICODE_STRING;
 
-pub struct CommandLineArgs(pub UNICODE_STRING);
+pub struct CommandLineArgs(UNICODE_STRING);
 
 impl CommandLineArgs {
+    pub fn new(value: UNICODE_STRING) -> Self {
+        Self(value)
+    }
+
     pub fn iter(&self) -> CommandLineIter<'_> {
         CommandLineIter::new(&self.0)
+    }
+}
+
+impl CommandLineArgs {
+    pub fn at(&self, index: usize) -> Option<CommandLineArg<'_>> {
+        self.iter().nth(index)
+    }
+
+    pub fn get(&self, s: &str) -> Option<CommandLineArg<'_>> {
+        self.iter().find(|arg| {
+            let arg_str = arg.to_string::<260>();
+            arg_str.as_str() == s
+        })
     }
 }
 

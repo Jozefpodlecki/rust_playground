@@ -5,6 +5,35 @@ pub struct Utf16Path {
     length: usize,
 }
 
+pub struct StackUtf16Path<const N: usize> {
+    data: [u16; N],
+    length: usize,
+}
+
+impl<const N: usize> StackUtf16Path<N> {
+    pub const fn new() -> Self {
+        Self {
+            data: [0; N],
+            length: 0,
+        }
+    }
+
+    pub fn as_slice(&self) -> &[u16] {
+        &self.data[..self.length]
+    }
+
+    pub fn as_ptr(&self) -> *const u16 {
+        self.data.as_ptr()
+    }
+
+    pub fn to_path(&self) -> Utf16Path {
+        Utf16Path {
+            data: self.data.as_ptr(),
+            length: self.length,
+        }
+    }
+}
+
 impl Utf16Path {
     pub const fn new(data: *const u16, length: usize) -> Self {
         Self { data, length }
@@ -22,6 +51,105 @@ impl Utf16Path {
                 length: 0,
             }
         }
+    }
+
+    pub fn join<const N: usize>(&self, other: &str) -> StackUtf16Path<N> {
+        // Convert str to UTF-16
+        let mut utf16 = [0u16; N];
+        let mut len = 0;
+        
+        for c in other.encode_utf16() {
+            if len < N {
+                utf16[len] = c;
+                len += 1;
+            } else {
+                break;
+            }
+        }
+        
+        let other_path = Utf16Path {
+            data: utf16.as_ptr(),
+            length: len,
+        };
+        
+        self.join_path::<N>(&other_path)
+    }
+
+    // Join with another Utf16Path
+    pub fn join_path<const N: usize>(&self, other: &Utf16Path) -> StackUtf16Path<N> {
+        let mut result = StackUtf16Path::<N>::new();
+        
+        if self.length == 0 {
+            let len = core::cmp::min(other.length, N);
+            result.data[..len].copy_from_slice(&other.as_slice()[..len]);
+            result.length = len;
+            return result;
+        }
+        
+        if other.length == 0 {
+            let len = core::cmp::min(self.length, N);
+            result.data[..len].copy_from_slice(&self.as_slice()[..len]);
+            result.length = len;
+            return result;
+        }
+        
+        let self_ends_with_sep = if self.length > 0 {
+            let slice = self.as_slice();
+            let last = slice[self.length - 1];
+            last == b'\\' as u16 || last == b'/' as u16
+        } else {
+            false
+        };
+        
+        let other_starts_with_sep = if other.length > 0 {
+            let slice = other.as_slice();
+            let first = slice[0];
+            first == b'\\' as u16 || first == b'/' as u16
+        } else {
+            false
+        };
+        
+        let mut new_len = self.length + other.length;
+        let mut needs_separator = false;
+        
+        if !self_ends_with_sep && !other_starts_with_sep && self.length > 0 && other.length > 0 {
+            new_len += 1;
+            needs_separator = true;
+        } else if self_ends_with_sep && other_starts_with_sep {
+            new_len -= 1;
+        }
+        
+        if new_len > N {
+            new_len = N;
+        }
+        
+        let mut idx = 0;
+        let self_len = core::cmp::min(self.length, new_len);
+        result.data[..self_len].copy_from_slice(&self.as_slice()[..self_len]);
+        idx = self_len;
+        
+        if needs_separator && idx < new_len {
+            result.data[idx] = b'\\' as u16;
+            idx += 1;
+        }
+        
+        let other_start = if self_ends_with_sep && other_starts_with_sep {
+            1
+        } else {
+            0
+        };
+        
+        let remaining = new_len - idx;
+        let other_slice = other.as_slice();
+        let other_len = core::cmp::min(other_slice.len() - other_start, remaining);
+        
+        if other_len > 0 {
+            result.data[idx..idx + other_len]
+                .copy_from_slice(&other_slice[other_start..other_start + other_len]);
+        }
+        
+        result.length = new_len;
+        result
     }
 
     fn find_extension_separator(&self) -> Option<usize> {

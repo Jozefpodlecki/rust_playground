@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{fmt::{self, Write}, marker::PhantomData, ops::Deref};
 
 #[repr(C)]
 pub struct FileMetadata {
@@ -11,6 +11,14 @@ pub struct FileMetadata {
 
 #[derive(Clone, Copy)]
 pub struct FileSize(pub u64);
+
+impl Deref for FileSize {
+    type Target = u64;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct FileTime(pub u64);
@@ -177,6 +185,89 @@ impl fmt::Display for FileMetadata {
         writeln!(f, "  Last Access: {}", self.last_access_time)?;
         writeln!(f, "  Last Write: {}", self.last_write_time)?;
         writeln!(f, "  Attributes: {}", self.attributes)?;
+        Ok(())
+    }
+}
+
+pub struct FilePath<const N: usize> {
+    data: [u16; N],
+    len: usize,
+}
+
+impl<const N: usize> FilePath<N> {
+    pub fn new(parent: &[u16], name: &[u16]) -> Self {
+        let mut data = [0u16; N];
+        let mut len = 0;
+        
+        let parent_ends_with_backslash = parent.last() == Some(&(b'\\' as u16));
+        
+        for &c in parent {
+            if len < N - 1 {
+                data[len] = c;
+                len += 1;
+            }
+        }
+        
+        if !parent_ends_with_backslash && len < N - 1 {
+            data[len] = b'\\' as u16;
+            len += 1;
+        }
+        
+        for &c in name {
+            if len < N - 1 {
+                data[len] = c;
+                len += 1;
+            }
+        }
+        
+        Self { data, len }
+    }
+
+    pub fn from_slice(slice: &[u16]) -> Self {
+        let mut data = [0u16; N];
+        let len = slice.len().min(N - 1);
+        data[..len].copy_from_slice(&slice[..len]);
+        Self { data, len }
+    }
+    
+    pub fn as_slice(&self) -> &[u16] {
+        &self.data[..self.len]
+    }
+}
+
+impl<const N: usize> fmt::Display for FilePath<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let slice = &self.data[..self.len];
+        let mut chars = slice.iter().cloned();
+        while let Some(Ok(c)) = char::decode_utf16(&mut chars).next() {
+            f.write_char(c)?;
+        }
+        Ok(())
+    }
+}
+
+pub struct FileName<'a>(pub &'a [u16]);
+
+impl<'a> FileName<'a> {
+    pub fn new(value: &'a [u16]) -> Self {
+        Self(value)
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.0 == [0x2E]
+    }
+
+    pub fn is_parent(&self) -> bool {
+        self.0 == [0x2E, 0x2E]
+    }
+}
+
+impl<'a> fmt::Display for FileName<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut chars = self.0.iter().cloned();
+        while let Some(Ok(c)) = char::decode_utf16(&mut chars).next() {
+            f.write_char(c)?;
+        }
         Ok(())
     }
 }

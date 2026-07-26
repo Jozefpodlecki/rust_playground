@@ -15,6 +15,14 @@ impl Sleeper {
             NtDelayExecution(0, &mut delay);
         }
     }
+
+    pub fn sleep_infinite(alertable: u8) {
+        let mut delay: LARGE_INTEGER = unsafe { core::mem::zeroed() };
+        unsafe {
+            *delay.QuadPart_mut() = i64::MIN;
+            NtDelayExecution(alertable, &mut delay);
+        }
+    }
 }
 
 pub struct ProcessMemoryQuery;

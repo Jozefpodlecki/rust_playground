@@ -1,6 +1,6 @@
 use core::arch::naked_asm;
 use ntapi::{ntioapi::{FILE_INFORMATION_CLASS, PIO_APC_ROUTINE, PIO_STATUS_BLOCK}, ntmmapi::MEMORY_INFORMATION_CLASS, ntpsapi::{PPS_ATTRIBUTE_LIST, THREADINFOCLASS}};
-use winapi::{shared::{basetsd::{PSIZE_T, SIZE_T, ULONG_PTR}, minwindef::{PULONG, ULONG}, ntdef::{BOOLEAN, HANDLE, NTSTATUS, PHANDLE, PLARGE_INTEGER, POBJECT_ATTRIBUTES, PVOID}}, um::winnt::ACCESS_MASK};
+use winapi::{shared::{basetsd::{PSIZE_T, SIZE_T, ULONG_PTR}, minwindef::{PULONG, ULONG}, ntdef::{BOOLEAN, HANDLE, NTSTATUS, PHANDLE, PLARGE_INTEGER, POBJECT_ATTRIBUTES, PUNICODE_STRING, PVOID}}, um::winnt::ACCESS_MASK};
 
 #[unsafe(naked)]
 pub extern "system" fn NtClose(
@@ -61,6 +61,29 @@ pub extern "system" fn NtSetInformationFile(
         "mov r10, rcx",
         #[cfg(feature = "win_25h2")]
         "mov eax, 0x27",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtQueryDirectoryFile(
+    FileHandle: HANDLE,
+    Event: HANDLE,
+    ApcRoutine: PIO_APC_ROUTINE,
+    ApcContext: PVOID,
+    IoStatusBlock: PIO_STATUS_BLOCK,
+    FileInformation: PVOID,
+    Length: ULONG,
+    FileInformationClass: FILE_INFORMATION_CLASS,
+    ReturnSingleEntry: BOOLEAN,
+    FileName: PUNICODE_STRING,
+    RestartScan: BOOLEAN,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
+        "mov eax, 0x35",
         "syscall",
         "ret"
     );
