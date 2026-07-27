@@ -1,12 +1,10 @@
 
-use core::{fmt, ops::Deref, slice};
+use core::{fmt, ops::Deref};
 
 use ntapi::{ntpebteb::PEB, ntrtl::RTL_USER_PROCESS_PARAMETERS};
 use winapi::{ctypes::c_void, shared::ntdef::UNICODE_STRING};
 
-use crate::{CommandLineArgs, Environment, ExecutablePath, U16CStackString, Utf16Path, println, types::HEAP};
-
-
+use crate::{CommandLineArgs, Environment, ExecutablePath, Utf16Path, types::HEAP};
 
 #[unsafe(naked)]
 pub unsafe fn get_peb() -> *mut PEB {
@@ -30,6 +28,10 @@ impl ProcessEnvironmentBlock {
     pub fn current_process() -> Self {
         let peb: *mut PEB = unsafe { get_peb() };
         Self(peb)
+    }
+
+    pub fn as_ptr(&self) -> *mut PEB {
+        self.0
     }
 
     pub fn process_params(&self) -> ProcessParameters {

@@ -1,4 +1,5 @@
 mod process;
+mod thread;
 mod protect;
 mod alloc;
 mod reader;
@@ -10,8 +11,10 @@ mod unicode_string;
 mod cmd_args;
 mod environment;
 mod exec_path;
+mod pe;
 
 pub use process::*;
+pub use thread::*;
 pub use protect::*;
 pub use alloc::*;
 pub use reader::*;
@@ -23,3 +26,4 @@ pub use unicode_string::*;
 pub use cmd_args::*;
 pub use environment::*;
 pub use exec_path::*;
+pub use pe::*;

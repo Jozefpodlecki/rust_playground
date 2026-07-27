@@ -157,10 +157,8 @@ impl File {
         }
     }
 
-    pub fn into_handle(self) -> HANDLE {
-        let handle = self.handle;
-        core::mem::forget(self);
-        handle
+    pub fn handle(&self) -> HANDLE {
+        self.handle
     }
 }
 
