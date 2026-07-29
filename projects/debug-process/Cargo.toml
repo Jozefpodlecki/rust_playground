@@ -1,0 +1,38 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "debug-process"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+toolkit = { path = "../../toolkit" }
+builtins = { path = "../../builtins" }
+winapi = { version = "0.3.9", features = [
+    "impl-debug", "synchapi", "securitybaseapi", "consoleapi",
+    "winbase", "fileapi", "errhandlingapi", "minwinbase", "libloaderapi",
+    "debugapi" 
+] }
+ntapi = { version = "0.4.3", features = [] }
+stack_dst = { version = "0.8.1", default-features = false, features = [] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
+rustflags = [
+    "-C", "link-arg=/DEBUG:NONE",
+    "-C", "link-arg=/EMITPOGOPHASEINFO",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
+]
