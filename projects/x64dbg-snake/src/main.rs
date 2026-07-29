@@ -3,6 +3,7 @@
 #![windows_subsystem = "console"]
 #![allow(static_mut_refs)]
 #![feature(pointer_is_aligned_to)]
+#![allow(unused)]
 
 use core::panic::PanicInfo;
 

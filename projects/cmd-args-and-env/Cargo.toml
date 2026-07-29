@@ -1,11 +1,13 @@
 cargo-features = ["profile-rustflags"]
 
 [package]
-name = "keylogger"
+name = "exe-no-std"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+toolkit = { path = "../../toolkit" }
+builtins = { path = "../../builtins" }
 
 [profile.dev]
 panic = "abort"
