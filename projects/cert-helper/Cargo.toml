@@ -1,0 +1,48 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "cert-helper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mkb-raw-input = { git = "https://github.com/atsekoff/mkb-raw-input" }
+ntapi = "0.4.3"
+toolkit = { path = "../../toolkit", features = ["alloc"] }
+builtins = { path = "../../builtins" }
+winapi = { version = "0.3.9", features = [
+    "winerror",
+    "wincrypt",
+    "winbase",
+    "winnt",
+    "guiddef",
+    "basetsd",
+    "minwindef",
+    "errhandlingapi",
+    "ncrypt"
+] }
+anyhow = "1.0.104"
+widestring = "1.2.1"
+hex = "0.4.3"
+sha2 = "0.11.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
+rustflags = [
+    "-C", "link-arg=/DEBUG:NONE",
+    "-C", "link-arg=/EMITPOGOPHASEINFO",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
+]
