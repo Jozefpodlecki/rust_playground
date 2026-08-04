@@ -1,38 +1,37 @@
-#![no_std]
-#![no_main]
-#![windows_subsystem = "console"]
-#![feature(sync_unsafe_cell)]
-#![allow(static_mut_refs, non_snake_case, non_camel_case_types)]
-#![feature(arbitrary_self_types_pointers)]
-#![feature(ptr_alignment_type)]
+// #![cfg_attr(not(test), no_std)]
+// #![cfg_attr(not(test), no_main)]
+// #![windows_subsystem = "console"]
+#![allow(unused)]
 
 use core::panic::PanicInfo;
 
-use alloc::vec::Vec;
 use toolkit::println;
 
-mod stress;
-mod allocator;
-mod buddy;
-
+#[cfg(not(test))]
 extern crate builtins;
 
-buddy_allocator!(1024 * 1024);
+#[cfg(not(test))]
+buddy_allocator::buddy_allocator!(1024 * 1024);
 
 #[macro_use]
 extern crate alloc;
 
-#[inline(never)]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    println!("{info}");
-    loop {}
-}
+// #[cfg(not(test))]
+// #[inline(never)]
+// #[panic_handler]
+// fn panic(info: &PanicInfo) -> ! {
+//     println!("{info}");
+//     loop {}
+// }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn mainCRTStartup() -> i32 {
+// #[unsafe(no_mangle)]
+// pub extern "C" fn mainCRTStartup() -> i32 {
 
-    stress::run_stress_test(100);
+//     buddy_allocator::stress::run_stress_test(100, BuddyAllocator);
 
-    0
+//     0
+// }
+
+fn main() {
+
 }

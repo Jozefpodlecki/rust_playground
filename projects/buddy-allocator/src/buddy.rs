@@ -1,217 +1,250 @@
-use core::alloc::{GlobalAlloc, Layout};
+use core::alloc::Layout;
 use core::ptr;
 
-pub const ARENA_SIZE: usize = 1024 * 1024;
-pub const MIN_BLOCK_SIZE: usize = 32;
-pub const MAX_ORDER: usize = (ARENA_SIZE / MIN_BLOCK_SIZE).ilog2() as usize;
+use crate::types::*;
 
-#[repr(C)]
-pub struct BuddyBlock {
-    order: u8,
-    free: bool,
-    next: *mut BuddyBlock,
+macro_rules! debug_println {
+    () => {
+        toolkit::print!("\r\n")
+    };
+    ($($arg:tt)*) => {{
+        toolkit::println!($($arg)*);
+    }};
 }
 
-impl BuddyBlock {
-    pub const fn size_of() -> usize {
-        core::mem::size_of::<Self>()
-    }
+pub struct BuddyAllocatorImpl<const N: usize, const MIN_BLOCK: usize, const MAX_ORDER: usize>(pub *mut u8);
 
-    pub fn init(self: *mut Self, order: u8) {
-        unsafe {
-            (*self).order = order;
-            (*self).free = true;
-            (*self).next = core::ptr::null_mut();
-        }
-    }
+unsafe impl<const N: usize, const MIN_BLOCK: usize, const MAX_ORDER: usize> Send for BuddyAllocatorImpl<N, MIN_BLOCK, MAX_ORDER> {}
 
-    pub fn order(self: *mut Self) -> u8 {
-        unsafe { (*self).order }
-    }
-
-    pub fn set_order(self: *mut Self, order: u8) {
-        unsafe { (*self).order = order; }
-    }
-
-    pub fn free(self: *mut Self) -> bool {
-        unsafe { (*self).free }
-    }
-
-    pub fn set_free(self: *mut Self, free: bool) {
-        unsafe { (*self).free = free; }
-    }
-
-    pub fn next(self: *mut Self) -> *mut Self {
-        unsafe { (*self).next }
-    }
-
-    pub fn set_next(self: *mut Self, next: *mut Self) {
-        unsafe { (*self).next = next; }
-    }
-
-    pub fn size(self: *mut Self) -> usize {
-        MIN_BLOCK_SIZE << unsafe { (*self).order as usize }
-    }
-
-    pub fn data(self: *mut Self) -> *mut u8 {
-        unsafe { self.cast::<u8>().add(Self::size_of()) }
-    }
-
-    pub fn from_ptr(ptr: *mut u8) -> *mut Self {
-        unsafe { ptr.sub(Self::size_of()).cast() }
-    }
-
-    pub fn add_offset(self: *mut Self, offset: usize) -> *mut Self {
-        unsafe { self.cast::<u8>().add(offset).cast() }
-    }
-
-    pub fn buddy(self: *mut Self, order: u8) -> *mut Self {
-        let block_size = MIN_BLOCK_SIZE << order as usize;
-        let block_addr = self as usize;
-        
-        unsafe {
-            if (block_addr / block_size) % 2 == 0 {
-                self.add_offset(block_size).cast()
-            } else {
-                self.add_offset(block_size.wrapping_neg()).cast()
-            }
-        }
-    }
-}
-
-#[repr(align(8))]
-struct Header(u8);
-
-impl Header {
-    pub const fn size_of() -> usize {
-        core::mem::size_of::<Self>()
-    }
-
-    pub fn init(self: *mut Self) {
-        unsafe { (*self).0 = 1; }
-    }
-
-    pub fn is_initialized(self: *mut Self) -> bool {
-        unsafe { (*self).0 == 1 }
-    }
-}
-
-pub struct BuddyAllocator<const N: usize>(pub(crate) *mut u8);
-
-unsafe impl<const N: usize> Send for BuddyAllocator<N> {}
-
-impl<const N: usize> BuddyAllocator<N> {
+impl<const N: usize, const MIN_BLOCK: usize, const MAX_ORDER: usize> BuddyAllocatorImpl<N, MIN_BLOCK, MAX_ORDER> {
     fn header(&self) -> *mut Header {
         self.0.cast()
     }
 
-    pub(crate) fn first_block(&self) -> *mut BuddyBlock {
-        unsafe { self.0.add(Header::size_of()).cast() }
+    fn aligned_addr(&self) -> *mut u8 {
+        let base = self.0 as usize;
+        let max_block_size = MIN_BLOCK << MAX_ORDER;
+        let aligned = (base + max_block_size - 1) & !(max_block_size - 1);
+        aligned as *mut u8
+    }
+
+    fn aligned_offset(&self) -> usize {
+        self.aligned_addr() as usize - self.0 as usize
+    }
+
+    pub fn first_block(&self) -> *mut BuddyBlock<MIN_BLOCK> {
+        self.aligned_addr().cast()
     }
 
     fn init(&self) {
         self.header().init();
+        self.free_list_heads().init();
+        let offset = self.aligned_offset();
         let first = self.first_block();
-        
-        for i in 0..=MAX_ORDER {
-            self.free_list(i).set_next(core::ptr::null_mut());
-        }
-
-        let total_blocks = (N - Header::size_of()) / BuddyBlock::size_of();
+        let total_blocks = (N - offset) / MIN_BLOCK;
         let max_order = (total_blocks).ilog2() as u8;
         first.init(max_order);
         self.add_to_free_list(first);
     }
 
-    pub(crate) fn free_list(&self, order: usize) -> *mut BuddyBlock {
-        let base = self.first_block();
-        let list_head = base.add_offset(order * BuddyBlock::size_of());
-        list_head.cast()
+    fn free_list_heads(&self) -> *mut FreeListHeads<MAX_ORDER, MIN_BLOCK> {
+        unsafe { 
+            let ptr = self.0.add(Header::size_of()).cast();
+            debug_println!("free_list_heads at {:p}", ptr);
+            ptr
+        }
     }
 
-    fn add_to_free_list(&self, block: *mut BuddyBlock) {
-        let order = block.order() as usize;
-            let head = self.free_list(order);
-            block.set_next(head.next());
-            head.set_next(block);
-            block.set_free(true);
+    pub fn free_list(&self, order: usize) -> *mut BuddyBlock<MIN_BLOCK> {
+        let heads = self.free_list_heads();
+        unsafe { 
+            let ptr = *heads.head(order);
+            debug_println!("free_list: order={}, head={:p}", order, ptr);
+            ptr
+        }
     }
 
-    fn remove_from_free_list(&self, block: *mut BuddyBlock) {
+    fn add_to_free_list(&self, block: *mut BuddyBlock<MIN_BLOCK>) {
+         let start = self.0;
+        let end = unsafe { self.0.add(N) };
+        if (block as *mut u8) < start || (block as *mut u8) >= end {
+            panic!("Corrupted block pointer: {:p} is out of arena", block);
+        }
+
         let order = block.order() as usize;
-        let head = self.free_list(order);
-        let mut current = head;
+        debug_println!("add_to_free_list: block={:p}, order={}", block, order);
         
-        while !current.next().is_null() && current.next() != block {
+        let head = self.free_list(order);
+        debug_println!("  current head={:p}", head);
+        
+        block.set_next(head);
+        self.set_free_list(order, block);
+        block.set_free(true);
+        debug_println!("  added block to free list");
+    }
+
+    fn set_free_list(&self, order: usize, block: *mut BuddyBlock<MIN_BLOCK>) {
+        unsafe {
+            let heads = self.free_list_heads();
+            debug_println!("set_free_list: order={}, block={:p}", order, block);
+            *heads.head(order) = block;
+        }
+    }
+
+    fn remove_from_free_list(&self, block: *mut BuddyBlock<MIN_BLOCK>) {
+        let order = block.order() as usize;
+        debug_println!("remove_from_free_list: block={:p}, order={}", block, order);
+        
+        let mut current = self.free_list(order);
+        debug_println!("  current head={:p}", current);
+        
+        if current == block {
+            debug_println!("  block is head, updating");
+            self.set_free_list(order, block.next());
+            block.set_next(core::ptr::null_mut());
+            return;
+        }
+        
+        while !current.is_null() && current.next() != block {
             current = current.next();
         }
         
-        if !current.next().is_null() {
+        if !current.is_null() && !current.next().is_null() {
+            debug_println!("  found block, removing");
             current.set_next(block.next());
             block.set_next(core::ptr::null_mut());
+        } else {
+            debug_println!("  WARNING: block not found in free list!");
         }
     }
 
-    fn pop_from_free_list(&self, order: usize) -> *mut BuddyBlock {
+    // fn pop_from_free_list(&self, order: usize) -> *mut BuddyBlock<MIN_BLOCK> {
+    //     debug_println!("pop_from_free_list: order={}", order);
+    //     let head = self.free_list(order);
+    //     debug_println!("  head={:p}", head);
+        
+    //     if head.is_null() {
+    //         debug_println!("  head is null, returning null");
+    //         return core::ptr::null_mut();
+    //     }
+        
+    //     // Remove head from free list
+    //     let next = head.next();
+    //     self.set_free_list(order, next);
+    //     head.set_next(core::ptr::null_mut());
+    //     head.set_free(false);
+    //     debug_println!("  popped successfully, returning {:p}", head);
+    //     head
+    // }
+
+    fn pop_from_free_list(&self, order: usize) -> *mut BuddyBlock<MIN_BLOCK> {
+        debug_println!("pop_from_free_list: order={}", order);
         let head = self.free_list(order);
-        let block = head.next();
-        
-        if !block.is_null() {
-            head.set_next(block.next());
-            block.set_next(core::ptr::null_mut());
-            block.set_free(false);
+        debug_println!("  head={:p}", head);
+
+        if head.is_null() {
+            debug_println!("  head is null, returning null");
+            return core::ptr::null_mut();
         }
-        
-        block
+
+        // Validate head is within arena
+        let start = self.0;
+        let end = unsafe { self.0.add(N) };
+        if (head as *mut u8) < start || (head as *mut u8) >= end {
+            panic!("Corrupted free list head: {:p} is out of arena", head);
+        }
+
+        let next = head.next();
+        self.set_free_list(order, next);
+        head.set_next(core::ptr::null_mut());
+        head.set_free(false);
+        debug_println!("  popped successfully, returning {:p}", head);
+        head
     }
 
-    fn find_block(&self, order: usize) -> *mut BuddyBlock {
+    fn find_block(&self, order: usize) -> *mut BuddyBlock<MIN_BLOCK> {
+        debug_println!("find_block: looking for order {}", order);
+        
         let block = self.pop_from_free_list(order);
-            if !block.is_null() {
-                return block;
-            }
+        if !block.is_null() {
+            debug_println!("  found at order {}", order);
+            return block;
+        }
 
-            for higher_order in (order + 1)..=MAX_ORDER {
-                let block = self.pop_from_free_list(higher_order);
-                if !block.is_null() {
-                    let mut current = block;
-                    let mut current_order = higher_order;
+        for higher_order in (order + 1)..=MAX_ORDER {
+            debug_println!("  trying higher order {}", higher_order);
+            let block = self.pop_from_free_list(higher_order);
+            if !block.is_null() {
+                debug_println!("  found at order {}, splitting", higher_order);
+                let current = block;
+                let mut current_order = higher_order;
+                
+                while current_order > order {
+                    current_order -= 1;
+                    let half_size = MIN_BLOCK << current_order;
+                    let buddy = current.add_offset(half_size);
                     
-                    while current_order > order {
-                        current_order -= 1;
-                        let half_size = MIN_BLOCK_SIZE << current_order;
-                        let buddy = current.add_offset(half_size);
-                        
-                        buddy.init(current_order as u8);
-                        self.add_to_free_list(buddy);
-                        current.set_order(current_order as u8);
+                    // Check if buddy is within arena bounds
+                    let start = self.0;
+                    let end = unsafe { self.0.add(N) };
+                    if (buddy as *mut u8) < start || (buddy as *mut u8) >= end {
+                        debug_println!("    ERROR: buddy at {:p} is out of bounds! Arena: [{:p}, {:p})", buddy, start, end);
+                        self.add_to_free_list(current);
+                        return core::ptr::null_mut();
                     }
                     
-                    return current;
+                    debug_println!("    splitting: creating buddy at {:p} with order {}", buddy, current_order);
+                    buddy.init(current_order as u8);
+                    self.add_to_free_list(buddy);
+                    current.set_order(current_order as u8);
                 }
+                
+                current.set_free(false);
+                debug_println!("  returning block at {:p} with order {}", current, order);
+                return current;
             }
+        }
 
-            core::ptr::null_mut()
+        debug_println!("  no block found");
+        core::ptr::null_mut()
     }
 
-    fn merge_block(&self, block: *mut BuddyBlock) {
+    fn merge_block(&self, block: *mut BuddyBlock<MIN_BLOCK>) {
         let order = block.order() as usize;
+        debug_println!("merge_block: block={:p}, order={}", block, order);
             
         if order >= MAX_ORDER {
+            debug_println!("  at max order, adding to free list");
             self.add_to_free_list(block);
             return;
         }
 
         let buddy = block.buddy(order as u8);
+        debug_println!("  buddy={:p}", buddy);
         
-        if buddy.is_null() || !buddy.free() || buddy.order() != order as u8 {
+        if buddy.is_null() {
+            debug_println!("  buddy is null");
+            self.add_to_free_list(block);
+            return;
+        }
+        
+        if !buddy.free() {
+            debug_println!("  buddy is not free");
+            self.add_to_free_list(block);
+            return;
+        }
+        
+        if buddy.order() != order as u8 {
+            debug_println!("  buddy order mismatch: {} != {}", buddy.order(), order);
             self.add_to_free_list(block);
             return;
         }
 
+        debug_println!("  merging with buddy");
         self.remove_from_free_list(buddy);
         let parent = if (block as usize) < (buddy as usize) { block } else { buddy };
         parent.set_order((order + 1) as u8);
+        debug_println!("  parent={:p}, new order={}", parent, order + 1);
         self.merge_block(parent);
     }
 
@@ -221,18 +254,24 @@ impl<const N: usize> BuddyAllocator<N> {
         }
 
         let size = Self::align_up(layout.size(), layout.align());
-        let needed_size = Self::align_up(size + BuddyBlock::size_of(), 8);
+        let needed_size = Self::align_up(size + BuddyBlock::<MIN_BLOCK>::size_of(), 8);
+        let usable = N - self.aligned_offset();
         
-        if needed_size > N - Header::size_of() {
+        if needed_size > usable {
             return core::ptr::null_mut();
         }
 
-        let order = (needed_size / MIN_BLOCK_SIZE).ilog2() as usize;
+        let ratio = (needed_size + MIN_BLOCK - 1) / MIN_BLOCK;
+        let mut order = (ratio).ilog2() as usize;
+
+        if (1 << order) < ratio { order += 1; }
+
         if order > MAX_ORDER {
             return core::ptr::null_mut();
         }
 
         let block = self.find_block(order);
+
         if block.is_null() {
             return core::ptr::null_mut();
         }
@@ -241,8 +280,14 @@ impl<const N: usize> BuddyAllocator<N> {
     }
 
     pub fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if ptr.is_null() { return; }
-        let block = BuddyBlock::from_ptr(ptr);
+        debug_println!("dealloc: ptr={:p}", ptr);
+        if ptr.is_null() { 
+            debug_println!("  ptr is null, returning");
+            return; 
+        }
+        debug_println!("BuddyBlock::<MIN_BLOCK>::from_ptr");
+        let block = BuddyBlock::<MIN_BLOCK>::from_ptr(ptr);
+        debug_println!("  block={:p}, order={}", block, block.order());
         self.merge_block(block);
     }
 
@@ -250,100 +295,82 @@ impl<const N: usize> BuddyAllocator<N> {
         (size + align - 1) & !(align - 1)
     }
 
-    pub fn free_blocks(&self) -> BuddyBlockIter {
+    pub fn free_blocks(&self) -> BuddyBlockIter<MIN_BLOCK> {
         BuddyBlockIter(self.first_block())
     }
 }
 
-unsafe impl<const N: usize> GlobalAlloc for BuddyAllocator<N> {
-    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        self.alloc(layout)
+impl<const N: usize, const MIN_BLOCK: usize, const MAX_ORDER: usize> BuddyAllocatorImpl<N, MIN_BLOCK, MAX_ORDER> {
+
+    pub fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // let alignment = layout.alignment();
+        // let new_layout = Layout::from_size_align_unchecked(new_size, alignment.into());
+        // let new_ptr = self.alloc(new_layout);
+        // if !new_ptr.is_null() {
+        //     ptr::copy_nonoverlapping(ptr, new_ptr, core::cmp::min(layout.size(), new_size));
+        //     self.dealloc(ptr, layout);
+        //     return new_ptr;
+        // }
+        // core::ptr::null_mut()
+
+        self.realloc_inplace(ptr, layout, new_size)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        self.dealloc(ptr, layout)
-    }
+    pub fn realloc_inplace(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        let block = BuddyBlock::<MIN_BLOCK>::from_ptr(ptr);
+        let current_order = block.order() as usize;
 
-    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        unsafe {
-            let alignment = layout.alignment();
-            let new_layout = Layout::from_size_align_unchecked(new_size, alignment.into());
-            let new_ptr = self.alloc(new_layout);
-
-            if !new_ptr.is_null() {
-                ptr::copy_nonoverlapping(ptr, new_ptr, core::cmp::min(layout.size(), new_size));
-                self.dealloc(ptr, layout);
-                return new_ptr;
-            }
-
-            let old_size = layout.size();
-            let mut temp = [0u8; N];
-
-            if old_size > temp.len() {
-                return core::ptr::null_mut();
-            }
-
-            ptr::copy_nonoverlapping(ptr, temp.as_mut_ptr(), old_size);
-            self.dealloc(ptr, layout);
-            
-            let retry_ptr = self.alloc(new_layout);
-            if retry_ptr.is_null() {
-                return core::ptr::null_mut();
-            }
-
-            ptr::copy_nonoverlapping(temp.as_ptr(), retry_ptr, old_size);
-            retry_ptr
-        }
-    }
-}
-
-pub struct BuddyBlockIter(*mut BuddyBlock);
-
-#[derive(Debug, Clone, Copy)]
-pub struct BuddyBlockInfo {
-    pub ptr: *mut BuddyBlock,
-    pub order: u8,
-    pub size: usize,
-    pub free: bool,
-}
-
-impl BuddyBlockInfo {
-    pub fn ptr(&self) -> *mut BuddyBlock { self.ptr }
-    pub fn order(&self) -> u8 { self.order }
-    pub fn size(&self) -> usize { self.size }
-    pub fn free(&self) -> bool { self.free }
-}
-
-impl Iterator for BuddyBlockIter {
-    type Item = BuddyBlockInfo;
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.0.is_null() {
-            return None;
-        }
-        
-        let block = self.0;
-        let info = BuddyBlockInfo {
-            ptr: block,
-            order: block.order(),
-            size: block.size(),
-            free: block.free(),
+        let needed_size = Self::align_up(new_size + BuddyBlock::<MIN_BLOCK>::size_of(), 8);
+        let needed_order = if needed_size == 0 {
+            0
+        } else {
+            ((needed_size + MIN_BLOCK - 1) / MIN_BLOCK).ilog2() as usize
         };
-        
-        self.0 = self.0.add_offset(block.size());
-        Some(info)
-    }
-}
 
-impl core::fmt::Display for BuddyBlockInfo {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "{:p} order={} size={} {}",
-            self.ptr,
-            self.order,
-            self.size,
-            if self.free { "free" } else { "used" }
-        )
+        if needed_order <= current_order {
+            return ptr;
+        }
+
+        if let Some(_new_order) = self.try_expand_block(block, needed_order) {
+            return ptr;
+        }
+
+        let alignment = layout.alignment();
+        let new_layout = unsafe { Layout::from_size_align_unchecked(new_size, alignment.into()) };
+        let new_ptr = self.alloc(new_layout);
+        if new_ptr.is_null() {
+            return core::ptr::null_mut();
+        }
+        if new_ptr == ptr {
+            return ptr;
+        }
+        unsafe {
+            ptr::copy(ptr, new_ptr, core::cmp::min(layout.size(), new_size));
+            self.dealloc(ptr, layout);
+        }
+        new_ptr
+    }
+
+    fn try_expand_block(&self, block: *mut BuddyBlock<MIN_BLOCK>, target_order: usize) -> Option<usize> {
+        let mut current_order = block.order() as usize;
+        while current_order < target_order {
+            let block_size = MIN_BLOCK << current_order;
+            let block_addr = block as usize;
+            // Check that the block is the lower half of its buddy pair (aligned to 2*block_size)
+            if (block_addr & ((block_size * 2) - 1)) != 0 {
+                return None; // not aligned to merge upward
+            }
+            let buddy = block.buddy(current_order as u8);
+            if buddy.is_null() || !buddy.free() || buddy.order() != current_order as u8 {
+                return None;
+            }
+            // Remove buddy from the free list
+            self.remove_from_free_list(buddy);
+            // The current block becomes the parent (lower address)
+            block.set_order((current_order + 1) as u8);
+            // The block remains allocated (its free flag is false)
+            current_order += 1;
+        }
+        Some(current_order)
     }
 }
