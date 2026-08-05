@@ -1,0 +1,51 @@
+cargo-features = ["profile-rustflags"]
+
+[package]
+name = "rtl-helpers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ntapi = "0.4.3"
+winapi = { version = "*", features = [
+    "impl-debug",
+    "profileapi",
+    "shobjidl_core",
+    "shellapi", 
+    "jobapi2",
+    "errhandlingapi",
+    "minwinbase",
+    "winbase",
+    "libloaderapi",
+    "memoryapi",
+    "synchapi",
+    "handleapi",
+    "fileapi", 
+    "winbase",
+    "namedpipeapi",
+    "processenv",
+    "consoleapi"
+] }
+toolkit = { path = "../../toolkit" }
+builtins = { path = "../../builtins" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "z"          
+lto = false
+codegen-units = 1        
+debug = false            
+debug-assertions = false 
+overflow-checks = false  
+incremental = false      
+strip = "debuginfo"
+rustflags = [
+    "-C", "link-arg=/DEBUG:NONE",
+    "-C", "link-arg=/EMITPOGOPHASEINFO",
+    "-C", "link-arg=/OPT:REF",
+    "-C", "link-arg=/OPT:ICF",
+    # "-C", "link-arg=/MERGE:.rdata=.text",
+]
