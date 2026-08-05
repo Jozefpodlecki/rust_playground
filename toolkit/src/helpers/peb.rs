@@ -37,6 +37,10 @@ impl ProcessEnvironmentBlock {
     pub fn process_params(&self) -> ProcessParameters {
         ProcessParameters(unsafe { (*self.0).ProcessParameters })
     }
+
+    pub fn process_params_raw(&self) -> *mut RTL_USER_PROCESS_PARAMETERS {
+        unsafe { (*self.0).ProcessParameters }
+    }
     
     pub fn image_base(&self) -> *mut c_void {
         unsafe { (*self.0).ImageBaseAddress }

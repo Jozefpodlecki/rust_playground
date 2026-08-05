@@ -513,6 +513,26 @@ impl ProcessQuerier {
         None
     }
 
+    pub fn find_processes_by_name<const N: usize>(
+        name: &U8CStackString<N>,
+    ) -> ProcessQueryResult<'static> {
+        let name_bytes = name.as_slice();
+        let enumerator = ProcessEnumerator::new();
+
+        let mut target = U8CStackString::<260>::new();
+        for &b in name.as_slice() {
+            let _ = target.push(b);
+        }
+        
+        ProcessQueryResult {
+            enumerator: ProcessEnumerator::new(),
+            target_name: target,
+            current_entry: None,
+            _marker: core::marker::PhantomData,
+        }
+        
+    }
+
     pub fn get_process_name_by_pid<const N: usize>(pid: u32) -> Option<U8CStackString<N>> {
         let enumerator = ProcessEnumerator::new();
         for entry in enumerator.iter() {
@@ -590,5 +610,49 @@ impl ProcessSpawner {
 
         let info = ProcessInfo::from_inner(process_info);
         Ok(info)
+    }
+}
+
+pub struct ProcessQueryResult<'a> {
+    enumerator: ProcessEnumerator,
+    target_name: U8CStackString<260>,
+    current_entry: Option<ProcessEntry>,
+    _marker: core::marker::PhantomData<&'a ()>,
+}
+
+impl<'a> ProcessQueryResult<'a> {
+    pub fn new(name: &U8CStackString<260>) -> Self {
+
+        Self {
+            enumerator: ProcessEnumerator::new(),
+            target_name: name.clone(),
+            current_entry: None,
+            _marker: core::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a> Iterator for ProcessQueryResult<'a> {
+    type Item = ProcessEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let target_bytes = self.target_name.as_slice();
+        
+        for entry in self.enumerator.iter() {
+            let entry_name = entry.name.as_slice();
+            
+            // Check if entry name contains the target string
+            if entry_name.len() >= target_bytes.len() {
+                let matches = target_bytes.iter()
+                    .zip(entry_name.iter())
+                    .all(|(a, b)| a == b);
+                    
+                if matches {
+                    return Some(entry);
+                }
+            }
+        }
+        
+        None
     }
 }

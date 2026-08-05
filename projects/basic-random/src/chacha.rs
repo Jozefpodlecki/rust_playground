@@ -4,9 +4,7 @@ const NONCE_SIZE: usize = 12;
 const ROUNDS: usize = 20;
 
 #[repr(align(16))]
-struct ChaChaState {
-    state: [u32; 16],
-}
+pub struct ChaChaState([u32; 16]);
 
 impl ChaChaState {
     fn new(key: &[u8; KEY_SIZE], nonce: &[u8; NONCE_SIZE]) -> Self {
@@ -35,25 +33,25 @@ impl ChaChaState {
             nonce[4], nonce[5], nonce[6], nonce[7]
         ]);
         
-        ChaChaState { state }
+        ChaChaState(state)
     }
     
     fn quarter_round(&mut self, a: usize, b: usize, c: usize, d: usize) {
-        self.state[a] = self.state[a].wrapping_add(self.state[b]);
-        self.state[d] ^= self.state[a];
-        self.state[d] = self.state[d].rotate_left(16);
+        self.0[a] = self.0[a].wrapping_add(self.0[b]);
+        self.0[d] ^= self.0[a];
+        self.0[d] = self.0[d].rotate_left(16);
         
-        self.state[c] = self.state[c].wrapping_add(self.state[d]);
-        self.state[b] ^= self.state[c];
-        self.state[b] = self.state[b].rotate_left(12);
+        self.0[c] = self.0[c].wrapping_add(self.0[d]);
+        self.0[b] ^= self.0[c];
+        self.0[b] = self.0[b].rotate_left(12);
         
-        self.state[a] = self.state[a].wrapping_add(self.state[b]);
-        self.state[d] ^= self.state[a];
-        self.state[d] = self.state[d].rotate_left(8);
+        self.0[a] = self.0[a].wrapping_add(self.0[b]);
+        self.0[d] ^= self.0[a];
+        self.0[d] = self.0[d].rotate_left(8);
         
-        self.state[c] = self.state[c].wrapping_add(self.state[d]);
-        self.state[b] ^= self.state[c];
-        self.state[b] = self.state[b].rotate_left(7);
+        self.0[c] = self.0[c].wrapping_add(self.0[d]);
+        self.0[b] ^= self.0[c];
+        self.0[b] = self.0[b].rotate_left(7);
     }
     
     fn inner_block(&mut self) {
@@ -70,21 +68,21 @@ impl ChaChaState {
     }
     
     fn next_block(&mut self) -> [u8; BLOCK_SIZE] {
-        let mut working = ChaChaState { state: self.state };
+        let mut working = ChaChaState(self.0);
         working.inner_block();
         
         for i in 0..16 {
-            working.state[i] = working.state[i].wrapping_add(self.state[i]);
+            working.0[i] = working.0[i].wrapping_add(self.0[i]);
         }
         
-        self.state[12] = self.state[12].wrapping_add(1);
-        if self.state[12] == 0 {
-            self.state[13] = self.state[13].wrapping_add(1);
+        self.0[12] = self.0[12].wrapping_add(1);
+        if self.0[12] == 0 {
+            self.0[13] = self.0[13].wrapping_add(1);
         }
         
         let mut output = [0u8; BLOCK_SIZE];
         for i in 0..16 {
-            let bytes = working.state[i].to_le_bytes();
+            let bytes = working.0[i].to_le_bytes();
             output[i * 4] = bytes[0];
             output[i * 4 + 1] = bytes[1];
             output[i * 4 + 2] = bytes[2];

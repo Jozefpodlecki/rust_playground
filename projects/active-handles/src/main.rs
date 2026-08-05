@@ -3,6 +3,7 @@
 #![windows_subsystem = "console"]
 #![allow(static_mut_refs)]
 #![feature(sync_unsafe_cell)]
+#![allow(unused)]
 
 use core::{mem, panic::PanicInfo, ptr, slice};
 

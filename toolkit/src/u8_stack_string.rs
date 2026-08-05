@@ -42,6 +42,16 @@ pub struct U8CStackString<const N: usize> {
     len: usize,
 }
 
+impl<const N: usize> Clone for U8CStackString<N> {
+    fn clone(&self) -> Self {
+        let mut new = Self::new();
+        new.buf[..self.len].copy_from_slice(&self.buf[..self.len]);
+        new.len = self.len;
+        new.buf[new.len] = 0;
+        new
+    }
+}
+
 impl<const N: usize> fmt::Display for U8CStackString<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let slice = self.as_slice();

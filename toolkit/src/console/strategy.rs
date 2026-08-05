@@ -22,7 +22,7 @@ pub struct WriteConsoleWStrategy;
 impl WriteStrategy for NtWriteStrategy {
     fn write(
         handle: HANDLE,
-        buffer: *const u16,
+        buffer: PVOID,
         chars_to_write: u32,
         chars_written: *mut u32,
     ) -> NTSTATUS {
@@ -60,7 +60,7 @@ impl WriteStrategy for NtWriteStrategy {
 impl WriteStrategy for DeviceIoControlStrategy {
     fn write(
         handle: HANDLE,
-        buffer: *const u16,
+        buffer: PVOID,
         chars_to_write: u32,
         chars_written: *mut u32,
     ) -> NTSTATUS {
@@ -159,7 +159,7 @@ impl WriteStrategy for DeviceIoControlStrategy {
 impl WriteStrategy for WriteConsoleWStrategy {
     fn write(
         handle: HANDLE,
-        buffer: *const u16,
+        buffer: PVOID,
         chars_to_write: u32,
         chars_written: *mut u32,
     ) -> NTSTATUS {
@@ -231,7 +231,7 @@ impl<S: WriteStrategy> ConsoleWriter<S> {
         let mut written = 0;
         let status = S::write(
             handle,
-            self.buffer.as_ptr(),
+            self.buffer.as_ptr() as _,
             idx as u32,
             &mut written,
         );

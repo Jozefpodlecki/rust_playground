@@ -4,6 +4,8 @@ use winapi::shared::ntdef::NTSTATUS;
 use winapi::shared::ntstatus::{STATUS_INFO_LENGTH_MISMATCH, STATUS_SUCCESS};
 use winapi::um::handleapi::CloseHandle;
 
+use crate::println;
+
 const BUFFER_SIZE: usize = 2_000_000;
 static mut BUFFER: [u8; BUFFER_SIZE] = [0; BUFFER_SIZE];
 
@@ -45,7 +47,6 @@ pub fn system_threads(pid: u32) -> Result<impl Iterator<Item = u32>, NTSTATUS> {
                     return None;
                 }
                 
-                // Check if we have more threads
                 if self.thread_idx >= self.thread_count {
                     self.done = true;
                     return None;
@@ -56,6 +57,7 @@ pub fn system_threads(pid: u32) -> Result<impl Iterator<Item = u32>, NTSTATUS> {
                 let thread_ptr = proc.Threads.as_ptr();
                 let thread = &*thread_ptr.add(self.thread_idx as usize);
                 let tid = thread.ClientId.UniqueThread as u32;
+
                 self.thread_idx += 1;
                 
                 Some(tid)

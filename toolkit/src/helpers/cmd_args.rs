@@ -63,6 +63,40 @@ impl<'a> CommandLineArg<'a> {
         Self(data)
     }
 
+    pub fn to_u32(&self) -> Option<u32> {
+        let mut result: u32 = 0;
+        let mut has_digits = false;
+        let mut is_negative = false;
+        let mut i = 0;
+
+        if i < self.0.len() && self.0[i] == b'-' as u16 {
+            is_negative = true;
+            i += 1;
+        }
+
+        while i < self.0.len() {
+            let ch = self.0[i];
+            if ch >= b'0' as u16 && ch <= b'9' as u16 {
+                let digit = (ch - b'0' as u16) as u32;
+                result = result.checked_mul(10)?.checked_add(digit)?;
+                has_digits = true;
+            } else {
+                break;
+            }
+            i += 1;
+        }
+
+        if !has_digits {
+            return None;
+        }
+
+        if is_negative {
+            result.checked_neg()
+        } else {
+            Some(result)
+        }
+    }
+
     pub fn as_u16_slice(&self) -> &'a [u16] {
         self.0
     }
