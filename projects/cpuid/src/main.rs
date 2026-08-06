@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![windows_subsystem = "console"]
+#![allow(unused)]
 
 mod extractor;
 mod types;
