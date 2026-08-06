@@ -22,8 +22,10 @@ winapi = { version = "*", features = [
     "handleapi",
     "fileapi", 
     "winbase",
+    "winnt",
     "namedpipeapi",
     "processenv",
+    "fibersapi",
     "consoleapi"
 ] }
 toolkit = { path = "../../toolkit" }
