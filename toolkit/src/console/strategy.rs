@@ -208,6 +208,8 @@ impl<S: WriteStrategy> ConsoleWriter<S> {
         }
 
         let handle = unsafe {
+
+
             let handle_ref = self.handle.get();
             if (*handle_ref).is_null() {
                 *handle_ref = get_output_handle();
@@ -243,7 +245,7 @@ impl<S: WriteStrategy> ConsoleWriter<S> {
         }
     }
 
-    pub fn writeln(&self, text: &str) -> Result<u32, NTSTATUS> {
+    pub fn writeln(&self, text: &str) -> Result<u32, NTSTATUS> {     
         let written = self.write(text)?;
         let newline_written = self.write("\r\n")?;
         Ok(written + newline_written)

@@ -1,4 +1,4 @@
-use core::fmt::{self, Display, Formatter};
+use core::{fmt::{self, Display, Formatter}, mem};
 
 use ntapi::{ntexapi::NtDelayExecution, ntmmapi::{MemoryBasicInformation}, ntpebteb::PEB, ntpsapi::NtCurrentProcess, ntrtl::{HEAP_INFORMATION, RTL_USER_PROCESS_PARAMETERS}};
 use winapi::{ctypes::c_void, shared::ntdef::{HANDLE, LIST_ENTRY, NT_SUCCESS, NTSTATUS, PVOID, UNICODE_STRING}, um::winnt::{LARGE_INTEGER, MEM_COMMIT, MEM_RESERVE, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE_READWRITE, RTL_RUN_ONCE}};
@@ -24,6 +24,44 @@ impl ProcessMemoryAlloc {
         };
 
         if !NT_SUCCESS(status) {
+            return Err(status);
+        }
+
+        Ok(base_address)
+    }
+
+    pub fn allocate_and_write<T>(handle: *mut c_void, data: &T) -> Result<*mut c_void, NTSTATUS> {
+        let size = mem::size_of::<T>();
+        let mut base_address: *mut c_void = core::ptr::null_mut();
+        let mut region_size = size;
+        
+        let status = unsafe {
+            NtAllocateVirtualMemory(
+                handle,
+                &mut base_address,
+                0,
+                &mut region_size,
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_EXECUTE_READWRITE,
+            )
+        };
+
+        if status < 0 {
+            return Err(status);
+        }
+        
+        let mut bytes_written = 0;
+        let status = unsafe {
+            NtWriteVirtualMemory(
+                handle,
+                base_address as *mut _,
+                data as *const T as *mut _,
+                size,
+                &mut bytes_written,
+            )
+        };
+        
+        if status < 0 {
             return Err(status);
         }
 

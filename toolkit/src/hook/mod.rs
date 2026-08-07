@@ -13,8 +13,8 @@ pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, Iced
     let jmp_rax = Instruction::with1(Code::Jmp_rm64, Register::RAX)?;
     rip += encoder.encode(&jmp_rax, rip as _)?;
 
-    let ret = Instruction::with(Code::Retnq);
-    rip += encoder.encode(&ret, rip as _)?;
+    // let ret = Instruction::with(Code::Retnq);
+    // rip += encoder.encode(&ret, rip as _)?;
 
     let buffer = encoder.take_buffer();
     let output = Vec::from_iter(buffer);

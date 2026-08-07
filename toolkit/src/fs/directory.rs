@@ -2,10 +2,10 @@ use core::fmt::{self, Write};
 use core::marker::PhantomData;
 use core::ptr::null_mut;
 use core::mem::size_of;
-use ntapi::ntioapi::{FILE_BASIC_INFORMATION, FILE_DIRECTORY_INFORMATION, FILE_NON_DIRECTORY_FILE, FILE_STANDARD_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT, FileBasicInformation, FileDirectoryInformation, FileStandardInformation, IO_STATUS_BLOCK};
+use ntapi::ntioapi::{FILE_BASIC_INFORMATION, FILE_CREATE, FILE_DIRECTORY_FILE, FILE_DIRECTORY_INFORMATION, FILE_NON_DIRECTORY_FILE, FILE_STANDARD_INFORMATION, FILE_SYNCHRONOUS_IO_NONALERT, FileBasicInformation, FileDirectoryInformation, FileStandardInformation, IO_STATUS_BLOCK, NtCreateFile};
 use winapi::shared::ntdef::{HANDLE, OBJ_CASE_INSENSITIVE, OBJECT_ATTRIBUTES, UNICODE_STRING};
 use winapi::shared::ntstatus::STATUS_NO_MORE_FILES;
-use winapi::um::winnt::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_REPARSE_POINT, FILE_LIST_DIRECTORY, FILE_SHARE_READ, FILE_SHARE_WRITE, SYNCHRONIZE};
+use winapi::um::winnt::{FILE_ATTRIBUTE_DIRECTORY, FILE_ATTRIBUTE_NORMAL, FILE_ATTRIBUTE_REPARSE_POINT, FILE_LIST_DIRECTORY, FILE_SHARE_READ, FILE_SHARE_WRITE, SYNCHRONIZE};
 use crate::error::FileError;
 use crate::fs::options::FileOptions;
 use crate::{FileAttributes, FileMetadata, FileName, FilePath, FileSize, FileTime, println};
@@ -305,6 +305,57 @@ pub struct Directory {
 }
 
 impl Directory {
+
+     pub fn create(path_slice: &[u16]) -> Result<Self, FileError> {
+        let mut handle: HANDLE = null_mut();
+        let path_len = path_slice.len();
+        let mut path_buf: [u16; 260] = [0; 260];
+        path_buf[..path_len].copy_from_slice(&path_slice);
+        path_buf[path_len] = 0; // Null terminate
+
+        let mut path_uc = UNICODE_STRING {
+            Length: (path_len * 2) as u16,
+            MaximumLength: ((path_len + 1) * 2) as u16,
+            Buffer: path_buf.as_mut_ptr(),
+        };
+
+        let mut object_attributes = OBJECT_ATTRIBUTES {
+            Length: size_of::<OBJECT_ATTRIBUTES>() as u32,
+            RootDirectory: null_mut(),
+            ObjectName: &mut path_uc,
+            Attributes: OBJ_CASE_INSENSITIVE,
+            SecurityDescriptor: null_mut(),
+            SecurityQualityOfService: null_mut(),
+        };
+
+        let mut io_status_block: IO_STATUS_BLOCK = unsafe { core::mem::zeroed() };
+
+        let status = unsafe {
+            NtCreateFile(
+                &mut handle,
+                FILE_LIST_DIRECTORY | SYNCHRONIZE,
+                &mut object_attributes,
+                &mut io_status_block,
+                null_mut(),
+                FILE_ATTRIBUTE_NORMAL,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                FILE_CREATE,
+                FILE_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT,
+                null_mut(),
+                0,
+            )
+        };
+
+        if status >= 0 {
+            Ok(Directory {
+                handle,
+                path_len: path_uc.Length,
+                path_buf,
+            })
+        } else {
+            Err(FileError::from(status))
+        }
+    }
 
     pub fn open(path_slice: &[u16]) -> Result<Self, FileError> {
         let mut handle: HANDLE = null_mut();
