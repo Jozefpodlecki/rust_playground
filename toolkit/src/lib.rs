@@ -16,10 +16,12 @@
 #![feature(generic_atomic)]
 #![feature(utf16_extra)]
 
+mod allocators;
 mod fs;
 mod io;
 mod time;
 mod error;
+pub mod encoder;
 pub mod syscalls;
 mod console;
 mod u16_stack_string;
@@ -37,6 +39,7 @@ pub mod rand;
 #[cfg(feature = "log")]
 pub mod logger;
 
+pub use allocators::*;
 pub use fs::*;
 pub use io::*;
 pub use error::*;

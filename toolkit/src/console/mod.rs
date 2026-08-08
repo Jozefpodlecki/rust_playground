@@ -1,13 +1,13 @@
 use core::fmt::{self, Write};
 
-use winapi::shared::ntdef::{HANDLE, NTSTATUS};
+use winapi::shared::ntdef::{HANDLE, NTSTATUS, PVOID};
 
-use crate::console::strategy::{ConsoleWriter, DeviceIoControlStrategy};
+use crate::{Mutex, console::strategy::{ConsoleWriter, DeviceIoControlStrategy, NtWriteStrategy}};
 
 mod strategy;
 
-// pub type DefaultConsole = ConsoleWriter<NtWriteStrategy>;
-pub type DefaultConsole = ConsoleWriter<DeviceIoControlStrategy>;
+pub type DefaultConsole = ConsoleWriter<NtWriteStrategy>;
+// pub type DefaultConsole = ConsoleWriter<DeviceIoControlStrategy>;
 pub static CONSOLE: DefaultConsole = ConsoleWriter::new();
 
 pub use strategy::get_output_handle;
@@ -15,7 +15,7 @@ pub use strategy::get_output_handle;
 pub trait WriteStrategy {
     fn write(
         handle: HANDLE,
-        buffer: *const u16,
+        buffer: PVOID,
         chars_to_write: u32,
         chars_written: *mut u32,
     ) -> NTSTATUS;
@@ -40,11 +40,14 @@ impl Write for NtConsole {
     }
 }
 
+pub static LOCK: Mutex<()> = Mutex::new(());
+
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {{
         use core::fmt::Write;
         let mut console = $crate::NtConsole;
+        let _ = $crate::LOCK.lock();
         let _ = core::fmt::Write::write_fmt(&mut console, core::format_args!($($arg)*));
     }};
 }
@@ -57,6 +60,7 @@ macro_rules! println {
     ($($arg:tt)*) => {{
         use core::fmt::Write;
         let mut console = $crate::NtConsole;
+        let _ = $crate::LOCK.lock();
         let _ = core::fmt::Write::write_fmt(&mut console, core::format_args!($($arg)*));
         let _ = core::fmt::Write::write_str(&mut console, "\r\n");
     }};

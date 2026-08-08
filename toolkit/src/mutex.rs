@@ -14,7 +14,7 @@ pub enum MutexState {
 }
 
 #[repr(transparent)]
-pub struct AtomicMutexState(AtomicU8);
+pub struct AtomicMutexState(pub AtomicU8);
 
 impl AtomicMutexState {
     pub const fn new(state: MutexState) -> Self {

@@ -1,5 +1,5 @@
 use core::arch::naked_asm;
-use ntapi::{ntexapi::SYSTEM_INFORMATION_CLASS, ntioapi::{FILE_INFORMATION_CLASS, PIO_APC_ROUTINE, PIO_STATUS_BLOCK}, ntmmapi::MEMORY_INFORMATION_CLASS, ntpsapi::{PPS_ATTRIBUTE_LIST, THREADINFOCLASS}};
+use ntapi::{ntexapi::SYSTEM_INFORMATION_CLASS, ntioapi::{FILE_INFORMATION_CLASS, PIO_APC_ROUTINE, PIO_STATUS_BLOCK}, ntmmapi::MEMORY_INFORMATION_CLASS, ntpsapi::{PPS_ATTRIBUTE_LIST, PROCESSINFOCLASS, THREADINFOCLASS}};
 use winapi::{shared::{basetsd::{PSIZE_T, SIZE_T, ULONG_PTR}, minwindef::{PULONG, ULONG}, ntdef::{BOOLEAN, HANDLE, NTSTATUS, PHANDLE, PLARGE_INTEGER, POBJECT_ATTRIBUTES, PUNICODE_STRING, PVOID}}, um::winnt::ACCESS_MASK};
 
 #[unsafe(naked)]
@@ -10,6 +10,23 @@ pub extern "system" fn NtClose(
         "mov r10, rcx",
         #[cfg(feature = "win_25h2")]
         "mov eax, 0xF",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtQueryInformationProcess(
+    ProcessHandle: HANDLE,
+    ProcessInformationClass: PROCESSINFOCLASS,
+    ProcessInformation: PVOID,
+    ProcessInformationLength: ULONG,
+    ReturnLength: PULONG,
+) -> NTSTATUS {
+    naked_asm!(
+        "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
+        "mov eax, 12345",
         "syscall",
         "ret"
     );

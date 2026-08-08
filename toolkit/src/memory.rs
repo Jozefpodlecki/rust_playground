@@ -1,9 +1,9 @@
 use core::{fmt, slice};
 
-use ntapi::{ntexapi::{NtQuerySystemInformation, SYSTEM_BASIC_INFORMATION, SystemBasicInformation}, ntmmapi::{MEMORY_INFORMATION_CLASS, MemoryBasicInformation, MemoryMappedFilenameInformation, NtQueryVirtualMemory}};
+use ntapi::{ntexapi::{SYSTEM_BASIC_INFORMATION, SystemBasicInformation}, ntmmapi::{MEMORY_INFORMATION_CLASS, MemoryBasicInformation, MemoryMappedFilenameInformation}};
 use winapi::{shared::{basetsd::SIZE_T, ntdef::UNICODE_STRING}, um::winnt::*};
 
-use crate::{U16CStackString, println};
+use crate::{U16CStackString, println, syscalls::{NtQuerySystemInformation, NtQueryVirtualMemory}};
 
 const MAX_MODULE_NAME_LEN: usize = 260;
 
@@ -256,6 +256,13 @@ impl MemoryRegionIterator {
         Self {
             handle,
             address: core::ptr::null_mut(),
+        }
+    }
+
+    pub fn from_address(handle: HANDLE, start_address: PVOID) -> Self {
+        Self {
+            handle,
+            address: start_address,
         }
     }
 }

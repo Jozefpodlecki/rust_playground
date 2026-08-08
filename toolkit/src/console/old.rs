@@ -44,20 +44,3 @@ pub fn is_console_utf8(handle: HANDLE) -> bool {
     get_output_encoding(handle) == CP_UTF8
 }
 
-pub fn write_console_utf16_with_writeconsolew(
-    handle: HANDLE,
-    buffer: *const u16,
-    chars_to_write: u32,
-    chars_written: *mut u32,
-) -> BOOL {
-    unsafe {
-        WriteConsoleW(
-            handle,
-            buffer as *const winapi::ctypes::c_void,
-            chars_to_write,
-            chars_written,
-            core::ptr::null_mut(),
-        )
-    }
-}
-
