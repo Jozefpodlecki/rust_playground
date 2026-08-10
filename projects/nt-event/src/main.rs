@@ -4,10 +4,7 @@
 
 use core::{panic::PanicInfo, ptr::null_mut};
 
-use alloc::string::String;
-use ntapi::{ntexapi::{NtResetEvent, NtSetEvent}, ntobapi::NtWaitForSingleObject};
 use toolkit::{FreeListAllocator, ProcessSpawner, Sleeper, Thread, U16CStackString, println};
-use winapi::{shared::{ntdef::NTSTATUS, ntstatus::STATUS_UNSUCCESSFUL}, um::{synchapi::{CREATE_EVENT_MANUAL_RESET, CreateEventExW, SetEvent}, winnt::{EVENT_MODIFY_STATE, SYNCHRONIZE}}};
 
 use crate::event::EventHandle;
 
