@@ -2,12 +2,11 @@ use core::{mem, ptr, slice};
 
 use alloc::string::String;
 use ntapi::{ntapi_base::CLIENT_ID, ntioapi::{FILE_BASIC_INFORMATION, FileBasicInformation, FileFsVolumeInformation, FileNameInformation, IO_STATUS_BLOCK, NtQueryInformationFile, NtQueryVolumeInformationFile}, ntobapi::{DIRECTORY_QUERY, DUPLICATE_SAME_ACCESS, NtDuplicateObject, NtOpenDirectoryObject, NtOpenSymbolicLinkObject, NtQueryDirectoryObject, NtQueryObject, NtQuerySymbolicLinkObject, OBJ_INHERIT, OBJECT_DIRECTORY_INFORMATION, OBJECT_NAME_INFORMATION, ObjectNameInformation, SYMBOLIC_LINK_QUERY}, ntpsapi::{NtCurrentProcess, NtOpenProcess}};
-use toolkit::{ProcessMemoryReader, STD_OUTPUT_HANDLE, println};
-use winapi::{shared::{minwindef::FALSE, ntdef::{HANDLE, OBJECT_ATTRIBUTES, UNICODE_STRING}, ntstatus::{STATUS_MORE_ENTRIES, STATUS_SUCCESS}}, um::{fileapi::{GetFileType, GetFinalPathNameByHandleW}, handleapi::{CloseHandle, DuplicateHandle}, processthreadsapi::{GetCurrentProcess, OpenProcess}, winbase::{FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_UNKNOWN, STD_ERROR_HANDLE, STD_INPUT_HANDLE, VOLUME_NAME_DOS}, winnt::{FILE_ALL_ACCESS, FILE_READ_ATTRIBUTES, PROCESS_ALL_ACCESS, PROCESS_DUP_HANDLE}}};
+use toolkit::{ProcessMemoryReader, println};
+use winapi::{shared::{minwindef::FALSE, ntdef::{HANDLE, OBJECT_ATTRIBUTES, UNICODE_STRING}, ntstatus::{STATUS_MORE_ENTRIES, STATUS_SUCCESS}}, um::{fileapi::{GetFileType, GetFinalPathNameByHandleW}, handleapi::{CloseHandle, DuplicateHandle}, processthreadsapi::{GetCurrentProcess, OpenProcess}, winbase::{FILE_TYPE_CHAR, FILE_TYPE_DISK, FILE_TYPE_PIPE, FILE_TYPE_UNKNOWN, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, VOLUME_NAME_DOS}, winnt::{FILE_ALL_ACCESS, FILE_READ_ATTRIBUTES, PROCESS_ALL_ACCESS, PROCESS_DUP_HANDLE, PROCESS_QUERY_INFORMATION}}};
 
-use crate::{handle::{HandleInfo, SystemHandleIterator}, object_type::ObjectTypeIterator};
+use crate::{object_type::ObjectTypeIterator};
 
-// ---------- Configuration ----------
 const DEBUG: bool = true; // set to false to disable all debug output
 
 macro_rules! debug_println {
@@ -40,13 +39,15 @@ impl FileName {
     }
 }
 
-pub fn duplicate_handle(handle_info: &HandleInfo) -> Option<HANDLE> {
+pub fn open_process(pid: u32, desired_access: u32) -> Option<HANDLE> {
     unsafe {
         let mut target_process = HANDLE::default();
+
         let mut client_id = CLIENT_ID {
-            UniqueProcess: handle_info.process_id() as *mut _,
+            UniqueProcess: pid as _,
             UniqueThread: ptr::null_mut(),
         };
+        
         let mut object_attributes = OBJECT_ATTRIBUTES {
             Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
             RootDirectory: ptr::null_mut(),
@@ -58,21 +59,33 @@ pub fn duplicate_handle(handle_info: &HandleInfo) -> Option<HANDLE> {
 
         let status = NtOpenProcess(
             &mut target_process,
-            PROCESS_ALL_ACCESS,
+            // PROCESS_ALL_ACCESS,
+            desired_access,
             &mut object_attributes,
             &mut client_id,
         );
+        
         if status != 0 {
-            debug_println!("NtOpenProcess failed: 0x{:X}", status);
             return None;
         }
+
+        Some(target_process)
+    }
+}
+
+pub fn duplicate_handle(pid: u32, handle_value: *mut winapi::ctypes::c_void) -> Option<HANDLE> {
+    unsafe {
+        
+        let target_process = open_process(
+            pid,
+            PROCESS_QUERY_INFORMATION | PROCESS_DUP_HANDLE)?;
 
         let current_process = NtCurrentProcess;
         let mut duplicated_handle = core::ptr::null_mut();
 
         let status = NtDuplicateObject(
             target_process,
-            handle_info.handle_value() as *mut _,
+            handle_value,
             current_process,
             &mut duplicated_handle,
             FILE_ALL_ACCESS,
@@ -88,16 +101,6 @@ pub fn duplicate_handle(handle_info: &HandleInfo) -> Option<HANDLE> {
     }
 }
 
-fn wide_to_utf8(wide: &[u16]) -> String {
-    let mut utf8 = String::new();
-    for c in char::decode_utf16(wide.iter().cloned()) {
-        if let Ok(ch) = c {
-            utf8.push(ch);
-        }
-    }
-    utf8
-}
-
 fn unicode_to_string(unicode: &UNICODE_STRING) -> String {
     if unicode.Length == 0 || unicode.Buffer.is_null() {
         return String::new();
@@ -105,7 +108,8 @@ fn unicode_to_string(unicode: &UNICODE_STRING) -> String {
     let char_count = (unicode.Length / 2) as usize;
     unsafe {
         let wide_slice = slice::from_raw_parts(unicode.Buffer, char_count);
-        wide_to_utf8(wide_slice)
+        // wide_to_utf8(wide_slice)
+        String::from_utf16(wide_slice).unwrap()
     }
 }
 
@@ -152,7 +156,7 @@ fn get_relative_path(handle: HANDLE) -> Option<String> {
         let char_count = (len_bytes / 2) as usize;
         let wide_ptr = buffer_ptr.add(4) as *const u16;
         let wide_slice = slice::from_raw_parts(wide_ptr, char_count);
-        let path = wide_to_utf8(wide_slice);
+        let path =  String::from_utf16(wide_slice).unwrap(); // wide_to_utf8(wide_slice);
         debug_println!("Relative path: {}", path);
         Some(path)
     }
@@ -253,7 +257,7 @@ pub fn get_nt_path(handle: HANDLE) -> Option<String> {
         }
 
         let wide_slice = slice::from_raw_parts(name_buffer, name_len / 2);
-        let path = wide_to_utf8(wide_slice);
+        let path =  String::from_utf16(wide_slice).unwrap(); // wide_to_utf8(wide_slice);
         debug_println!("NT path: {}", path);
         Some(path)
     }
@@ -271,7 +275,6 @@ fn extract_device(nt_path: &str) -> Option<&str> {
     Some(device)
 }
 
-// ---------- Open DOS device directory ----------
 fn open_dos_device_directory() -> Option<HANDLE> {
     unsafe {
         // Try \GLOBAL?? first (the real DOS device directory)
@@ -324,7 +327,6 @@ fn open_dos_device_directory() -> Option<HANDLE> {
     }
 }
 
-// ---------- Enumerate symbolic links in DOS device directory ----------
 fn enumerate_dos_links<F>(dir_handle: HANDLE, mut callback: F) -> Option<char>
 where
     F: FnMut(&str, &str) -> Option<char>,

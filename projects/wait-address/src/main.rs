@@ -21,6 +21,7 @@ fn panic(_info: &PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn mainCRTStartup() -> i32 {
     // scenario_alert_by_thread_id();
+    scenario_wait_on_address();
     scenario_queue_apc_thread_ex();
 
     0

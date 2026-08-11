@@ -1,7 +1,10 @@
 #![allow(unconditional_panic)]
+#![allow(unused)]
+
+use std::fs;
 
 use ntapi::ntrtl::*;
-use utils::NtDll;
+use toolkit::NtDll;
 use winapi::{um::{errhandlingapi::AddVectoredExceptionHandler, minwinbase::{EXCEPTION_ILLEGAL_INSTRUCTION, EXCEPTION_INT_DIVIDE_BY_ZERO}, winnt::EXCEPTION_POINTERS}, vc::excpt::*};
 
 use crate::{api::*, exceptions::*, manual::rtl_add_veh, types::*};
@@ -113,11 +116,10 @@ fn main() {
     unsafe {
         AddVectoredExceptionHandler(0, Some(handle_invalid_opcode));
         RtlAddVectoredExceptionHandler(0, Some(handle_div_by_zero));
-        
         let veh_handler_addr = print_and_continue as *const ();
         let process_handle: *mut winapi::ctypes::c_void = -1 as _;
         rtl_add_veh(process_handle, veh_handler_addr as _);
-
+//    fs::remove_file(path)
         print_veh_entries();
 
         println!("triggering do_invalid_opcode");

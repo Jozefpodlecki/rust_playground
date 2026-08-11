@@ -1,6 +1,6 @@
 use ntapi::ntmmapi::*;
 use ntapi::ntrtl::*;
-use utils::NtDll;
+use toolkit::NtDll;
 use winapi::shared::basetsd::SIZE_T;
 use winapi::shared::ntdef::{PVOID, UNICODE_STRING};
 use winapi::shared::ntstatus::STATUS_SUCCESS;

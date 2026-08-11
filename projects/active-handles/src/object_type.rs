@@ -4,7 +4,7 @@ use ntapi::ntobapi::{NtQueryObject, OBJECT_TYPE_INFORMATION, ObjectTypesInformat
 use toolkit::{print, println};
 use winapi::shared::ntstatus::STATUS_INFO_LENGTH_MISMATCH;
 
-use crate::{error::NtApiError, handle::HandleInfo};
+use crate::{error::NtApiError};
 
 #[repr(C)]
 pub struct OBJECT_ALL_TYPES_INFORMATION {

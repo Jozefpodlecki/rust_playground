@@ -9,9 +9,10 @@ edition = "2024"
 ntapi = "0.4.3"
 toolkit = { path = "../../toolkit" }
 builtins = { path = "../../builtins" }
-winapi = { version = "0.3.9", features = ["errhandlingapi", "minwinbase", "winbase", "libloaderapi", "synchapi"] }
+winapi = { version = "0.3.9", features = ["setupapi", "errhandlingapi", "minwinbase", "winbase", "libloaderapi", "synchapi"] }
 thiserror = { version = "2.0.18", default-features = false, features = [] }
 emballoc = "0.3.0"
+hashbrown = "0.17.1"
 
 [profile.dev]
 panic = "abort"

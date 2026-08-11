@@ -24,7 +24,7 @@ extern crate alloc;
 
 use core::{cell::SyncUnsafeCell, ffi::c_void};
 use ntapi::ntexapi::NtDelayExecution;
-use utils::*;
+use toolkit::*;
 use winapi::{um::winnt::*, vc::excpt::{EXCEPTION_DISPOSITION, ExceptionContinueExecution}};
 
 use crate::{code_writer::FaultingCode, dynamic_section::{DynamicSection, ExceptionData, SetupError}};
