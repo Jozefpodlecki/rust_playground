@@ -4,6 +4,15 @@ use crate::Environment;
 
 pub struct ThreadEnvironmentBlock(*mut TEB);
 
+impl core::ops::Deref for ThreadEnvironmentBlock {
+    type Target = TEB;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0 }
+    }
+}
+
+
 impl ThreadEnvironmentBlock {
     pub fn current_process() -> Self {
         unsafe {

@@ -1,25 +1,35 @@
 use core::ptr::null_mut;
 
 use heapless::Vec;
-use iced_x86::*;
+// use iced_x86::*;
 use winapi::shared::ntdef::NTSTATUS;
 
-pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, IcedError> {
-    let mut encoder = Encoder::new(64);
-    let mut rip = 0;
+use crate::encoder::{self, Encoder1K, EncoderError};
 
-    let mov_rax = Instruction::with2(Code::Mov_r64_imm64, Register::RAX, addr as u64)?;
-    rip += encoder.encode(&mov_rax, rip as _)?;
-    let jmp_rax = Instruction::with1(Code::Jmp_rm64, Register::RAX)?;
-    rip += encoder.encode(&jmp_rax, rip as _)?;
+pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, EncoderError> {
+    // let mut encoder = Encoder::new(64);
+    // let mut rip = 0;
+
+    // let mov_rax = Instruction::with2(Code::Mov_r64_imm64, Register::RAX, addr as u64)?;
+    // rip += encoder.encode(&mov_rax, rip as _)?;
+    // let jmp_rax = Instruction::with1(Code::Jmp_rm64, Register::RAX)?;
+    // rip += encoder.encode(&jmp_rax, rip as _)?;
 
     // let ret = Instruction::with(Code::Retnq);
     // rip += encoder.encode(&ret, rip as _)?;
 
-    let buffer = encoder.take_buffer();
-    let output = Vec::from_iter(buffer);
+    // let buffer = encoder.take_buffer();
+    // let output = Vec::from_iter(buffer);
 
-    Ok(output)
+    let mut encoder = Encoder1K::new();
+
+    encoder.mov().rax().imm64(addr as _);
+    // encoder.jmp().rax();
+
+    // GOAL
+    // [72, 184, 210, 4, 0, 0, 0, 0, 0, 0, 255, 224, 195]
+
+    Ok(Vec::new())
 }
 
 pub fn hook_function(

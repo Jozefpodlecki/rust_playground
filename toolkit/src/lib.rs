@@ -22,6 +22,7 @@ mod io;
 mod time;
 mod error;
 pub mod encoder;
+pub mod decoder;
 pub mod syscalls;
 mod console;
 mod u16_stack_string;
@@ -57,7 +58,6 @@ mod thread;
 #[cfg(feature = "alloc")]
 mod arc;
 
-#[cfg(feature = "alloc")]
 pub mod hook;
 
 #[cfg(feature = "alloc")]

@@ -57,6 +57,16 @@ impl ProcessEnvironmentBlock {
         Environment(params.Environment)
     }
 
+    pub fn environment_raw(&self) -> *mut c_void {
+        let params = unsafe { &*(*self.0).ProcessParameters };
+        params.Environment
+    }
+
+    pub fn environment_size(&self) -> usize {
+        let params = unsafe { &*(*self.0).ProcessParameters };
+        params.EnvironmentSize
+    }
+
     pub fn command_line(&self) -> CommandLineArgs {
         let params = unsafe { &*(*self.0).ProcessParameters };
         CommandLineArgs::new(params.CommandLine)

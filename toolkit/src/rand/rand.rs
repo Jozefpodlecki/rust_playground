@@ -1,6 +1,6 @@
 use core::ops::Range;
 
-use crate::{U8CStackString, rand::ChaChaRng};
+use crate::{U8CStackString, println, rand::ChaChaRng};
 
 #[link(name = "bcryptprimitives", kind = "raw-dylib")]
 unsafe extern "system" {
@@ -148,15 +148,9 @@ impl Rng {
 
     pub fn rand_str_alnum<const N: usize>(&mut self) -> U8CStackString<N> {
         let mut result = U8CStackString::<N>::new();
-        let max_len = N - 1;
+        let fixed_len = N - 1;  // Always use the full capacity minus null terminator
         
-        let len = if max_len > 0 {
-            self.range_u32(0..max_len as u32) as usize
-        } else {
-            0
-        };
-        
-        for _ in 0..len {
+        for _ in 0..fixed_len {
             let idx = self.next_u32() % 62;
             let byte = if idx < 26 {
                 97 + idx as u8

@@ -1,3 +1,22 @@
+pub trait BufferStorage {
+    type Bytes: AsRef<[u8]> + AsMut<[u8]>;
+    fn push(&mut self, byte: u8) -> EncoderResult<()>;
+    fn extend(&mut self, bytes: &[u8]) -> EncoderResult<()>;
+    fn len(&self) -> usize;
+    fn capacity(&self) -> usize;
+    fn clear(&mut self);
+    fn as_slice(&self) -> &[u8];
+    fn as_mut_slice(&mut self) -> &mut [u8]; 
+}
+
+pub trait FixupStorage {
+    type Fixups;
+    fn push(&mut self, fixup: Fixup) -> EncoderResult<()>;
+    fn len(&self) -> usize;
+    fn iter(&self) -> core::slice::Iter<'_, Fixup>;
+    fn clear(&mut self);
+}
+
 pub struct Fixup {
     pub pos: usize,
     pub label: LabelId,

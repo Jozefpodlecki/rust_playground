@@ -2,15 +2,16 @@ use core::fmt::{self, Write};
 
 use winapi::shared::ntdef::{HANDLE, NTSTATUS, PVOID};
 
-use crate::{Mutex, console::strategy::{ConsoleWriter, DeviceIoControlStrategy, NtWriteStrategy}};
+use crate::{Mutex, console::{strategy::{DeviceIoControlStrategy, NtWriteStrategy}, writer::ConsoleWriter}};
 
 mod strategy;
+mod writer;
 
 pub type DefaultConsole = ConsoleWriter<NtWriteStrategy>;
 // pub type DefaultConsole = ConsoleWriter<DeviceIoControlStrategy>;
 pub static CONSOLE: DefaultConsole = ConsoleWriter::new();
 
-pub use strategy::get_output_handle;
+pub use writer::get_output_handle;
 
 pub trait WriteStrategy {
     fn write(

@@ -49,6 +49,10 @@ impl<const N: usize> AllocatorBuffer<N> {
 
 pub struct FreeListAllocator<const N: usize>(UnsafeCell<FreeListAllocatorInner<N>>);
 
+pub type FreeListAllocator1KB = FreeListAllocator<{1024}>;
+pub type FreeListAllocator1MB = FreeListAllocator<{1024 * 1024}>;
+pub type FreeListAllocator1GB = FreeListAllocator<{1024 * 1024 * 1024}>;
+
 pub struct FreeListAllocatorInner<const N: usize> {
     state: AtomicMutexState,
     buffer: AllocatorBuffer<N>,

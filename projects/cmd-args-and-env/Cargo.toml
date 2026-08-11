@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 
 [package]
-name = "exe-no-std"
+name = "cmd-args-and-env"
 version = "0.1.0"
 edition = "2024"
 
