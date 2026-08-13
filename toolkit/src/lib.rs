@@ -21,6 +21,7 @@ mod fs;
 mod io;
 mod time;
 mod error;
+pub mod utils;
 pub mod encoder;
 pub mod decoder;
 pub mod syscalls;

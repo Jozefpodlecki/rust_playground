@@ -8,7 +8,7 @@ pub struct AllocStorage;
 
 #[cfg(feature = "alloc")]
 impl Storage for AllocStorage {
-    type Buffer = alloc::alloc::Vec<u8>;
+    type Buffer = alloc::vec::Vec<u8>;
     fn new() -> Self::Buffer {
         alloc::vec::Vec::new()
     }

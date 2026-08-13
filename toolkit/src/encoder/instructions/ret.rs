@@ -1,8 +1,6 @@
 use crate::encoder::*;
 
-pub struct Ret<'a, Buf, Fixups, const L: usize>(
-    pub(crate) &'a mut Encoder<Buf, Fixups, L>,
-)
+pub struct Ret<'a, Buf, Fixups, const L: usize>(&'a mut Encoder<Buf, Fixups, L>)
 where
     Buf: BufferStorage,
     Fixups: FixupStorage;
@@ -13,6 +11,10 @@ where
     Buf: BufferStorage,
     Fixups: FixupStorage,
 {
+    pub fn new(encoder: &'a mut Encoder<Buf, Fixups, L>) -> Self {
+        Self(encoder)
+    }
+    
     pub fn near(&mut self) -> EncoderResult<&mut Encoder<Buf, Fixups, L>> {
         self.0.emit_byte(0xC3)?;
         Ok(self.0)

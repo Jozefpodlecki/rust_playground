@@ -2,6 +2,7 @@ use core::arch::naked_asm;
 use ntapi::{ntexapi::SYSTEM_INFORMATION_CLASS, ntioapi::{FILE_INFORMATION_CLASS, PIO_APC_ROUTINE, PIO_STATUS_BLOCK}, ntmmapi::MEMORY_INFORMATION_CLASS, ntpsapi::{PPS_ATTRIBUTE_LIST, PROCESSINFOCLASS, THREADINFOCLASS}};
 use winapi::{shared::{basetsd::{PSIZE_T, SIZE_T, ULONG_PTR}, minwindef::{PULONG, ULONG}, ntdef::{BOOLEAN, HANDLE, NTSTATUS, PHANDLE, PLARGE_INTEGER, POBJECT_ATTRIBUTES, PUNICODE_STRING, PVOID}}, um::winnt::ACCESS_MASK};
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtClose(
     Handle: HANDLE,
@@ -15,6 +16,7 @@ pub extern "system" fn NtClose(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQueryInformationProcess(
     ProcessHandle: HANDLE,
@@ -32,6 +34,7 @@ pub extern "system" fn NtQueryInformationProcess(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQuerySystemInformation(
     SystemInformationClass: SYSTEM_INFORMATION_CLASS,
@@ -48,6 +51,7 @@ pub extern "system" fn NtQuerySystemInformation(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQueryInformationFile(
     FileHandle: HANDLE,
@@ -65,6 +69,7 @@ pub extern "system" fn NtQueryInformationFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQueryInformationThread(
     ThreadHandle: HANDLE,
@@ -82,6 +87,7 @@ pub extern "system" fn NtQueryInformationThread(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtSetInformationFile(
     FileHandle: HANDLE,
@@ -99,6 +105,7 @@ pub extern "system" fn NtSetInformationFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQueryDirectoryFile(
     FileHandle: HANDLE,
@@ -122,6 +129,7 @@ pub extern "system" fn NtQueryDirectoryFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtCreateFile(
     FileHandle: PHANDLE,
@@ -145,6 +153,7 @@ pub extern "system" fn NtCreateFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtCreateNamedPipeFile(
     FileHandle: PHANDLE,
@@ -171,6 +180,7 @@ pub extern "system" fn NtCreateNamedPipeFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtOpenFile(
     FileHandle: PHANDLE,
@@ -189,7 +199,7 @@ pub extern "system" fn NtOpenFile(
     );
 }
   
-
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtReadFile(
     FileHandle: HANDLE,
@@ -211,6 +221,7 @@ pub extern "system" fn NtReadFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtWriteFile(
     FileHandle: HANDLE,
@@ -232,6 +243,7 @@ pub extern "system" fn NtWriteFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtDeviceIoControlFile(
     FileHandle: HANDLE,
@@ -254,6 +266,7 @@ pub extern "system" fn NtDeviceIoControlFile(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtDeleteFile(ObjectAttributes: POBJECT_ATTRIBUTES) -> NTSTATUS {
     naked_asm!(
@@ -265,6 +278,7 @@ pub extern "system" fn NtDeleteFile(ObjectAttributes: POBJECT_ATTRIBUTES) -> NTS
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtQueryVirtualMemory(
     ProcessHandle: HANDLE,
@@ -283,6 +297,7 @@ pub extern "system" fn NtQueryVirtualMemory(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtAllocateVirtualMemory(
     ProcessHandle: HANDLE,
@@ -301,6 +316,7 @@ pub extern "system" fn NtAllocateVirtualMemory(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtWriteVirtualMemory(
     ProcessHandle: HANDLE,
@@ -311,12 +327,14 @@ pub extern "system" fn NtWriteVirtualMemory(
 ) -> NTSTATUS {
     naked_asm!(
         "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
         "mov eax, 0x3A",
         "syscall",
         "ret"
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtReadVirtualMemory(
     ProcessHandle: HANDLE,
@@ -327,12 +345,14 @@ pub extern "system" fn NtReadVirtualMemory(
 ) -> NTSTATUS {
     naked_asm!(
         "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
         "mov eax, 0x3F",
         "syscall",
         "ret"
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtProtectVirtualMemory(
     ProcessHandle: HANDLE,
@@ -343,12 +363,14 @@ pub extern "system" fn NtProtectVirtualMemory(
 ) -> NTSTATUS {
     naked_asm!(
         "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
         "mov eax, 0x50",
         "syscall",
         "ret"
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtTerminateProcess(
     ProcessHandle: HANDLE,
@@ -356,13 +378,14 @@ pub extern "system" fn NtTerminateProcess(
 ) -> NTSTATUS {
     naked_asm!(
         "mov r10, rcx",
+        #[cfg(feature = "win_25h2")]
         "mov eax, 0x2C",
         "syscall",
         "ret"
     );
 }
 
-// #[inline(always)]
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system"  fn NtDelayExecution(
     Alertable: BOOLEAN,
@@ -377,6 +400,7 @@ pub extern "system"  fn NtDelayExecution(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system"  fn NtCreateThreadEx(
     ThreadHandle: PHANDLE,
@@ -399,7 +423,8 @@ pub extern "system"  fn NtCreateThreadEx(
         "ret"
     );
 }
- 
+
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system"  fn NtWaitForSingleObject(
     Handle: HANDLE,
@@ -415,6 +440,7 @@ pub extern "system"  fn NtWaitForSingleObject(
     );
 }
 
+#[cfg_attr(feature = "sys_section", link_section = ".syscalls")]
 #[unsafe(naked)]
 pub extern "system" fn NtSuspendThread(
     ThreadHandle: HANDLE,

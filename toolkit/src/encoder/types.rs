@@ -6,7 +6,8 @@ pub trait BufferStorage {
     fn capacity(&self) -> usize;
     fn clear(&mut self);
     fn as_slice(&self) -> &[u8];
-    fn as_mut_slice(&mut self) -> &mut [u8]; 
+    fn as_mut_slice(&mut self) -> &mut [u8];
+    // fn into_vec(self) -> 
 }
 
 pub trait FixupStorage {

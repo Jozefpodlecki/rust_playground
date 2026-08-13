@@ -22,6 +22,12 @@ impl<S: WriteStrategy> ConsoleWriter<S> {
         }
     }
 
+    pub fn clear(&self) {
+        unsafe {
+            core::ptr::write_bytes(self.buffer.as_ptr() as *const u8 as *mut u8, 0, self.buffer.len() * 2);
+        }
+    }
+
     pub fn write(&self, text: &str) -> Result<u32, NTSTATUS> {
         if text.is_empty() {
             return Ok(0);

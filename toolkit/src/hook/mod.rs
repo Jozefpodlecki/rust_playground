@@ -1,4 +1,4 @@
-use core::ptr::null_mut;
+use core::{arch::asm, ptr::null_mut};
 
 use heapless::Vec;
 // use iced_x86::*;
@@ -6,30 +6,15 @@ use winapi::shared::ntdef::NTSTATUS;
 
 use crate::encoder::{self, Encoder1K, EncoderError};
 
-pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, N>, EncoderError> {
-    // let mut encoder = Encoder::new(64);
-    // let mut rip = 0;
-
-    // let mov_rax = Instruction::with2(Code::Mov_r64_imm64, Register::RAX, addr as u64)?;
-    // rip += encoder.encode(&mov_rax, rip as _)?;
-    // let jmp_rax = Instruction::with1(Code::Jmp_rm64, Register::RAX)?;
-    // rip += encoder.encode(&jmp_rax, rip as _)?;
-
-    // let ret = Instruction::with(Code::Retnq);
-    // rip += encoder.encode(&ret, rip as _)?;
-
-    // let buffer = encoder.take_buffer();
-    // let output = Vec::from_iter(buffer);
+pub fn jmp_trampoline_to<const N: usize>(addr: usize) -> Result<Vec<u8, 1024>, EncoderError> {
 
     let mut encoder = Encoder1K::new();
 
     encoder.mov().rax().imm64(addr as _);
-    // encoder.jmp().rax();
+    encoder.jmp().rax();
+    encoder.ret().near();
 
-    // GOAL
-    // [72, 184, 210, 4, 0, 0, 0, 0, 0, 0, 255, 224, 195]
-
-    Ok(Vec::new())
+    Ok(encoder.into_buffer())
 }
 
 pub fn hook_function(
@@ -42,7 +27,7 @@ pub fn hook_function(
         let mut page_base = func_ptr as *mut winapi::ctypes::c_void;
         let mut region_size = buffer.len();
         let mut old_protect = 0u32;
-        
+
         let status = crate::syscalls::NtProtectVirtualMemory(
             handle,
             &mut page_base,

@@ -10,6 +10,7 @@ ntapi = { version = "0.4.3"}
 heapless = "0.9.3"
 # iced-x86 = { version = "1.21.0", default-features = false, features = ["encoder", "decoder", "no_std"], optional = true }
 log = { version = "0.4", optional = true }
+widestring = { version = "1.2.1", default-features = false, features = [] }
 
 [features]
 default = ["win_25h2"]
@@ -17,3 +18,4 @@ win_25h2 = []
 log = ["dep:log"]
 alloc = []
 inline_syscalls = []
+sys_section = []

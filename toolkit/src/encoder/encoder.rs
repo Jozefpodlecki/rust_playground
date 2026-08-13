@@ -6,7 +6,6 @@ use heapless::{IndexMap, String, Vec, index_map::FnvIndexMap};
 
 use crate::encoder::{instructions::*, registers::*, types::*};
 
-
 impl<Buf, Fixups, const LABEL_CAP: usize> Encoder<Buf, Fixups, LABEL_CAP>
 where 
     Buf: BufferStorage,
@@ -127,41 +126,12 @@ where
         Ok(())
     }
         
-    pub fn jmp(&mut self, label: LabelId) -> &mut Self {
-        self.emit(&[0xE9]);
-        let pos = self.buffer.len();
-        self.emit(&[0; 4]);
-        self.add_fixup(pos, label, FixupKind::Rel32);
-        self
-    }
-    
-    pub fn je(&mut self, label: LabelId) -> &mut Self {
-        self.emit(&[0x0F, 0x84]);
-        let pos = self.buffer.len();
-        self.emit(&[0; 4]);
-        self.add_fixup(pos, label, FixupKind::Rel32);
-        self
-    }
-    
-    pub fn jne(&mut self, label: LabelId) -> &mut Self {
-        self.emit(&[0x0F, 0x85]);
-        let pos = self.buffer.len();
-        self.emit(&[0; 4]);
-        self.add_fixup(pos, label, FixupKind::Rel32);
-        self
-    }
-    
-    pub fn jmp_short(&mut self, label: LabelId) -> &mut Self {
-        self.emit(&[0xEB]);
-        let pos = self.buffer.len();
-        self.emit(&[0]);
-        self.add_fixup(pos, label, FixupKind::Rel8);
-        self
+    pub fn jmp(&mut self) -> Jmp<'_, Buf, Fixups, LABEL_CAP> {
+        Jmp::new(self)
     }
 
-    pub fn ret(&mut self) -> EncoderResult<&mut Self> {
-        self.emit_byte(0xC3)?;
-        Ok(self)
+    pub fn ret(&mut self) -> Ret<'_, Buf, Fixups, LABEL_CAP> {
+        Ret::new(self)
     }
 
     pub fn push(&mut self) -> Push<'_, Buf, Fixups, LABEL_CAP> {
@@ -174,6 +144,11 @@ where
     
     pub fn mov(&mut self) -> Mov<'_, Buf, Fixups, LABEL_CAP> {
         Mov::new(self)
+    }
+
+    pub fn into_buffer(mut self) -> Buf {
+        let _ = self.finalize();
+        self.buffer
     }
 }
 
@@ -213,28 +188,3 @@ pub type EncoderFixed<const B: usize, const F: usize, const L: usize = 32> =
 pub type Encoder1K = EncoderFixed<1024, 64>;
 pub type Encoder4K = EncoderFixed<4096, 256>;
 pub type Encoder16K = EncoderFixed<16384, 1024>;
-
-// pub fn test_fixed() -> Result<Encoder1K, EncoderError> {
-//     let mut encoder = Encoder1K::new();
-    
-//     let start = encoder.label_id();
-//     let skip = encoder.label_id();
-    
-//     encoder.push().rax();
-//     encoder.push().rbx();
-//     encoder.mov().rbx().rcx();
-//     encoder.mov().rax().imm64(42);
-//     encoder.jmp(skip);
-    
-//     encoder.label_at(start); // Mark start label
-//     encoder.mov().rax().imm64(0);
-    
-//     encoder.label_at(skip);
-//     encoder.pop().rbx();
-//     encoder.pop().rax();
-//     encoder.ret();
-    
-//     encoder.finalize()?;
-    
-//     Ok(encoder)
-// }

@@ -1,9 +1,8 @@
 use core::marker::PhantomData;
 use crate::encoder::{registers::*, *};
 
-pub struct Mov<'a, Buf, Fixups, const L: usize>(
-    &'a mut Encoder<Buf, Fixups, L>,
-) where
+
+pub struct Mov<'a, Buf, Fixups, const L: usize>(&'a mut Encoder<Buf, Fixups, L>) where
     Buf: BufferStorage,
     Fixups: FixupStorage;
 
@@ -16,34 +15,42 @@ where
         Self(encoder)
     }
 
+    #[inline]
     pub fn rax(self) -> MovDst<'a, Buf, Fixups, L, Rax> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rbx(self) -> MovDst<'a, Buf, Fixups, L, Rbx> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rcx(self) -> MovDst<'a, Buf, Fixups, L, Rcx> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rdx(self) -> MovDst<'a, Buf, Fixups, L, Rdx> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rsi(self) -> MovDst<'a, Buf, Fixups, L, Rsi> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rdi(self) -> MovDst<'a, Buf, Fixups, L, Rdi> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rbp(self) -> MovDst<'a, Buf, Fixups, L, Rbp> {
         MovDst(self.0, PhantomData)
     }
     
+    #[inline]
     pub fn rsp(self) -> MovDst<'a, Buf, Fixups, L, Rsp> {
         MovDst(self.0, PhantomData)
     }
@@ -86,41 +93,49 @@ where
         Ok(self.0)
     }
     
+    #[inline]
     pub fn rsi(mut self) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
         self.emit_mov_rr::<Rsi>()?;
         Ok(self.0)
     }
     
+    #[inline]
     pub fn rdi(mut self) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
         self.emit_mov_rr::<Rdi>()?;
         Ok(self.0)
     }
     
+    #[inline]
     pub fn rbp(mut self) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
         self.emit_mov_rr::<Rbp>()?;
         Ok(self.0)
     }
     
+    #[inline]
     pub fn rsp(mut self) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
         self.emit_mov_rr::<Rsp>()?;
         Ok(self.0)
     }
-    
-    pub fn imm64(mut self, val: u64) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
-        let rex = 0x48 | D::REX;
-        if rex != 0x48 {
+
+    fn emit_rex(&mut self, w: bool) -> EncoderResult<()> {
+        let rex = 0x40 | (if w { 0x08 } else { 0 }) | D::REX;
+        if rex != 0x40 {
             self.0.emit_byte(rex)?;
         }
+        Ok(())
+    }
+    
+    #[inline]
+    pub fn imm64(mut self, val: u64) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
+        self.emit_rex(true)?;
         self.0.emit_byte(0xB8 + D::ENC)?;
         self.0.emit(&val.to_le_bytes())?;
         Ok(self.0)
     }
     
+    #[inline]
     pub fn imm32(mut self, val: u32) -> EncoderResult<&'a mut Encoder<Buf, Fixups, L>> {
-        let rex = 0x40 | D::REX;
-        if rex != 0x40 {
-            self.0.emit_byte(rex)?;
-        }
+        self.emit_rex(false)?;
         self.0.emit_byte(0xB8 + D::ENC)?;
         self.0.emit(&val.to_le_bytes())?;
         Ok(self.0)

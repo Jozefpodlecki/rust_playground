@@ -1,9 +1,13 @@
 use core::cell::UnsafeCell;
 use core::mem;
 use core::ops::{Deref, DerefMut};
+use core::ptr::null_mut;
 use core::sync::atomic::{AtomicU8, Ordering};
 
+use winapi::shared::ntdef::HANDLE;
+
 use crate::futex::{wait_on_address, wake_by_address_single};
+use crate::println;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,6 +50,7 @@ impl AtomicMutexState {
 }
 
 pub struct Mutex<T> {
+    handle: HANDLE,
     state: AtomicMutexState,
     data: UnsafeCell<T>,
 }
@@ -53,8 +58,10 @@ pub struct Mutex<T> {
 unsafe impl<T> Sync for Mutex<T> where T: Send {}
 
 impl<T> Mutex<T> {
-    pub const fn new(data: T) -> Self {
+    pub fn new(data: T) -> Self {
+
         Self {
+            handle: null_mut(),
             state: AtomicMutexState::new(MutexState::Unlocked),
             data: UnsafeCell::new(data),
         }
@@ -64,6 +71,7 @@ impl<T> Mutex<T> {
         if !self.state.try_acquire() {
             self.lock_contended();
         }
+
         MutexGuard(self)
     }
 
