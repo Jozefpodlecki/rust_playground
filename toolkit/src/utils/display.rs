@@ -24,6 +24,25 @@ impl<'a> Utf16String<'a> {
     }
 }
 
+impl<'a> PartialEq<&str> for Utf16String<'a> {
+    fn eq(&self, other: &&str) -> bool {
+        let mut buf = [0u16; 64];
+        let mut len = 0;
+        
+        for c in other.encode_utf16() {
+            
+            if len >= buf.len() {
+                return false;
+            }
+
+            buf[len] = c;
+            len += 1;
+        }
+        
+        self.0.len() == len && self.0.iter().zip(&buf[..len]).all(|(a, b)| a == b)
+    }
+}
+
 impl<'a> fmt::Display for Utf16String<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_empty() {
@@ -31,16 +50,6 @@ impl<'a> fmt::Display for Utf16String<'a> {
             return Ok(());
         }
 
-        write!(f, "Hex: ")?;
-        for (i, &code) in self.0.iter().enumerate() {
-            if i > 0 {
-                write!(f, " ")?;
-            }
-            write!(f, "{:04X}", code)?;
-        }
-        writeln!(f)?;
-
-        write!(f, "Str: ")?;
         let iter = char::decode_utf16(self.0.iter().cloned())
             .map(|r| r.unwrap_or(char::REPLACEMENT_CHARACTER));
             

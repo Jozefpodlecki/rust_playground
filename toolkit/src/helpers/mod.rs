@@ -12,6 +12,7 @@ mod unicode_string;
 mod cmd_args;
 mod environment;
 mod exec_path;
+mod ldr;
 mod pe;
 
 pub use process::*;
@@ -28,4 +29,5 @@ pub use unicode_string::*;
 pub use cmd_args::*;
 pub use environment::*;
 pub use exec_path::*;
+pub use ldr::*;
 pub use pe::*;

@@ -4,7 +4,7 @@ use core::{fmt, ops::Deref};
 use ntapi::{ntpebteb::PEB, ntrtl::RTL_USER_PROCESS_PARAMETERS};
 use winapi::{ctypes::c_void, shared::ntdef::UNICODE_STRING};
 
-use crate::{CommandLineArgs, Environment, ExecutablePath, Utf16Path, types::HEAP};
+use crate::{CommandLineArgs, Environment, ExecutablePath, ListOrder, ModulesIterator, Utf16Path, println, types::HEAP};
 
 #[unsafe(naked)]
 pub unsafe fn get_peb() -> *mut PEB {
@@ -79,6 +79,20 @@ impl ProcessEnvironmentBlock {
         ExecutablePath::new(path)
     }
 
+    pub fn in_initialization_order_module_list(&self) -> ModulesIterator {
+        let ldr: &ntapi::ntpsapi::PEB_LDR_DATA = unsafe { &*(*self.0).Ldr };
+        ModulesIterator::new(&ldr.InInitializationOrderModuleList as *const _ as *mut _, ListOrder::InitializationOrder)
+    }
+
+    pub fn in_load_order_module_list(&self) -> ModulesIterator {
+        let ldr: &ntapi::ntpsapi::PEB_LDR_DATA = unsafe { &*(*self.0).Ldr };
+        ModulesIterator::new(&ldr.InLoadOrderModuleList as *const _ as *mut _, ListOrder::LoadOrder)
+    }
+
+    pub fn in_memory_order_module_list(&self) -> ModulesIterator {
+        let ldr: &ntapi::ntpsapi::PEB_LDR_DATA = unsafe { &*(*self.0).Ldr };
+        ModulesIterator::new(&ldr.InMemoryOrderModuleList as *const _ as *mut _, ListOrder::MemoryOrder)
+    }
 }
 
 impl fmt::Display for ProcessEnvironmentBlock {

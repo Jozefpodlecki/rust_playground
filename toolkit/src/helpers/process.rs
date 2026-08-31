@@ -1,5 +1,5 @@
 
-use core::{mem, ops::{Deref, DerefMut}, ptr, sync::atomic::{AtomicBool, Ordering}};
+use core::{mem::{self, zeroed}, ops::{Deref, DerefMut}, ptr::{self, null_mut}, sync::atomic::{AtomicBool, Ordering}};
 
 use ntapi::{ntapi_base::CLIENT_ID, ntexapi::*, ntobapi::NtClose, ntpebteb::PPEB, ntpsapi::{NtOpenProcess, NtQueryInformationProcess, NtTerminateProcess, PROCESS_BASIC_INFORMATION, ProcessBasicInformation, ProcessImageFileName, ProcessImageFileNameWin32}};
 use crate::{U8CStackString, U16CStackString, println};
@@ -557,6 +557,28 @@ pub struct ProcessInfo {
 }
 
 impl ProcessInfo {
+    pub fn open_process(&self) -> Result<HANDLE, NTSTATUS> {
+        let mut handle: HANDLE = null_mut();
+        let mut obj_attr: OBJECT_ATTRIBUTES = unsafe { zeroed() };
+        let mut parent_client: CLIENT_ID = unsafe { zeroed() };
+        parent_client.UniqueProcess = self.pid as _;
+        
+        let status = unsafe {
+            NtOpenProcess(
+                &mut handle as *mut _ as _,
+                PROCESS_ALL_ACCESS,
+                &mut obj_attr,
+                &mut parent_client
+            )
+        };
+        
+        if status < 0 {
+            return Err(status);
+        }
+        
+        Ok(handle)
+    }
+
     pub fn from_inner(inner: PROCESS_INFORMATION) -> Self {
         ProcessInfo {
             handle: inner.hProcess,
