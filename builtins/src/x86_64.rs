@@ -1,5 +1,6 @@
 
 use core::arch::asm;
+use core::arch::x86_64::{__m128i, _mm_cmpeq_epi16, _mm_load_si128, _mm_movemask_epi8, _mm_setzero_si128};
 use core::{intrinsics, mem};
 
 #[inline(always)]
@@ -289,4 +290,51 @@ fn rep_param(dest: *mut u8, mut count: usize) -> (usize, usize, usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     (pre_byte_count, qword_count, byte_count)
+}
+
+const unsafe fn wcslen_scalar(s: *const u16) -> usize {
+    let mut len = 0;
+    while *s.add(len) != 0 {
+        len += 1;
+    }
+    len
+}
+
+#[unsafe(no_mangle)]
+pub unsafe fn wcslen(mut s: *const u16) -> usize {
+    if s.is_null() {
+        return 0;
+    }
+
+    let start = s;
+    let zero = _mm_setzero_si128();
+
+    while (s as usize) & 0xF != 0 {
+        if *s == 0 {
+            return s.offset_from(start) as usize;
+        }
+        s = s.add(1);
+    }
+
+    loop {
+        const PAGE_SIZE: usize = 4096;
+        let page_remaining = PAGE_SIZE - (s as usize & (PAGE_SIZE - 1));
+
+        if page_remaining < 16 {
+            let tail = wcslen_scalar(s);
+            return s.offset_from(start) as usize + tail;
+        }
+
+        let chunk = _mm_load_si128(s as *const __m128i);
+        let cmp = _mm_cmpeq_epi16(chunk, zero);
+        let mask = _mm_movemask_epi8(cmp) as u32;
+
+        if mask != 0 {
+     
+            let offset = (mask.trailing_zeros() / 2) as usize;
+            return s.offset_from(start) as usize + offset;
+        }
+
+        s = s.add(8);
+    }
 }

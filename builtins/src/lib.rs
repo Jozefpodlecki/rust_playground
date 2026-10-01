@@ -1,5 +1,6 @@
 #![no_std]
 #![allow(unsafe_op_in_unsafe_fn, internal_features)]
+#![allow(suspicious_runtime_symbol_definitions)]
 #![feature(core_intrinsics)]
 
 mod x86_64;
