@@ -1,0 +1,16 @@
+
+[package]
+name = "logger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+log = "0.4.34"
+spin = "0.12.3"
+ntapi = { version = "0.4.3"}
+win-platform = { path = "../win-platform", features = ["alloc"] }
+sized-dst = "0.1.1"
+
+[features]
+default = ["alloc"]
+alloc = []
