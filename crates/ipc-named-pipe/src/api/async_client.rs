@@ -1,7 +1,7 @@
 use core::{mem, ptr::null_mut};
 
 use ntapi::ntioapi::{FILE_NON_DIRECTORY_FILE, FILE_OPEN, FILE_SYNCHRONOUS_IO_NONALERT, IO_STATUS_BLOCK};
-use win_platform::{NtError, syscalls::*, types::{HANDLE, UnicodeString}};
+use win_platform::{NtError, syscalls::*, types::{HANDLE, ObjectAttributes, UnicodeString}};
 use winapi::{shared::ntdef::{OBJ_CASE_INSENSITIVE, OBJECT_ATTRIBUTES}, um::winnt::{GENERIC_READ, GENERIC_WRITE, LARGE_INTEGER, SYNCHRONIZE}};
 
 use crate::{error::IpcError, event::Event, types::*, utils::{default_pipe_name, finish}};
@@ -12,16 +12,6 @@ pub struct AsyncIpcClient {
     write_event: Event,
 }
 
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct FILE_PIPE_WAIT_FOR_BUFFER {
-    pub Timeout: LARGE_INTEGER,
-    pub NameLength: u32,
-    pub TimeoutSpecified: u8,
-    pub Padding: u8,
-    pub Name: [u16; 1],
-}
-
 impl AsyncIpcClient {
 
     pub fn open() -> Result<Self, IpcError> {
@@ -29,20 +19,15 @@ impl AsyncIpcClient {
         let mut io_block = unsafe { core::mem::zeroed::<IO_STATUS_BLOCK>() };
 
         let path: UnicodeString = default_pipe_name().as_str().into();
-        let mut path_raw = path.as_unicode_string();
-        let mut obj_attr = OBJECT_ATTRIBUTES {
-            Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
-            RootDirectory: null_mut(),
-            ObjectName: &mut path_raw,
-            Attributes: OBJ_CASE_INSENSITIVE,
-            SecurityDescriptor: null_mut(),
-            SecurityQualityOfService: null_mut(),
-        };
-
+        let mut obj_attrs = ObjectAttributes::new()
+            .name(path)
+            .case_insensitive();
+        let mut obj_attrs_raw = obj_attrs.as_raw();
+ 
         NtCreateFile(
             &mut handle,
             GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE,
-            &mut obj_attr,
+            &mut obj_attrs_raw,
             &mut io_block,
             null_mut(),
             0,

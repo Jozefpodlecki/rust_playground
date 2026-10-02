@@ -2,7 +2,7 @@ use core::{mem, ptr::null_mut};
 
 use log::info;
 use ntapi::ntioapi::*;
-use win_platform::{NtError, syscalls::{NtClose, NtCreateEvent, NtWaitForSingleObject, }};
+use win_platform::{NtError, syscalls::{NtClose, NtCreateEvent, NtWaitForSingleObject, }, types::ObjectAttributes};
 use winapi::{shared::ntdef::{NotificationEvent, OBJECT_ATTRIBUTES}, um::winnt::*};
 use win_platform::types::HANDLE;
 
@@ -12,19 +12,13 @@ impl Event {
     pub fn new() -> Result<Self, NtError> {
         unsafe {
             let mut handle: HANDLE = null_mut();
-            let mut attrs = OBJECT_ATTRIBUTES {
-                Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
-                RootDirectory: null_mut(),
-                ObjectName: null_mut(),
-                Attributes: 0,
-                SecurityDescriptor: null_mut(),
-                SecurityQualityOfService: null_mut(),
-            };
+            let mut attrs = ObjectAttributes::new();
+            let mut attrs_raw = attrs.as_raw();
 
             NtCreateEvent(
                 &mut handle,
                 EVENT_ALL_ACCESS,
-                &mut attrs,
+                &mut attrs_raw,
                 NotificationEvent,
                 0,
             )
@@ -39,9 +33,7 @@ impl Event {
     }
 
     pub fn wait(&self) -> Result<(), NtError> {
-        unsafe {
-            NtWaitForSingleObject(self.0, 0, null_mut()).ok()
-        }
+        NtWaitForSingleObject(self.0, 0, null_mut()).ok()
     }
 }
 

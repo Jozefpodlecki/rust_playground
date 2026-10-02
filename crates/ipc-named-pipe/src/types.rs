@@ -5,13 +5,16 @@ use crate::error::FrameError;
 pub const MAX_FRAME_SIZE: usize = 256;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive_const(Default)]
 pub struct DebugVerdict {
     pub tid: u32,
     pub kind: DebugVerdictKind
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive_const(Default)]
 pub enum DebugVerdictKind {
+    #[default]
     None,
     Continue,
     TerminateThread { exit_code: i32 },
@@ -27,6 +30,7 @@ pub struct DebugEvent {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DebugEventKind {
+    Initialized,
     ThreadCreated,
     Breakpoint,
     ProcessExited,

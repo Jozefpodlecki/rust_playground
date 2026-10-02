@@ -1,6 +1,6 @@
 use core::time::Duration;
 
-use log::{error, info};
+use log::*;
 use win_platform::{rng::Rng, utils::Sleeper};
 
 use crate::{
@@ -8,6 +8,7 @@ use crate::{
 };
 
 pub extern "system" fn on_client() {
+    info!("Client: Spawned");
     Sleeper::sleep(Duration::from_secs(1));
 
     match run() {
@@ -17,9 +18,10 @@ pub extern "system" fn on_client() {
 }
 
 fn run() -> Result<(), IpcError> {
+    info!("Client: Connecting");
     let client = AsyncIpcClient::open()?;
     let mut rng = Rng::from_shared_data();
-    info!("Client: Initialized?");
+    info!("Client: Connected");
 
     loop {
         let event = client.read()?;

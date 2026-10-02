@@ -11,29 +11,21 @@ use crate::{
 };
 
 pub fn wait_for_verdict(tid: u32) -> Result<(), NtError> {
-    let addr: *mut _ = {
-        let guard = REGISTRY.0.read();
-        let entry = unsafe { guard.get(&tid).unwrap_unchecked() };
-        entry.as_ptr() as *mut _
-    };
+    let addr = REGISTRY.ptr(tid).ok_or(NtError::STATUS_NOT_FOUND)?;
 
     NtWaitForAlertByThreadId(addr as _, null_mut()).ok()?;
 
-    let verdict = {
-        let guard = REGISTRY.0.read();
-        unsafe { guard.get(&tid).unwrap_unchecked().verdict }
-    };
-
+    let verdict = REGISTRY.verdict(tid).ok_or(NtError::STATUS_NOT_FOUND)?;
     info!("Received verdict {verdict:?}");
 
     match verdict.kind {
         DebugVerdictKind::Continue => (),
         DebugVerdictKind::TerminateProcess { exit_code } => {
-            info!("Terminating process");
+            info!("Terminating process 0x{exit_code:X}");
             NtTerminateProcess(NtCurrentProcess, exit_code);
         }
         DebugVerdictKind::TerminateThread { exit_code } => {
-            info!("Terminating thread");
+            info!("Terminating thread 0x{exit_code:X}");
             NtTerminateThread(NtCurrentThread, exit_code);
         }
         DebugVerdictKind::Return => {

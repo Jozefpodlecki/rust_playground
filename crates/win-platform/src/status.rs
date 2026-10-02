@@ -1,4 +1,4 @@
-use winapi::shared::{ntdef::NTSTATUS};
+use winapi::shared::{ntdef::NTSTATUS, ntstatus::{STATUS_ACCESS_DENIED, STATUS_INVALID_HANDLE, STATUS_NOT_FOUND}};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +45,10 @@ impl core::fmt::Display for NtStatus {
 pub struct NtError(pub i32);
 
 impl NtError {
+    pub const STATUS_NOT_FOUND: NtError = NtError(STATUS_NOT_FOUND);
+    pub const ACCESS_DENIED: NtError = NtError(STATUS_ACCESS_DENIED);
+    pub const INVALID_HANDLE: NtError = NtError(STATUS_INVALID_HANDLE);
+
     pub const fn raw(&self) -> i32 {
         self.0
     }

@@ -4,6 +4,9 @@
 #![allow(unused)]
 #![allow(static_mut_refs)]
 #![feature(sync_unsafe_cell)]
+#![feature(derive_const)]
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 
 use allocator::FreeListAllocator1KB;
 use win_platform::STATUS_FATAL_APP_EXIT;

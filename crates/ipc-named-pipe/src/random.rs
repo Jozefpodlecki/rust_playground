@@ -19,6 +19,7 @@ pub fn verdict(event: DebugEvent, rng: &mut Rng) -> DebugVerdict {
         DebugEventKind::ThreadExited => DebugVerdictKind::TerminateThread {
             exit_code: exit_code(rng),
         },
+        DebugEventKind::Initialized => DebugVerdictKind::Continue,
     };
     DebugVerdict { tid: event.tid, kind }
 }

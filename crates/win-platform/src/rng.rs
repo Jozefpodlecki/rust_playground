@@ -18,13 +18,12 @@ impl Rng {
         Self { state: seed }
     }
 
-    #[inline]
-    pub fn next_u64(&mut self) -> u64 {
+    pub const fn next_u64(&mut self) -> u64 {
         self.state = self.state.wrapping_add(0x9E3779B97F4A7C15);
         mix(self.state)
     }
 
-    pub fn random_range(&mut self, range: core::ops::Range<u64>) -> u64 {
+    pub const fn random_range(&mut self, range: core::ops::Range<u64>) -> u64 {
         let start = range.start;
         let end = range.end;
         assert!(start < end, "empty range");
@@ -45,8 +44,7 @@ impl Rng {
     }
 }
 
-#[inline]
-fn mix(mut x: u64) -> u64 {
+const fn mix(mut x: u64) -> u64 {
     x ^= x >> 30;
     x = x.wrapping_mul(0xBF58476D1CE4E5B9);
     x ^= x >> 27;

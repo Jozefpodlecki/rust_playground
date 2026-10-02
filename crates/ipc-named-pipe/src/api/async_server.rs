@@ -1,8 +1,8 @@
-use core::{mem, ptr::null_mut};
+use core::{mem, ptr::null_mut, time::Duration};
 
 use log::info;
 use ntapi::ntioapi::*;
-use win_platform::{NtError, NtStatus, syscalls::{NtClose, NtCreateEvent, NtCreateNamedPipeFile, NtFsControlFile, NtReadFile, NtWriteFile}, types::UnicodeString};
+use win_platform::{NtError, NtStatus, extensions::DurationExtensions, syscalls::{NtClose, NtCreateEvent, NtCreateNamedPipeFile, NtFsControlFile, NtReadFile, NtWriteFile}, types::{ObjectAttributes, UnicodeString}};
 use winapi::{shared::{ntdef::{NotificationEvent, OBJ_CASE_INSENSITIVE, OBJECT_ATTRIBUTES}, ntstatus::{STATUS_PIPE_CONNECTED, STATUS_PIPE_LISTENING}}, um::winnt::*};
 use win_platform::types::HANDLE;
 
@@ -24,24 +24,18 @@ impl AsyncIpcServer {
         unsafe {
             let mut handle = null_mut();
             let mut io_status_block = core::mem::zeroed::<IO_STATUS_BLOCK>();
-            let mut timeout: LARGE_INTEGER = core::mem::zeroed();
-            *timeout.QuadPart_mut() = -500000;
+            let mut timeout = Duration::from_millis(50).to_large_integer();
 
             let path: UnicodeString = default_pipe_name().as_str().into();
-            let mut path_raw = path.as_unicode_string();
-            let mut object_attributes = OBJECT_ATTRIBUTES {
-                Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
-                RootDirectory: null_mut(),
-                ObjectName: &mut path_raw,
-                Attributes: OBJ_CASE_INSENSITIVE,
-                SecurityDescriptor: null_mut(),
-                SecurityQualityOfService: null_mut(),
-            };
+            let mut obj_attrs = ObjectAttributes::new()
+                .name(path)
+                .case_insensitive();
+            let mut obj_attrs_raw = obj_attrs.as_raw();
 
             NtCreateNamedPipeFile(
                 &mut handle,
                 GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE,
-                &mut object_attributes,
+                &mut obj_attrs_raw,
                 &mut io_status_block,
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 FILE_OPEN_IF,

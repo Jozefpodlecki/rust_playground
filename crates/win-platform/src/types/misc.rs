@@ -1,6 +1,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use winapi::um::winnt::LARGE_INTEGER;
+
 #[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KCONTINUE_TYPE {
@@ -30,4 +32,14 @@ impl KContinueArgument {
             Reserved: [0, 0],
         }
     }
+}
+
+#[repr(C)]
+#[allow(non_snake_case)]
+pub struct FILE_PIPE_WAIT_FOR_BUFFER {
+    pub Timeout: LARGE_INTEGER,
+    pub NameLength: u32,
+    pub TimeoutSpecified: u8,
+    pub Padding: u8,
+    pub Name: [u16; 1],
 }
