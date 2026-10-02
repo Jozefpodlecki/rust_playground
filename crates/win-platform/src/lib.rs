@@ -33,6 +33,7 @@ mod stubs;
 mod status;
 mod peb;
 mod kuser;
+pub mod rng;
 
 #[cfg(feature = "alloc")]
 pub mod fs;

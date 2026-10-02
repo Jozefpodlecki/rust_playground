@@ -18,6 +18,10 @@ impl NtStatus {
         self.0 == 0
     }
 
+     pub const fn is_alerted(&self) -> bool {
+        self.0 == STATUS_ALERTED
+    }
+
     pub const fn is_pending(&self) -> bool {
         self.0 == STATUS_PENDING
     }
@@ -27,7 +31,7 @@ impl NtStatus {
     }
 
     pub const fn ok(self) -> Result<(), NtError> {
-        if self.is_success() { Ok(()) } else { Err(NtError(self.0)) }
+        if self.is_success() || self.is_alerted() { Ok(()) } else { Err(NtError(self.0)) }
     }
 }
 

@@ -18,11 +18,14 @@ mod types;
 mod constants;
 mod error;
 mod event;
-mod async_server;
-mod server;
-mod async_client;
 mod client;
-mod setup;
+mod api;
+mod async_setup;
+mod sync_setup;
+mod state;
+mod spawn;
+mod verdict;
+mod random;
 mod utils;
 
 #[inline(never)]
@@ -34,7 +37,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 #[unsafe(no_mangle)]
 pub extern "C" fn mainCRTStartup() -> i32 {
 
-    match setup::setup() {
+    match async_setup::setup() {
         Ok(_) => 0,
         Err(err) => {
             log::error!("{err}");

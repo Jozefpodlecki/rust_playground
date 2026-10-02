@@ -16,6 +16,9 @@ pub struct AsyncIpcServer {
     write_event: Event,
 }
 
+unsafe impl Send for AsyncIpcServer {}
+unsafe impl Sync for AsyncIpcServer {}
+
 impl AsyncIpcServer {
     pub fn create() -> Result<Self, IpcError> {
         unsafe {

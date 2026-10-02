@@ -8,7 +8,7 @@ use ntapi::ntpsapi::{NtCurrentThreadId, NtWaitForAlertByThreadId};
 use win_platform::{KUserSharedData, NtError, syscalls::NtCreateThreadEx, types::{HANDLE, NtCurrentProcess, SystemTime}, utils::Sleeper};
 use winapi::um::winnt::THREAD_ALL_ACCESS;
 
-use crate::{client::IpcClient, error::IpcError, server::IpcServer, types::*};
+use crate::{api::IpcClient, error::IpcError, api::IpcServer, types::*};
 
 static mut SERVER: SyncUnsafeCell<Option<IpcServer>> = SyncUnsafeCell::new(None);
 static mut REGISTRY: ThreadRegistry = ThreadRegistry::new();

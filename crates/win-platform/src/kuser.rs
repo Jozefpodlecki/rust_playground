@@ -16,6 +16,10 @@ impl KUserSharedData {
         SystemTime(((time.High2Time as u64) << 32) | (time.LowPart as u64))
     }
 
+    pub const fn cookie() -> u32 {
+        Self::get().Cookie
+    }
+
     pub const fn suite_mask() -> u32 {
         Self::get().SuiteMask
     }

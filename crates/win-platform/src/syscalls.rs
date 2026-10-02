@@ -595,10 +595,47 @@ pub extern "system" fn NtSuspendProcess(
 pub extern "system" fn NtTerminateProcess(
     ProcessHandle: HANDLE,
     ExitStatus: i32,
-) -> ! {
+) -> NtStatus {
     naked_asm!(
         "mov r10, rcx",
         "mov eax, 0x2C",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtAlertThreadByThreadId(
+    ThreadId: HANDLE,
+) -> NtStatus {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x71",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtAlertThreadByThreadIdEx(
+    ThreadId: HANDLE,
+) -> NtStatus {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x72",
+        "syscall",
+        "ret"
+    );
+}
+
+#[unsafe(naked)]
+pub extern "system" fn NtWaitForAlertByThreadId(
+    Address: PVOID,
+    Timeout: PLARGE_INTEGER,
+) -> NtStatus {
+    naked_asm!(
+        "mov r10, rcx",
+        "mov eax, 0x1E3",
         "syscall",
         "ret"
     );
